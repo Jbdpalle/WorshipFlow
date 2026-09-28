@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { RegisterServiceWorker } from "@/components/pwa/register-sw";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 export const metadata: Metadata = {
   title: "WorshipFlow",
@@ -26,7 +28,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <RegisterServiceWorker />
+        <InstallPrompt />
+      </body>
     </html>
   );
 }
