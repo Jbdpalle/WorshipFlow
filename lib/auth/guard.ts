@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { readSession } from "@/lib/auth/session";
 
-// The MVP is single-team-per-user: a worship leader signs up, gets an owned
-// Team, and every teammate they add is a roster entry inside that same Team.
-// This keeps tenancy isolation simple (one team per session) while leaving
-// room for multi-team support later without a schema change.
+// Tenant isolation is granted by Membership, not by team ownership: a user
+// only ever gets a `team` back if they hold a Membership on the Church that
+// team belongs to. A user can belong to more than one church; until a
+// church switcher exists in the UI, we resolve to their oldest membership
+// (their "home" church) so every existing call site that destructures
+// `{ team }` keeps working unchanged.
 export async function requireUser() {
   const session = await readSession();
   if (!session) redirect("/login");
@@ -13,17 +15,20 @@ export async function requireUser() {
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     include: {
-      ownedTeams: true,
-      memberships: { include: { team: true } },
+      churchMemberships: {
+        orderBy: { createdAt: "asc" },
+        include: { church: { include: { teams: true } } },
+      },
     },
   });
 
   if (!user) redirect("/login");
 
-  const team = user.ownedTeams[0] ?? user.memberships[0]?.team;
-  if (!team) redirect("/login");
+  const membership = user.churchMemberships[0];
+  const team = membership?.church.teams[0];
+  if (!membership || !team) redirect("/login");
 
-  return { user, team };
+  return { user, team, church: membership.church, membershipRole: membership.role };
 }
 
 export async function getOptionalUser() {
