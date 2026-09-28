@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --background: #faf9f6;
+  --foreground: #1a1a1d;
+  --surface: #ffffff;
+  --surface-muted: #f1efe9;
+  --border: #e4e1d8;
+  --accent: #b8862c;
+  --accent-foreground: #ffffff;
+  --muted-foreground: #6b6b70;
+  --danger: #b3413a;
+  --success: #3a7d5c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #121214;
+    --foreground: #f2f0ea;
+    --surface: #1b1b1e;
+    --surface-muted: #232326;
+    --border: #302f2f;
+    --accent: #d9a441;
+    --accent-foreground: #1a1a1d;
+    --muted-foreground: #a1a0a3;
+    --danger: #e0685f;
+    --success: #5cb98a;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-sans: var(--font-sans);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.tap-target {
+  min-height: 44px;
+}

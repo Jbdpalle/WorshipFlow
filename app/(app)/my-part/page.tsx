@@ -1,0 +1,105 @@
+import Link from "next/link";
+import { requireUser } from "@/lib/auth/guard";
+import { prisma } from "@/lib/db/prisma";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
+
+export default async function MyPartPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ member?: string }>;
+}) {
+  const { user, team } = await requireUser();
+  const { member: memberIdParam } = await searchParams;
+
+  const members = await prisma.teamMember.findMany({
+    where: { teamId: team.id },
+    orderBy: { name: "asc" },
+  });
+
+  const activeMember =
+    members.find((m) => m.id === memberIdParam) ??
+    members.find((m) => m.userId === user.id) ??
+    members[0];
+
+  const assignments = activeMember
+    ? await prisma.songAssignment.findMany({
+        where: { teamMemberId: activeMember.id },
+        include: {
+          setSong: {
+            include: {
+              set: true,
+              song: { include: { sections: { include: { roleNotes: true }, orderBy: { order: "asc" } } } },
+            },
+          },
+        },
+        orderBy: { setSong: { set: { serviceDate: "desc" } } },
+      })
+    : [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">My Part</h1>
+          <p className="text-sm text-muted-foreground">
+            Only what {activeMember?.name ?? "this person"} needs to know — nothing else.
+          </p>
+        </div>
+        <MyPartMemberPicker members={members} activeId={activeMember?.id} />
+      </div>
+
+      {assignments.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">
+            No songs assigned yet. Assignments happen from the Setlist Builder.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {assignments.map((a) => (
+            <Card key={a.id}>
+              <CardHeader className="flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle className="text-base">
+                    <Link href={`/songs/${a.setSong.song.id}`} className="hover:text-accent">
+                      {a.setSong.song.title}
+                    </Link>
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {a.setSong.set.title}
+                    {a.setSong.set.serviceDate &&
+                      ` — ${new Date(a.setSong.set.serviceDate).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <div className="flex gap-1.5">
+                  <Badge variant="accent">{a.role}</Badge>
+                  {a.setSong.song.key && <Badge variant="outline">Key {a.setSong.song.key}</Badge>}
+                  {a.setSong.song.bpm && <Badge variant="outline">{a.setSong.song.bpm} BPM</Badge>}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {a.setSong.song.sections.map((section) => {
+                  const note = section.roleNotes.find((n) => n.role === a.role);
+                  if (!note) return null;
+                  return (
+                    <div key={section.id} className="rounded-lg bg-surface-muted px-3 py-2 text-sm">
+                      <span className="font-semibold">{section.label}: </span>
+                      {note.content}
+                    </div>
+                  );
+                })}
+                {a.setSong.song.sections.every((s) => !s.roleNotes.some((n) => n.role === a.role)) && (
+                  <p className="text-sm text-muted-foreground">
+                    No specific instructions yet for {a.role} — play it as written.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

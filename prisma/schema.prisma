@@ -1,0 +1,303 @@
+// WorshipFlow database schema.
+// Dev uses SQLite for zero-config local setup. For production (e.g. Vercel),
+// switch the datasource provider below to "postgresql" and point DATABASE_URL
+// at a Postgres instance (Neon, Vercel Postgres, Supabase, etc.) — see README.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Identity & Tenancy ──────────────────────────────────────────────
+// A User authenticates. A Team is the tenant boundary: every worship set,
+// song library entry, and note belongs to exactly one Team, so one leader's
+// data is never visible to another leader's team.
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  isDemo       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  ownedTeams    Team[]         @relation("TeamOwner")
+  memberships   TeamMember[]
+  personalNotes PersonalNote[]
+  rehearsalChecks RehearsalCheck[]
+  feedback      Feedback[]
+  changeLogs    ChangeLog[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  owner   User         @relation("TeamOwner", fields: [ownerId], references: [id])
+  members TeamMember[]
+  songs   Song[]
+  sets    WorshipSet[]
+
+  @@index([ownerId])
+}
+
+model TeamMember {
+  id         String   @id @default(cuid())
+  teamId     String
+  userId     String?
+  name       String
+  role       String
+  instrument String?
+  bio        String?
+  createdAt  DateTime @default(now())
+
+  team          Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user          User?             @relation(fields: [userId], references: [id])
+  assignments   SongAssignment[]
+  personalNotes PersonalNote[]
+
+  @@index([teamId])
+}
+
+// ── Songs & Library ─────────────────────────────────────────────────
+
+model Song {
+  id                String   @id @default(cuid())
+  teamId            String
+  title             String
+  artist            String?
+  key               String?
+  bpm               Int?
+  timeSignature     String?  @default("4/4")
+  durationSeconds   Int?
+  energy            String?  // low | medium | high
+  themeCategory     String?  // e.g. "God's Love", "Cross / Sacrifice"
+  biblicalConnection String?
+  lyricsSummary     String?  // no full copyrighted lyrics stored
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  team          Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tags          SongTag[]
+  sections      SongSection[]
+  bibleRefs     BibleReference[]
+  setSongs      SetSong[]
+  rehearsals    Rehearsal[]
+  personalNotes PersonalNote[]
+  changeLogs    ChangeLog[]
+
+  @@index([teamId])
+}
+
+model SongTag {
+  id     String @id @default(cuid())
+  songId String
+  label  String
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@index([songId])
+  @@unique([songId, label])
+}
+
+model SongSection {
+  id       String @id @default(cuid())
+  songId   String
+  label    String // Intro, Verse 1, Chorus, Bridge, ...
+  order    Int
+  barCount Int?
+
+  song      Song           @relation(fields: [songId], references: [id], onDelete: Cascade)
+  roleNotes SongRoleNote[]
+
+  @@index([songId])
+}
+
+// Role is a fixed vocabulary (Worship Leader, Lead Vocal, Acoustic Guitar, ...)
+// represented as a plain string so the MVP can extend it without a migration.
+model SongRoleNote {
+  id        String   @id @default(cuid())
+  sectionId String
+  role      String
+  content   String
+  updatedAt DateTime @updatedAt
+
+  section SongSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId])
+  @@unique([sectionId, role])
+}
+
+model SongAssignment {
+  id           String @id @default(cuid())
+  setSongId    String
+  teamMemberId String
+  role         String
+
+  setSong    SetSong    @relation(fields: [setSongId], references: [id], onDelete: Cascade)
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  @@index([setSongId])
+  @@index([teamMemberId])
+}
+
+// ── Worship Sets ─────────────────────────────────────────────────────
+
+model WorshipSet {
+  id          String    @id @default(cuid())
+  teamId      String
+  title       String
+  theme       String?
+  keywords    String? // comma-separated
+  serviceDate DateTime?
+  church      String?
+  serviceType String?
+  leaderName  String?
+  notes       String? // whole-set notes
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  team      Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  songs     SetSong[]
+  bibleRefs BibleReference[]
+
+  @@index([teamId])
+}
+
+model SetSong {
+  id               String  @id @default(cuid())
+  setId            String
+  songId           String
+  order            Int
+  purpose          String? // role in the set flow
+  transitionNotes  String?
+  overrideKey      String?
+  overrideBpm      Int?
+  capo             Int?
+
+  set         WorshipSet       @relation(fields: [setId], references: [id], onDelete: Cascade)
+  song        Song             @relation(fields: [songId], references: [id], onDelete: Cascade)
+  assignments SongAssignment[]
+  rehearsals  Rehearsal[]
+
+  @@index([setId])
+  @@index([songId])
+}
+
+// ── Bible References ────────────────────────────────────────────────
+
+model BibleReference {
+  id        String  @id @default(cuid())
+  reference String // e.g. "1 Corinthians 13:4-8"
+  text      String? // optional user-entered text; never auto-populated copyrighted text
+  setId     String?
+  songId    String?
+
+  set  WorshipSet? @relation(fields: [setId], references: [id], onDelete: Cascade)
+  song Song?       @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@index([setId])
+  @@index([songId])
+}
+
+// ── Rehearsals ───────────────────────────────────────────────────────
+
+model Rehearsal {
+  id         String   @id @default(cuid())
+  setSongId  String?
+  songId     String
+  bpmUsed    Int?
+  summary    String?
+  occurredAt DateTime @default(now())
+
+  setSong SetSong?         @relation(fields: [setSongId], references: [id], onDelete: SetNull)
+  song    Song             @relation(fields: [songId], references: [id], onDelete: Cascade)
+  notes   RehearsalNote[]
+  checks  RehearsalCheck[]
+
+  @@index([songId])
+  @@index([setSongId])
+}
+
+model RehearsalNote {
+  id          String @id @default(cuid())
+  rehearsalId String
+  content     String
+
+  rehearsal Rehearsal @relation(fields: [rehearsalId], references: [id], onDelete: Cascade)
+
+  @@index([rehearsalId])
+}
+
+model RehearsalCheck {
+  id          String   @id @default(cuid())
+  rehearsalId String
+  userId      String
+  status      String // practiced | needs_work | confirmed | changed
+  createdAt   DateTime @default(now())
+
+  rehearsal Rehearsal @relation(fields: [rehearsalId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([rehearsalId])
+}
+
+// Structured "what changed" record, distinct from free-text rehearsal notes.
+model ChangeLog {
+  id        String   @id @default(cuid())
+  songId    String
+  userId    String?
+  field     String // e.g. "BPM", "Guitar - Verse 1"
+  fromValue String?
+  toValue   String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  song Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([songId])
+}
+
+// ── Notes ────────────────────────────────────────────────────────────
+
+// Private notes, visible only to the author. Distinct from leader direction
+// (SongRoleNote) and team notes (Song.notes / WorshipSet.notes).
+model PersonalNote {
+  id           String   @id @default(cuid())
+  userId       String
+  teamMemberId String?
+  songId       String?
+  content      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id])
+  song       Song?       @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([songId])
+}
+
+// ── Feedback ─────────────────────────────────────────────────────────
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String // bug | feature | general
+  message   String
+  page      String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+}
