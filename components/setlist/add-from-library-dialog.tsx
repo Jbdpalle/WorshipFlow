@@ -31,6 +31,7 @@ export function AddFromLibraryDialog({
   const [query, setQuery] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -43,11 +44,17 @@ export function AddFromLibraryDialog({
   async function handleQuickCreate() {
     if (!newTitle.trim()) return;
     setCreating(true);
-    const song = await createSong({ title: newTitle.trim() });
-    await addSongToSet(setId, song.id);
-    setCreating(false);
-    setNewTitle("");
-    router.refresh();
+    setError(null);
+    try {
+      const song = await createSong({ title: newTitle.trim() });
+      await addSongToSet(setId, song.id);
+      setNewTitle("");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to add that song.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -102,6 +109,7 @@ export function AddFromLibraryDialog({
                 {creating ? "Adding…" : "Add"}
               </Button>
             </div>
+            {error && <p className="text-sm text-danger">{error}</p>}
           </div>
         </div>
       </Dialog>

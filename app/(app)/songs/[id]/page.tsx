@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { SongHeaderEditor } from "@/components/songs/song-header-editor";
 import { TagEditor } from "@/components/songs/tag-editor";
@@ -9,6 +11,7 @@ import { ArrangementEditor } from "@/components/songs/arrangement-editor";
 import { TeamNotesEditor, PersonalNoteEditor } from "@/components/songs/note-editors";
 import { RehearsalHistoryList } from "@/components/songs/rehearsal-history";
 import { ChangeLogPanel } from "@/components/songs/change-log";
+import { BookOpenText } from "lucide-react";
 
 export default async function SongDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,8 +40,13 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Song</CardTitle>
+          <Link href={`/songs/${song.id}/chart`}>
+            <Button variant="secondary" size="sm">
+              <BookOpenText className="h-4 w-4" /> View Chart
+            </Button>
+          </Link>
         </CardHeader>
         <CardContent className="space-y-4">
           <SongHeaderEditor songId={song.id} song={song} />

@@ -24,6 +24,7 @@ export function ChangeLogPanel({ songId, changes }: { songId: string; changes: C
   const [toValue, setToValue] = useState("");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const grouped = groupByDay(changes);
 
@@ -70,14 +71,20 @@ export function ChangeLogPanel({ songId, changes }: { songId: string; changes: C
               disabled={saving || !field.trim()}
               onClick={async () => {
                 setSaving(true);
-                await recordChange({ songId, field, fromValue, toValue, reason });
-                setSaving(false);
-                setShowForm(false);
-                setField("");
-                setFromValue("");
-                setToValue("");
-                setReason("");
-                router.refresh();
+                setError(null);
+                try {
+                  await recordChange({ songId, field, fromValue, toValue, reason });
+                  setShowForm(false);
+                  setField("");
+                  setFromValue("");
+                  setToValue("");
+                  setReason("");
+                  router.refresh();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Unable to save that change.");
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               Save change
@@ -86,6 +93,7 @@ export function ChangeLogPanel({ songId, changes }: { songId: string; changes: C
               Cancel
             </Button>
           </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
         </div>
       ) : (
         <Button type="button" size="sm" variant="secondary" onClick={() => setShowForm(true)}>

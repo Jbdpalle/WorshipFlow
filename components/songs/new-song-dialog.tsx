@@ -23,6 +23,7 @@ export function NewSongDialog() {
     energy: "medium",
     themeCategory: "",
   });
+  const [error, setError] = useState<string | null>(null);
 
   function update(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -33,17 +34,23 @@ export function NewSongDialog() {
     e.preventDefault();
     if (!form.title.trim()) return;
     setSaving(true);
-    const song = await createSong({
-      title: form.title,
-      artist: form.artist,
-      key: form.key,
-      bpm: form.bpm ? Number(form.bpm) : undefined,
-      energy: form.energy,
-      themeCategory: form.themeCategory,
-    });
-    setSaving(false);
-    setOpen(false);
-    router.push(`/songs/${song.id}`);
+    setError(null);
+    try {
+      const song = await createSong({
+        title: form.title,
+        artist: form.artist,
+        key: form.key,
+        bpm: form.bpm ? Number(form.bpm) : undefined,
+        energy: form.energy,
+        themeCategory: form.themeCategory,
+      });
+      setOpen(false);
+      router.push(`/songs/${song.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to add that song. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -90,6 +97,7 @@ export function NewSongDialog() {
               placeholder="God's Love"
             />
           </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" className="w-full" disabled={saving}>
             {saving ? "Adding…" : "Add to library"}
           </Button>

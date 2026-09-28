@@ -133,8 +133,13 @@ function SetSongCard({
   const [transitionNotes, setTransitionNotes] = useState(item.transitionNotes ?? "");
   const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
   const [assignMember, setAssignMember] = useState(teamMembers[0]?.id ?? "");
+  const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
+
+  function handleError(err: unknown, fallback: string) {
+    setError(err instanceof Error ? err.message : fallback);
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -176,8 +181,12 @@ function SetSongCard({
                 {item.song.energy && <Badge>{item.song.energy}</Badge>}
                 <button
                   onClick={async () => {
-                    await removeSongFromSet(item.id);
-                    onRemoved();
+                    try {
+                      await removeSongFromSet(item.id);
+                      onRemoved();
+                    } catch (err) {
+                      handleError(err, "Unable to remove that song.");
+                    }
                   }}
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                   aria-label="Remove from set"
@@ -197,8 +206,12 @@ function SetSongCard({
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                   onBlur={() =>
-                    startTransition(() => {
-                      updateSetSongDetails(item.id, { purpose });
+                    startTransition(async () => {
+                      try {
+                        await updateSetSongDetails(item.id, { purpose });
+                      } catch (err) {
+                        handleError(err, "Unable to save purpose.");
+                      }
                     })
                   }
                   placeholder="Move congregation from praise into reflection."
@@ -214,8 +227,12 @@ function SetSongCard({
                   value={transitionNotes}
                   onChange={(e) => setTransitionNotes(e.target.value)}
                   onBlur={() =>
-                    startTransition(() => {
-                      updateSetSongDetails(item.id, { transitionNotes });
+                    startTransition(async () => {
+                      try {
+                        await updateSetSongDetails(item.id, { transitionNotes });
+                      } catch (err) {
+                        handleError(err, "Unable to save transition notes.");
+                      }
                     })
                   }
                   placeholder="Let the final chord ring, move directly into the next song."
@@ -232,8 +249,12 @@ function SetSongCard({
                     {a.role}: {a.teamMember.name}
                     <button
                       onClick={async () => {
-                        await removeAssignment(a.id);
-                        router.refresh();
+                        try {
+                          await removeAssignment(a.id);
+                          router.refresh();
+                        } catch (err) {
+                          handleError(err, "Unable to remove that assignment.");
+                        }
                       }}
                       className="ml-1 rounded-full hover:bg-danger/20"
                     >
@@ -272,8 +293,12 @@ function SetSongCard({
                       className="h-7 px-2 text-xs"
                       onClick={async () => {
                         if (!assignMember) return;
-                        await assignMemberToSetSong(item.id, assignMember, assignRole);
-                        router.refresh();
+                        try {
+                          await assignMemberToSetSong(item.id, assignMember, assignRole);
+                          router.refresh();
+                        } catch (err) {
+                          handleError(err, "Unable to assign that member.");
+                        }
                       }}
                     >
                       Assign
@@ -282,6 +307,7 @@ function SetSongCard({
                 )}
               </div>
             </div>
+            {error && <p className="text-sm text-danger">{error}</p>}
           </div>
         </div>
       </Card>

@@ -7,12 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Metronome } from "@/components/metronome/metronome";
+import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { REHEARSAL_CHECK_STATUSES } from "@/lib/songs/constants";
 import { startRehearsal, saveRehearsalNotes, setRehearsalCheck } from "@/lib/actions/rehearsal";
 import { cn } from "@/lib/utils/cn";
 
 type RoleNote = { id: string; role: string; content: string };
-type Section = { id: string; label: string; order: number; roleNotes: RoleNote[] };
+type Section = {
+  id: string;
+  label: string;
+  order: number;
+  lyricsChords: string | null;
+  roleNotes: RoleNote[];
+};
 type SetSongData = {
   id: string;
   order: number;
@@ -66,12 +73,19 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
   const [activeStatus, setActiveStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    startRehearsal(song.id, setSong.id, song.bpm ?? undefined).then((r) => {
-      if (!cancelled) setRehearsalId(r.id);
-    });
+    startRehearsal(song.id, setSong.id, song.bpm ?? undefined)
+      .then((r) => {
+        if (!cancelled) setRehearsalId(r.id);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Unable to start rehearsal tracking for this song.");
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -135,6 +149,15 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
             </div>
           </div>
 
+          {current?.lyricsChords?.trim() && (
+            <div className="space-y-1 rounded-lg bg-surface-muted p-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Lyrics &amp; Chords
+              </h3>
+              <LyricsChordsView content={current.lyricsChords} size="sm" />
+            </div>
+          )}
+
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-muted-foreground">Team Instructions</h3>
             {instructionsByRole.length === 0 ? (
@@ -175,8 +198,13 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
               disabled={!rehearsalId}
               onClick={async () => {
                 if (!rehearsalId) return;
-                await setRehearsalCheck(rehearsalId, s.value);
-                setActiveStatus(s.value);
+                setError(null);
+                try {
+                  await setRehearsalCheck(rehearsalId, s.value);
+                  setActiveStatus(s.value);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Unable to save that status.");
+                }
               }}
             >
               {s.label}
@@ -201,14 +229,20 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
           disabled={!rehearsalId || !notes.trim()}
           onClick={async () => {
             if (!rehearsalId) return;
-            await saveRehearsalNotes(rehearsalId, notes.split("\n"));
-            setNotes("");
-            setSaved(true);
+            setError(null);
+            try {
+              await saveRehearsalNotes(rehearsalId, notes.split("\n"));
+              setNotes("");
+              setSaved(true);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Unable to save those notes.");
+            }
           }}
         >
           <Save className="h-4 w-4" /> Save
         </Button>
         {saved && <p className="text-xs text-success">Saved to rehearsal history.</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
       </div>
     </div>
   );

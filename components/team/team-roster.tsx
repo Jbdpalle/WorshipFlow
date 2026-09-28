@@ -26,14 +26,18 @@ export function TeamRoster({ members }: { members: Member[] }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", role: ROLES[0] as string, instrument: "" });
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
-        <ImportRosterDialog />
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> Add Team Member
-        </Button>
+      <div className="flex items-center justify-between gap-2">
+        {error ? <p className="text-sm text-danger">{error}</p> : <span />}
+        <div className="flex gap-2">
+          <ImportRosterDialog />
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" /> Add Team Member
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -53,8 +57,13 @@ export function TeamRoster({ members }: { members: Member[] }) {
               </div>
               <button
                 onClick={async () => {
-                  await removeTeamMember(m.id);
-                  router.refresh();
+                  setError(null);
+                  try {
+                    await removeTeamMember(m.id);
+                    router.refresh();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Unable to remove that member.");
+                  }
                 }}
                 className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                 aria-label="Remove"
@@ -73,11 +82,17 @@ export function TeamRoster({ members }: { members: Member[] }) {
             e.preventDefault();
             if (!form.name.trim()) return;
             setSaving(true);
-            await addTeamMember(form);
-            setSaving(false);
-            setOpen(false);
-            setForm({ name: "", role: ROLES[0], instrument: "" });
-            router.refresh();
+            setError(null);
+            try {
+              await addTeamMember(form);
+              setOpen(false);
+              setForm({ name: "", role: ROLES[0], instrument: "" });
+              router.refresh();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Unable to add that team member.");
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           <Input
@@ -101,6 +116,7 @@ export function TeamRoster({ members }: { members: Member[] }) {
             value={form.instrument}
             onChange={(e) => setForm((f) => ({ ...f, instrument: e.target.value }))}
           />
+          {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" className="w-full" disabled={saving}>
             {saving ? "Adding…" : "Add"}
           </Button>

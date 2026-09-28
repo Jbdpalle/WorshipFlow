@@ -46,6 +46,7 @@ export function ArrangementEditor({ songId, initialSections }: { songId: string;
   const [sections, setSections] = useState(initialSections);
   const [syncedSections, setSyncedSections] = useState(initialSections);
   const [newSectionLabel, setNewSectionLabel] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -100,14 +101,20 @@ export function ArrangementEditor({ songId, initialSections }: { songId: string;
           variant="secondary"
           onClick={async () => {
             if (!newSectionLabel.trim()) return;
-            await addSection(songId, newSectionLabel.trim());
-            setNewSectionLabel("");
-            router.refresh();
+            setError(null);
+            try {
+              await addSection(songId, newSectionLabel.trim());
+              setNewSectionLabel("");
+              router.refresh();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Unable to add that section.");
+            }
           }}
         >
           <Plus className="h-4 w-4" /> Add
         </Button>
       </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
 }
@@ -128,6 +135,7 @@ function SectionCard({
   const [roleNotes, setRoleNotes] = useState(section.roleNotes);
   const [addingRole, setAddingRole] = useState(false);
   const [newRole, setNewRole] = useState<string>(ROLES[0]);
+  const [error, setError] = useState<string | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -155,13 +163,24 @@ function SectionCard({
               <Input
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                onBlur={() => renameSection(section.id, label)}
+                onBlur={async () => {
+                  try {
+                    await renameSection(section.id, label);
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Unable to rename that section.");
+                  }
+                }}
                 className="h-8 max-w-xs font-semibold"
               />
               <button
                 onClick={async () => {
-                  await deleteSection(section.id);
-                  onDeleted();
+                  setError(null);
+                  try {
+                    await deleteSection(section.id);
+                    onDeleted();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Unable to delete that section.");
+                  }
                 }}
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                 aria-label="Delete section"
@@ -225,6 +244,7 @@ function SectionCard({
                 </Button>
               )
             )}
+            {error && <p className="text-sm text-danger">{error}</p>}
           </div>
         </div>
       </Card>
