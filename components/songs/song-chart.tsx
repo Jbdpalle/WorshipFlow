@@ -26,6 +26,7 @@ const MODES: { value: LyricsChordsMode; label: string }[] = [
   { value: "all", label: "Both" },
   { value: "lyrics", label: "Lyrics" },
   { value: "chords", label: "Chords" },
+  { value: "numbers", label: "Numbers" },
 ];
 
 export function SongChart({ song }: { song: SongInfo }) {
@@ -108,6 +109,12 @@ export function SongChart({ song }: { song: SongInfo }) {
         </div>
       </div>
 
+      {mode === "numbers" && !song.key && (
+        <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-muted-foreground">
+          Set this song&apos;s key above to see Nashville numbers — showing chord names until then.
+        </p>
+      )}
+
       {sectionsWithContent.length === 0 ? (
         <p className="text-muted-foreground">
           No chords or lyrics saved for this song yet. Add them from the Arrangement tab, or
@@ -120,7 +127,12 @@ export function SongChart({ song }: { song: SongInfo }) {
               <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {section.label}
               </h2>
-              <LyricsChordsView content={section.lyricsChords!} size={size} mode={mode} />
+              <LyricsChordsView
+                content={section.lyricsChords!}
+                size={size}
+                mode={mode}
+                songKey={song.key}
+              />
             </div>
           ))}
         </div>
