@@ -42,7 +42,8 @@ export default function LoginPage() {
     const res = await fetch("/api/auth/demo", { method: "POST" });
     setDemoLoading(false);
     if (!res.ok) {
-      setError("Unable to start the demo. Please try again.");
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Unable to start the demo. Please try again.");
       return;
     }
     router.push("/dashboard");
