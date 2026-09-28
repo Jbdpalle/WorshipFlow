@@ -107,11 +107,12 @@ model SongTag {
 }
 
 model SongSection {
-  id       String @id @default(cuid())
-  songId   String
-  label    String // Intro, Verse 1, Chorus, Bridge, ...
-  order    Int
-  barCount Int?
+  id            String  @id @default(cuid())
+  songId        String
+  label         String // Intro, Verse 1, Chorus, Bridge, ...
+  order         Int
+  barCount      Int?
+  lyricsChords  String? // raw chords/lyrics text for this section, e.g. from a PDF import
 
   song      Song           @relation(fields: [songId], references: [id], onDelete: Cascade)
   roleNotes SongRoleNote[]

@@ -123,6 +123,20 @@ export async function renameSection(sectionId: string, label: string) {
   revalidatePath(`/songs/${section.songId}`);
 }
 
+export async function updateSectionLyrics(sectionId: string, lyricsChords: string) {
+  const { team } = await requireUser();
+  const section = await prisma.songSection.findUnique({
+    where: { id: sectionId },
+    include: { song: true },
+  });
+  if (!section || section.song.teamId !== team.id) throw new Error("Not found.");
+  await prisma.songSection.update({
+    where: { id: sectionId },
+    data: { lyricsChords: lyricsChords || null },
+  });
+  revalidatePath(`/songs/${section.songId}`);
+}
+
 export async function deleteSection(sectionId: string) {
   const { team } = await requireUser();
   const section = await prisma.songSection.findUnique({

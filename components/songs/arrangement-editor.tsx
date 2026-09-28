@@ -17,7 +17,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, Plus, Trash2, X, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,17 +29,33 @@ import {
   deleteSection,
   renameSection,
   reorderSections,
+  updateSectionLyrics,
   upsertRoleNote,
 } from "@/lib/actions/songs";
 
 type RoleNote = { id: string; role: string; content: string };
-type Section = { id: string; label: string; order: number; roleNotes: RoleNote[] };
+type Section = {
+  id: string;
+  label: string;
+  order: number;
+  lyricsChords: string | null;
+  roleNotes: RoleNote[];
+};
 
 export function ArrangementEditor({ songId, initialSections }: { songId: string; initialSections: Section[] }) {
   const [sections, setSections] = useState(initialSections);
+  const [syncedSections, setSyncedSections] = useState(initialSections);
   const [newSectionLabel, setNewSectionLabel] = useState("");
   const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  // Adjust local state during render when the server gives us fresh data
+  // (e.g. after adding a section), instead of in an effect — see
+  // https://react.dev/learn/you-might-not-need-an-effect
+  if (initialSections !== syncedSections) {
+    setSyncedSections(initialSections);
+    setSections(initialSections);
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -154,6 +170,11 @@ function SectionCard({
               </button>
             </div>
 
+            <LyricsChordsBlock
+              sectionId={section.id}
+              initialContent={section.lyricsChords ?? ""}
+            />
+
             <div className="space-y-2">
               {roleNotes.map((note) => (
                 <RoleNoteRow
@@ -207,6 +228,41 @@ function SectionCard({
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function LyricsChordsBlock({
+  sectionId,
+  initialContent,
+}: {
+  sectionId: string;
+  initialContent: string;
+}) {
+  const [content, setContent] = useState(initialContent);
+  const [expanded, setExpanded] = useState(initialContent.trim().length > 0);
+
+  if (!expanded) {
+    return (
+      <Button type="button" size="sm" variant="ghost" onClick={() => setExpanded(true)}>
+        <FileText className="h-3.5 w-3.5" /> Add lyrics &amp; chords
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <FileText className="h-3.5 w-3.5" /> Lyrics &amp; chords
+      </label>
+      <Textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        onBlur={() => updateSectionLyrics(sectionId, content)}
+        rows={Math.min(12, Math.max(3, content.split("\n").length))}
+        className="font-mono text-xs leading-relaxed whitespace-pre"
+        placeholder="Chords and lyrics for this section…"
+      />
     </div>
   );
 }

@@ -30,6 +30,11 @@ because its lyrics focus on...", never "God wants you to sing this").
   signature, energy, theme category, scripture, tags.
 - **Arrangement Builder** — custom section structure (Intro, Verse, Chorus,
   Bridge, ...), reorderable, with a role-instruction row per section.
+- **Import from PDF** — upload a text-based chord chart (e.g. exported from
+  SongBook Pro) and it extracts title, artist, key, and per-section
+  chords/lyrics automatically. Everything is editable after import; nothing
+  is fetched or scraped from the internet — you provide the file, and it's
+  for your team's own internal use.
 - **Role-specific notes** — Worship Leader, Lead/Backing Vocal, Acoustic /
   Electric Guitar, Bass, Drums, Keys, Piano, Synth, Violin, Other.
 - **Personal notes** — private to each user, distinct from leader direction
