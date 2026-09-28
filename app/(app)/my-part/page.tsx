@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
+import { PrepareMeCard } from "@/components/team/prepare-me-card";
 
 export default async function MyPartPage({
   searchParams,
@@ -30,13 +31,36 @@ export default async function MyPartPage({
           setSong: {
             include: {
               set: true,
-              song: { include: { sections: { include: { roleNotes: true }, orderBy: { order: "asc" } } } },
+              song: {
+                include: {
+                  sections: { include: { roleNotes: true }, orderBy: { order: "asc" } },
+                  changeLogs: { orderBy: { createdAt: "desc" }, take: 2 },
+                },
+              },
             },
           },
         },
         orderBy: { setSong: { set: { serviceDate: "desc" } } },
       })
     : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nextSetId = activeMember
+    ? (
+        await prisma.worshipSet.findFirst({
+          where: {
+            teamId: team.id,
+            songs: { some: { assignments: { some: { teamMemberId: activeMember.id } } } },
+            OR: [{ serviceDate: { gte: today } }, { serviceDate: null }],
+          },
+          orderBy: [{ serviceDate: "asc" }, { createdAt: "desc" }],
+          select: { id: true },
+        })
+      )?.id
+    : null;
+  const prepareAssignments = nextSetId ? assignments.filter((a) => a.setSong.set.id === nextSetId) : [];
+  const nextSet = prepareAssignments[0]?.setSong.set ?? null;
 
   return (
     <div className="space-y-6">
@@ -49,6 +73,17 @@ export default async function MyPartPage({
         </div>
         <MyPartMemberPicker members={members} activeId={activeMember?.id} />
       </div>
+
+      {activeMember && nextSet && prepareAssignments.length > 0 && (
+        <PrepareMeCard
+          memberId={activeMember.id}
+          memberName={activeMember.name}
+          setId={nextSet.id}
+          setTitle={nextSet.title}
+          setDate={nextSet.serviceDate}
+          assignments={prepareAssignments}
+        />
+      )}
 
       {assignments.length === 0 ? (
         <Card>
