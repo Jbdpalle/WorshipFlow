@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
-import { Nav } from "@/components/layout/nav";
+import { Sidebar } from "@/components/layout/sidebar";
+import { MobileHeader } from "@/components/layout/mobile-header";
+import { BottomNav } from "@/components/layout/bottom-nav";
 
 export function Shell({
   userName,
@@ -12,8 +14,12 @@ export function Shell({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <Nav userName={userName} teamName={teamName} />
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <Sidebar userName={userName} teamName={teamName} />
+      <MobileHeader userName={userName} teamName={teamName} />
+      <div className="pb-20 md:pb-0 md:pl-64">
+        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      </div>
+      <BottomNav />
     </div>
   );
 }
