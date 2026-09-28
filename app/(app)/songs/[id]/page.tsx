@@ -11,6 +11,7 @@ import { ArrangementEditor } from "@/components/songs/arrangement-editor";
 import { TeamNotesEditor, PersonalNoteEditor } from "@/components/songs/note-editors";
 import { RehearsalHistoryList } from "@/components/songs/rehearsal-history";
 import { ChangeLogPanel } from "@/components/songs/change-log";
+import { LastTimeCallout } from "@/components/songs/last-time-callout";
 import { BookOpenText } from "lucide-react";
 
 export default async function SongDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,6 +54,8 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
           <TagEditor songId={song.id} tags={song.tags} />
         </CardContent>
       </Card>
+
+      <LastTimeCallout lastRehearsal={song.rehearsals[0] ?? null} recentChanges={song.changeLogs.slice(0, 3)} />
 
       <Tabs
         tabs={[

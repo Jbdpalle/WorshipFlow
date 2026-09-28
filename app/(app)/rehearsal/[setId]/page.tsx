@@ -16,6 +16,12 @@ export default async function RehearsalPage({ params }: { params: Promise<{ setI
           song: {
             include: {
               sections: { orderBy: { order: "asc" }, include: { roleNotes: true } },
+              rehearsals: {
+                orderBy: { occurredAt: "desc" },
+                take: 1,
+                include: { notes: true },
+              },
+              changeLogs: { orderBy: { createdAt: "desc" }, take: 3 },
             },
           },
         },

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Metronome } from "@/components/metronome/metronome";
 import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
+import { LastTimeCallout } from "@/components/songs/last-time-callout";
 import { REHEARSAL_CHECK_STATUSES } from "@/lib/songs/constants";
 import { startRehearsal, saveRehearsalNotes, setRehearsalCheck } from "@/lib/actions/rehearsal";
 import { cn } from "@/lib/utils/cn";
@@ -20,6 +21,7 @@ type Section = {
   lyricsChords: string | null;
   roleNotes: RoleNote[];
 };
+type ChangeEntry = { id: string; field: string; fromValue: string | null; toValue: string | null };
 type SetSongData = {
   id: string;
   order: number;
@@ -29,6 +31,8 @@ type SetSongData = {
     key: string | null;
     bpm: number | null;
     sections: Section[];
+    rehearsals: { occurredAt: Date; notes: { id: string; content: string }[] }[];
+    changeLogs: ChangeEntry[];
   };
 };
 
@@ -112,6 +116,8 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
           {song.bpm && <Badge variant="outline">{song.bpm} BPM</Badge>}
         </div>
       </div>
+
+      <LastTimeCallout lastRehearsal={song.rehearsals[0] ?? null} recentChanges={song.changeLogs} />
 
       {sections.length === 0 ? (
         <p className="text-muted-foreground">
