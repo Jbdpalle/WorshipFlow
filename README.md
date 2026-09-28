@@ -132,7 +132,7 @@ See `.env.example`:
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes | Postgres connection string, local or production |
+| `DATABASE_URL` | yes | Postgres connection string, local or production. Vercel's own Postgres/Neon integration sometimes names this `POSTGRES_URL` or `PRISMA_DATABASE_URL` instead — the Prisma client (`lib/db/prisma.ts`) checks all three, in that order |
 | `SESSION_SECRET` | yes | Signs the session cookie — generate with `openssl rand -base64 32` |
 | `ADMIN_EMAIL` | no | Account allowed to view the `/feedback` inbox |
 
