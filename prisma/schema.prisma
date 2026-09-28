@@ -1,14 +1,13 @@
 // WorshipFlow database schema.
-// Dev uses SQLite for zero-config local setup. For production (e.g. Vercel),
-// switch the datasource provider below to "postgresql" and point DATABASE_URL
-// at a Postgres instance (Neon, Vercel Postgres, Supabase, etc.) — see README.
+// Postgres-backed (Neon, Vercel Postgres, Supabase, or any standard
+// Postgres instance) — point DATABASE_URL at it. See README for setup.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

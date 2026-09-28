@@ -65,8 +65,8 @@ rewrite — see **Roadmap** below.
 - **Styling**: Tailwind CSS v4, small hand-rolled UI kit in `components/ui`
   (no external component library dependency)
 - **Drag & drop**: `@dnd-kit`
-- **Database**: Prisma ORM. SQLite for local dev (zero config), Postgres for
-  production (see **Deployment** below)
+- **Database**: Prisma ORM on Postgres (Neon, Vercel Postgres, Supabase, or
+  any standard Postgres instance — see **Deployment** below)
 - **Auth**: custom session cookie (HMAC-signed JWT via `jose`), bcrypt
   password hashing — no third-party auth vendor required for the MVP
 - **Icons**: Lucide
@@ -111,11 +111,15 @@ Full schema: `prisma/schema.prisma`.
 
 ## Setup
 
+Requires a Postgres database — a free local one works fine for development
+(`createdb worshipflow` with a local Postgres install, or `docker run -p
+5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16`).
+
 ```bash
 npm install
-cp .env.example .env      # set SESSION_SECRET (openssl rand -base64 32)
-npm run db:push           # creates prisma/dev.db (SQLite)
-npm run db:seed           # optional: seeds leader@worshipflow.app / worshipflow
+cp .env.example .env         # set DATABASE_URL (Postgres) and SESSION_SECRET
+npm run db:migrate           # applies prisma/migrations/ to your database
+npm run db:seed              # optional: seeds leader@worshipflow.app / worshipflow
 npm run dev
 ```
 
@@ -128,7 +132,7 @@ See `.env.example`:
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes | SQLite file path locally; Postgres connection string in production |
+| `DATABASE_URL` | yes | Postgres connection string, local or production |
 | `SESSION_SECRET` | yes | Signs the session cookie — generate with `openssl rand -base64 32` |
 | `ADMIN_EMAIL` | no | Account allowed to view the `/feedback` inbox |
 
@@ -139,39 +143,34 @@ npm run dev         # dev server
 npm run build        # production build
 npm run typecheck     # tsc --noEmit
 npm run lint            # eslint
-npm run db:push          # sync schema to the database (dev)
-npm run db:migrate        # create a migration (use once you're on Postgres)
+npm run db:push          # sync schema to the database without a migration (quick iteration)
+npm run db:migrate        # create and apply a migration
 npm run db:seed             # seed a demo account for local testing
 ```
 
 ## Deployment (Vercel)
 
-The MVP ships on SQLite for zero-config local development, but SQLite's
-on-disk file doesn't survive Vercel's ephemeral, serverless filesystem — you
-need Postgres in production. Steps:
+The schema and an initial migration (`prisma/migrations/20260928164739_init/`)
+are already committed and have been verified against a real Postgres
+instance (migrate, seed, build, and a full browser walkthrough all passed).
+To deploy:
 
-1. Provision a Postgres database (Neon, Vercel Postgres, or Supabase all
-   work).
-2. In `prisma/schema.prisma`, change:
-   ```prisma
-   datasource db {
-     provider = "postgresql"   // was "sqlite"
-     url      = env("DATABASE_URL")
-   }
-   ```
-3. Set `DATABASE_URL` (the Postgres connection string) and `SESSION_SECRET`
-   in the Vercel project's Environment Variables.
-4. Run `npx prisma migrate dev --name init` locally against the Postgres URL
-   once, commit the generated `prisma/migrations/` folder, then deploy —
-   Vercel's build runs `prisma generate` automatically via `postinstall`.
-   (Alternatively, `npx prisma db push` against the production URL for a
-   quick first deploy without a migrations history.)
-5. Push to your Git provider and import the repo in Vercel — it auto-detects
-   Next.js, no `vercel.json` required.
-
-No other code changes are needed: the schema uses only portable Prisma
-types (string IDs via `cuid()`, `DateTime`, `Int`, `Boolean`, standard
-relations).
+1. Provision a production Postgres database — the fastest path is Vercel's
+   own **Storage** tab (Neon-backed) from inside your Vercel project; Supabase
+   and standalone Neon also work.
+2. Import this GitHub repo in Vercel (vercel.com/new) — it auto-detects
+   Next.js, no `vercel.json` needed.
+3. In the Vercel project's Environment Variables, set:
+   - `DATABASE_URL` — the Postgres connection string (if you used Vercel's
+     own Postgres integration, this is filled in for you)
+   - `SESSION_SECRET` — `openssl rand -base64 32`
+   - `ADMIN_EMAIL` — optional, gates the `/feedback` admin inbox
+4. Apply the committed migration to that production database once, before
+   or right after the first deploy: `DATABASE_URL="<prod-url>" npx prisma
+   migrate deploy`. Vercel's build itself only runs `prisma generate`
+   (via `postinstall`) — it does not run migrations automatically.
+5. Deploy. Every subsequent push to the connected branch redeploys
+   automatically.
 
 ## Testing the workflow
 
