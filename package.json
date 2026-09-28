@@ -5,7 +5,7 @@
   "description": "WorshipFlow — a worship planning and rehearsal OS for worship teams.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

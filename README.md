@@ -175,12 +175,13 @@ To deploy:
      own Postgres integration, this is filled in for you)
    - `SESSION_SECRET` — `openssl rand -base64 32`
    - `ADMIN_EMAIL` — optional, gates the `/feedback` admin inbox
-4. Apply the committed migration to that production database once, before
-   or right after the first deploy: `DATABASE_URL="<prod-url>" npx prisma
-   migrate deploy`. Vercel's build itself only runs `prisma generate`
-   (via `postinstall`) — it does not run migrations automatically.
-5. Deploy. Every subsequent push to the connected branch redeploys
-   automatically.
+4. Deploy. The `build` script runs `prisma migrate deploy && next build`,
+   so pending migrations apply automatically as part of every Vercel build
+   using Vercel's own environment (no local step, no local database
+   connectivity needed — useful since some managed Postgres providers,
+   e.g. Vercel's own Prisma Postgres, restrict direct connections from
+   outside their network). Every subsequent push to the connected branch
+   redeploys, and re-applies `migrate deploy` (a no-op if nothing changed).
 
 ## Testing the workflow
 
