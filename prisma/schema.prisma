@@ -211,15 +211,30 @@ model SongAssignment {
   @@index([teamMemberId])
 }
 
-// ── Worship Sets ─────────────────────────────────────────────────────
+// ── Worship Sets / Calendar Events ──────────────────────────────────
+// A WorshipSet is a calendar event for a Team: a Sunday service, a
+// rehearsal, a special event, a conference session, or a custom type.
+// `eventType` is the broad category (drives calendar filtering);
+// `serviceType` stays as a free-text sub-label (e.g. "Sunday AM").
+
+enum EventType {
+  SERVICE
+  MINISTRY_SERVICE
+  REHEARSAL
+  SPECIAL_EVENT
+  CONFERENCE_CAMP
+  CUSTOM
+}
 
 model WorshipSet {
   id          String    @id @default(cuid())
   teamId      String
+  eventType   EventType @default(SERVICE)
   title       String
   theme       String?
   keywords    String? // comma-separated
   serviceDate DateTime?
+  location    String?
   church      String?
   serviceType String?
   leaderName  String?
@@ -232,6 +247,7 @@ model WorshipSet {
   bibleRefs BibleReference[]
 
   @@index([teamId])
+  @@index([eventType])
 }
 
 model SetSong {

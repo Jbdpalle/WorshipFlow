@@ -29,6 +29,19 @@ export const DEFAULT_SONG_STRUCTURE = [
 export const ENERGY_LEVELS = ["low", "medium", "high"] as const;
 export type EnergyLevel = (typeof ENERGY_LEVELS)[number];
 
+export const EVENT_TYPES = [
+  { value: "SERVICE", label: "Sunday Service" },
+  { value: "MINISTRY_SERVICE", label: "Ministry Service" },
+  { value: "REHEARSAL", label: "Rehearsal / Practice" },
+  { value: "SPECIAL_EVENT", label: "Special Event" },
+  { value: "CONFERENCE_CAMP", label: "Conference / Camp" },
+  { value: "CUSTOM", label: "Custom" },
+] as const;
+export type EventTypeValue = (typeof EVENT_TYPES)[number]["value"];
+export function eventTypeLabel(value: string): string {
+  return EVENT_TYPES.find((t) => t.value === value)?.label ?? value;
+}
+
 export const REHEARSAL_CHECK_STATUSES = [
   { value: "practiced", label: "Practiced" },
   { value: "needs_work", label: "Needs Work" },

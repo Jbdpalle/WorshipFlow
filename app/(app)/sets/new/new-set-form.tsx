@@ -7,15 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { EVENT_TYPES, type EventTypeValue } from "@/lib/songs/constants";
 
 export function NewSetForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [eventType, setEventType] = useState<EventTypeValue>("SERVICE");
   const [theme, setTheme] = useState("");
   const [verses, setVerses] = useState("");
   const [keywords, setKeywords] = useState("");
   const [serviceDate, setServiceDate] = useState("");
+  const [location, setLocation] = useState("");
   const [church, setChurch] = useState("");
   const [serviceType, setServiceType] = useState("");
   const [leaderName, setLeaderName] = useState("");
@@ -33,10 +37,12 @@ export function NewSetForm() {
     try {
       const set = await createSet({
         title,
+        eventType,
         theme,
         keywords,
         verses: verses.split("\n").map((v) => v.trim()).filter(Boolean),
         serviceDate: serviceDate || undefined,
+        location,
         church,
         serviceType,
         leaderName,
@@ -61,12 +67,26 @@ export function NewSetForm() {
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Sunday Worship" required />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="serviceDate">Service date</Label>
+            <Label htmlFor="eventType">Event type</Label>
+            <Select id="eventType" value={eventType} onChange={(e) => setEventType(e.target.value as EventTypeValue)}>
+              {EVENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="serviceDate">Date</Label>
             <Input id="serviceDate" type="date" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="serviceType">Service type</Label>
+            <Label htmlFor="serviceType">Sub-type / label</Label>
             <Input id="serviceType" value={serviceType} onChange={(e) => setServiceType(e.target.value)} placeholder="Sunday Worship Service" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="location">Location</Label>
+            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Main Auditorium" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="church">Church</Label>

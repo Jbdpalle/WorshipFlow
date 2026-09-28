@@ -1,15 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { EventType } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 
 export async function createSet(input: {
   title: string;
+  eventType?: EventType;
   theme?: string;
   keywords?: string;
   verses?: string[];
   serviceDate?: string;
+  location?: string;
   church?: string;
   serviceType?: string;
   leaderName?: string;
@@ -20,9 +23,11 @@ export async function createSet(input: {
     data: {
       teamId: team.id,
       title: input.title,
+      eventType: input.eventType || undefined,
       theme: input.theme || null,
       keywords: input.keywords || null,
       serviceDate: input.serviceDate ? new Date(input.serviceDate) : null,
+      location: input.location || null,
       church: input.church || null,
       serviceType: input.serviceType || null,
       leaderName: input.leaderName || null,
