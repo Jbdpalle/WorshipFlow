@@ -51,5 +51,5 @@ export async function importSongFromPdf(formData: FormData) {
   });
 
   revalidatePath("/songs");
-  return song;
+  return { id: song.id };
 }
