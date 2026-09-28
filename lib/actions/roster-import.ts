@@ -188,7 +188,13 @@ export async function importRosterFromImage(formData: FormData): Promise<RosterI
           },
           {
             type: "text",
-            text: `This is a photo or screenshot of a worship team roster/schedule. Extract every person listed along with their role or instrument, and the service date if one is shown (as YYYY-MM-DD; if you can only tell it's e.g. "this Sunday" with no explicit date, leave date null — do not guess a date).
+            text: `This is a photo or screenshot of a worship team roster/schedule. It may be laid out as a simple list ("Name — Role"), or as a table/grid — most commonly with one row per service date and one column per role (e.g. columns "Leader", "Acoustic", "Bass", "Keys", "Drums", "Vocals"), where each cell holds the name(s) assigned to that role for that date.
+
+Extract every (person, role, date) combination:
+- If a table has dates down the rows and roles across the columns (or vice versa), treat each row/column intersection as one entry: the cell's role comes from its column header (or row header), and the date from that row's (or column's) date.
+- If a cell lists more than one person (separated by "/", ",", "&", or "and", e.g. "Kezia/Kundu"), create a separate entry for each person, all with that same role and date.
+- Skip cells that are blank, or that don't name a real person (e.g. a row marked "CAMP", "OFF", "TBD", or similarly not a normal service).
+- Dates are often written without a year (e.g. "4th October"). Today's date is ${new Date().toISOString().slice(0, 10)}. For any date missing a year, infer the year assuming this schedule runs forward from around today — i.e. pick whichever year (this one or next) makes that month/day fall on or after today, or continues a visible sequence of consecutive dates in the image. Always output dates as YYYY-MM-DD. If a date is genuinely illegible or entirely absent for an entry, use null — don't guess a specific day you can't read.
 
 Respond with ONLY a JSON array, no other text, in this exact shape:
 [{"name": "Full Name", "role": "Role or Instrument", "date": "YYYY-MM-DD" | null}]
