@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
 import { ROLES } from "@/lib/songs/constants";
 import { addTeamMember, removeTeamMember } from "@/lib/actions/team";
+import { ImportRosterDialog } from "@/components/team/import-roster-dialog";
 
 type Member = {
   id: string;
@@ -28,7 +29,8 @@ export function TeamRoster({ members }: { members: Member[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <ImportRosterDialog />
         <Button onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" /> Add Team Member
         </Button>

@@ -47,6 +47,11 @@ because its lyrics focus on...", never "God wants you to sing this").
   subdivision.
 - **Team & My Part** — roster with roles/instruments; "My Part" filters
   every assigned song down to just that person's instructions.
+- **Import Roster** — upload a spreadsheet (.xlsx/.csv) or a typed
+  roster image to add/update team members in bulk; if a Date column/value
+  matches an existing worship set, it also assigns those people to that
+  set's songs by role. Image import needs `ANTHROPIC_API_KEY`; spreadsheet
+  import doesn't.
 - **Rehearsal History & Change Log** — every rehearsal's notes, plus a
   structured "what changed" log (field, from → to, reason) so the team
   never re-has the same conversation.
