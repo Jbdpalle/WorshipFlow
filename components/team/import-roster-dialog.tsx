@@ -32,22 +32,22 @@ export function ImportRosterDialog() {
     if (!file) return;
     setImporting(true);
     setError(null);
-    try {
-      const isSpreadsheet = SPREADSHEET_EXTENSIONS.some((ext) =>
-        file.name.toLowerCase().endsWith(ext),
-      );
-      const formData = new FormData();
-      formData.set("file", file);
-      const result = isSpreadsheet
-        ? await importRosterFromSpreadsheet(formData)
-        : await importRosterFromImage(formData);
-      setSummary(result);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to import that roster.");
-    } finally {
+    const isSpreadsheet = SPREADSHEET_EXTENSIONS.some((ext) =>
+      file.name.toLowerCase().endsWith(ext),
+    );
+    const formData = new FormData();
+    formData.set("file", file);
+    const result = isSpreadsheet
+      ? await importRosterFromSpreadsheet(formData)
+      : await importRosterFromImage(formData);
+    if (!result.ok) {
+      setError(result.error);
       setImporting(false);
+      return;
     }
+    setSummary(result.data);
+    router.refresh();
+    setImporting(false);
   }
 
   return (

@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
+import type { ActionResult } from "@/lib/actions/action-result";
 
-export async function savePersonalNote(songId: string, content: string) {
+export async function savePersonalNote(songId: string, content: string): Promise<ActionResult> {
   const { user, team } = await requireUser();
   const song = await prisma.song.findUnique({ where: { id: songId } });
-  if (!song || song.teamId !== team.id) throw new Error("Song not found.");
+  if (!song || song.teamId !== team.id) return { ok: false, error: "Song not found." };
 
   const existing = await prisma.personalNote.findFirst({
     where: { userId: user.id, songId },
@@ -23,4 +24,5 @@ export async function savePersonalNote(songId: string, content: string) {
 
   revalidatePath(`/songs/${songId}`);
   revalidatePath("/my-part");
+  return { ok: true };
 }

@@ -5,17 +5,18 @@ import { PDFParse } from "pdf-parse";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { parseChordChartText } from "@/lib/songs/pdf-import";
+import type { ActionResultData } from "@/lib/actions/action-result";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10MB — plenty for a chord chart, well under Vercel's body limit
 
-export async function importSongFromPdf(formData: FormData) {
+export async function importSongFromPdf(formData: FormData): Promise<ActionResultData<{ id: string }>> {
   const { team } = await requireUser();
 
   const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("No PDF file was provided.");
-  if (file.size > MAX_PDF_BYTES) throw new Error("PDF is too large (max 10MB).");
+  if (!(file instanceof File)) return { ok: false, error: "No PDF file was provided." };
+  if (file.size > MAX_PDF_BYTES) return { ok: false, error: "PDF is too large (max 10MB)." };
   if (file.type && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    throw new Error("Please upload a PDF file.");
+    return { ok: false, error: "Please upload a PDF file." };
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -27,7 +28,7 @@ export async function importSongFromPdf(formData: FormData) {
     text = result.text;
   } catch (err) {
     console.error("PDF text extraction failed:", err);
-    throw new Error("Could not read that PDF — it may be a scanned image rather than text.");
+    return { ok: false, error: "Could not read that PDF — it may be a scanned image rather than text." };
   } finally {
     await parser.destroy();
   }
@@ -51,5 +52,5 @@ export async function importSongFromPdf(formData: FormData) {
   });
 
   revalidatePath("/songs");
-  return { id: song.id };
+  return { ok: true, data: { id: song.id } };
 }

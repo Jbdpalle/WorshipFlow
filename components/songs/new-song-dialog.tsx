@@ -35,22 +35,21 @@ export function NewSongDialog() {
     if (!form.title.trim()) return;
     setSaving(true);
     setError(null);
-    try {
-      const song = await createSong({
-        title: form.title,
-        artist: form.artist,
-        key: form.key,
-        bpm: form.bpm ? Number(form.bpm) : undefined,
-        energy: form.energy,
-        themeCategory: form.themeCategory,
-      });
-      setOpen(false);
-      router.push(`/songs/${song.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to add that song. Please try again.");
-    } finally {
+    const result = await createSong({
+      title: form.title,
+      artist: form.artist,
+      key: form.key,
+      bpm: form.bpm ? Number(form.bpm) : undefined,
+      energy: form.energy,
+      themeCategory: form.themeCategory,
+    });
+    if (!result.ok) {
+      setError(result.error);
       setSaving(false);
+      return;
     }
+    setOpen(false);
+    router.push(`/songs/${result.data.id}`);
   }
 
   return (

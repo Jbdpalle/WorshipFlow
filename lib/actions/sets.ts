@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { EventType } from "@prisma/client";
+import type { EventType, WorshipSet } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
+import type { ActionResult, ActionResultData } from "@/lib/actions/action-result";
 
 export async function createSet(input: {
   title: string;
@@ -16,7 +17,7 @@ export async function createSet(input: {
   church?: string;
   serviceType?: string;
   leaderName?: string;
-}) {
+}): Promise<ActionResultData<{ id: string }>> {
   const { team } = await requireUser();
 
   const set = await prisma.worshipSet.create({
@@ -41,41 +42,47 @@ export async function createSet(input: {
 
   revalidatePath("/sets");
   revalidatePath("/dashboard");
-  return set;
+  return { ok: true, data: { id: set.id } };
 }
 
-async function assertSetOwnership(setId: string, teamId: string) {
+type SetLookup = { ok: true; set: WorshipSet } | { ok: false; error: string };
+
+async function findOwnedSet(setId: string, teamId: string): Promise<SetLookup> {
   const set = await prisma.worshipSet.findUnique({ where: { id: setId } });
-  if (!set || set.teamId !== teamId) throw new Error("Worship set not found.");
-  return set;
+  if (!set || set.teamId !== teamId) return { ok: false, error: "Worship set not found." };
+  return { ok: true, set };
 }
 
-export async function updateSetNotes(setId: string, notes: string) {
+export async function updateSetNotes(setId: string, notes: string): Promise<ActionResult> {
   const { team } = await requireUser();
-  await assertSetOwnership(setId, team.id);
+  const lookup = await findOwnedSet(setId, team.id);
+  if (!lookup.ok) return lookup;
   await prisma.worshipSet.update({ where: { id: setId }, data: { notes } });
   revalidatePath(`/sets/${setId}`);
+  return { ok: true };
 }
 
-export async function addSongToSet(setId: string, songId: string) {
+export async function addSongToSet(setId: string, songId: string): Promise<ActionResult> {
   const { team } = await requireUser();
-  await assertSetOwnership(setId, team.id);
+  const lookup = await findOwnedSet(setId, team.id);
+  if (!lookup.ok) return lookup;
 
   const song = await prisma.song.findUnique({ where: { id: songId } });
-  if (!song || song.teamId !== team.id) throw new Error("Song not found.");
+  if (!song || song.teamId !== team.id) return { ok: false, error: "Song not found." };
 
   const count = await prisma.setSong.count({ where: { setId } });
   await prisma.setSong.create({ data: { setId, songId, order: count } });
   revalidatePath(`/sets/${setId}`);
+  return { ok: true };
 }
 
-export async function removeSongFromSet(setSongId: string) {
+export async function removeSongFromSet(setSongId: string): Promise<ActionResult> {
   const { team } = await requireUser();
   const setSong = await prisma.setSong.findUnique({
     where: { id: setSongId },
     include: { set: true },
   });
-  if (!setSong || setSong.set.teamId !== team.id) throw new Error("Not found.");
+  if (!setSong || setSong.set.teamId !== team.id) return { ok: false, error: "Not found." };
 
   await prisma.setSong.delete({ where: { id: setSongId } });
 
@@ -90,11 +97,13 @@ export async function removeSongFromSet(setSongId: string) {
   );
 
   revalidatePath(`/sets/${setSong.setId}`);
+  return { ok: true };
 }
 
-export async function reorderSetSongs(setId: string, orderedSetSongIds: string[]) {
+export async function reorderSetSongs(setId: string, orderedSetSongIds: string[]): Promise<ActionResult> {
   const { team } = await requireUser();
-  await assertSetOwnership(setId, team.id);
+  const lookup = await findOwnedSet(setId, team.id);
+  if (!lookup.ok) return lookup;
 
   await Promise.all(
     orderedSetSongIds.map((id, index) =>
@@ -103,6 +112,7 @@ export async function reorderSetSongs(setId: string, orderedSetSongIds: string[]
   );
 
   revalidatePath(`/sets/${setId}`);
+  return { ok: true };
 }
 
 export async function updateSetSongDetails(
@@ -114,29 +124,30 @@ export async function updateSetSongDetails(
     overrideBpm?: number | null;
     capo?: number | null;
   },
-) {
+): Promise<ActionResult> {
   const { team } = await requireUser();
   const setSong = await prisma.setSong.findUnique({
     where: { id: setSongId },
     include: { set: true },
   });
-  if (!setSong || setSong.set.teamId !== team.id) throw new Error("Not found.");
+  if (!setSong || setSong.set.teamId !== team.id) return { ok: false, error: "Not found." };
 
   await prisma.setSong.update({ where: { id: setSongId }, data: input });
   revalidatePath(`/sets/${setSong.setId}`);
+  return { ok: true };
 }
 
 export async function assignMemberToSetSong(
   setSongId: string,
   teamMemberId: string,
   role: string,
-) {
+): Promise<ActionResult> {
   const { team } = await requireUser();
   const setSong = await prisma.setSong.findUnique({
     where: { id: setSongId },
     include: { set: true },
   });
-  if (!setSong || setSong.set.teamId !== team.id) throw new Error("Not found.");
+  if (!setSong || setSong.set.teamId !== team.id) return { ok: false, error: "Not found." };
 
   const existing = await prisma.songAssignment.findFirst({
     where: { setSongId, teamMemberId },
@@ -148,16 +159,18 @@ export async function assignMemberToSetSong(
   }
 
   revalidatePath(`/sets/${setSong.setId}`);
+  return { ok: true };
 }
 
-export async function removeAssignment(assignmentId: string) {
+export async function removeAssignment(assignmentId: string): Promise<ActionResult> {
   const { team } = await requireUser();
   const assignment = await prisma.songAssignment.findUnique({
     where: { id: assignmentId },
     include: { setSong: { include: { set: true } } },
   });
-  if (!assignment || assignment.setSong.set.teamId !== team.id) throw new Error("Not found.");
+  if (!assignment || assignment.setSong.set.teamId !== team.id) return { ok: false, error: "Not found." };
 
   await prisma.songAssignment.delete({ where: { id: assignmentId } });
   revalidatePath(`/sets/${assignment.setSong.set.id}`);
+  return { ok: true };
 }

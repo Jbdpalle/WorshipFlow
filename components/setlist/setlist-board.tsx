@@ -137,8 +137,9 @@ function SetSongCard({
   const [, startTransition] = useTransition();
   const router = useRouter();
 
-  function handleError(err: unknown, fallback: string) {
-    setError(err instanceof Error ? err.message : fallback);
+  function showErrorIfAny(result: { ok: boolean; error?: string }) {
+    if (!result.ok) setError(result.error ?? "Something went wrong.");
+    return result.ok;
   }
 
   const style = {
@@ -181,12 +182,8 @@ function SetSongCard({
                 {item.song.energy && <Badge>{item.song.energy}</Badge>}
                 <button
                   onClick={async () => {
-                    try {
-                      await removeSongFromSet(item.id);
-                      onRemoved();
-                    } catch (err) {
-                      handleError(err, "Unable to remove that song.");
-                    }
+                    const result = await removeSongFromSet(item.id);
+                    if (showErrorIfAny(result)) onRemoved();
                   }}
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                   aria-label="Remove from set"
@@ -207,11 +204,7 @@ function SetSongCard({
                   onChange={(e) => setPurpose(e.target.value)}
                   onBlur={() =>
                     startTransition(async () => {
-                      try {
-                        await updateSetSongDetails(item.id, { purpose });
-                      } catch (err) {
-                        handleError(err, "Unable to save purpose.");
-                      }
+                      showErrorIfAny(await updateSetSongDetails(item.id, { purpose }));
                     })
                   }
                   placeholder="Move congregation from praise into reflection."
@@ -228,11 +221,7 @@ function SetSongCard({
                   onChange={(e) => setTransitionNotes(e.target.value)}
                   onBlur={() =>
                     startTransition(async () => {
-                      try {
-                        await updateSetSongDetails(item.id, { transitionNotes });
-                      } catch (err) {
-                        handleError(err, "Unable to save transition notes.");
-                      }
+                      showErrorIfAny(await updateSetSongDetails(item.id, { transitionNotes }));
                     })
                   }
                   placeholder="Let the final chord ring, move directly into the next song."
@@ -249,12 +238,7 @@ function SetSongCard({
                     {a.role}: {a.teamMember.name}
                     <button
                       onClick={async () => {
-                        try {
-                          await removeAssignment(a.id);
-                          router.refresh();
-                        } catch (err) {
-                          handleError(err, "Unable to remove that assignment.");
-                        }
+                        if (showErrorIfAny(await removeAssignment(a.id))) router.refresh();
                       }}
                       className="ml-1 rounded-full hover:bg-danger/20"
                     >
@@ -293,11 +277,8 @@ function SetSongCard({
                       className="h-7 px-2 text-xs"
                       onClick={async () => {
                         if (!assignMember) return;
-                        try {
-                          await assignMemberToSetSong(item.id, assignMember, assignRole);
+                        if (showErrorIfAny(await assignMemberToSetSong(item.id, assignMember, assignRole))) {
                           router.refresh();
-                        } catch (err) {
-                          handleError(err, "Unable to assign that member.");
                         }
                       }}
                     >

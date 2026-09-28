@@ -27,12 +27,12 @@ export function TagEditor({
             <button
               onClick={async () => {
                 setError(null);
-                try {
-                  await removeSongTag(tag.id);
-                  router.refresh();
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "Unable to remove that tag.");
+                const result = await removeSongTag(tag.id);
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
                 }
+                router.refresh();
               }}
               className="rounded-full hover:bg-danger/20"
             >
@@ -45,13 +45,13 @@ export function TagEditor({
             e.preventDefault();
             if (!value.trim()) return;
             setError(null);
-            try {
-              await addSongTag(songId, value.trim());
-              setValue("");
-              router.refresh();
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Unable to add that tag.");
+            const result = await addSongTag(songId, value.trim());
+            if (!result.ok) {
+              setError(result.error);
+              return;
             }
+            setValue("");
+            router.refresh();
           }}
           className="flex items-center gap-1"
         >

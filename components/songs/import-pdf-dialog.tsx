@@ -19,17 +19,16 @@ export function ImportPdfDialog() {
     if (!file) return;
     setImporting(true);
     setError(null);
-    try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const song = await importSongFromPdf(formData);
-      setOpen(false);
-      router.push(`/songs/${song.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to import that PDF.");
-    } finally {
+    const formData = new FormData();
+    formData.set("file", file);
+    const result = await importSongFromPdf(formData);
+    if (!result.ok) {
+      setError(result.error);
       setImporting(false);
+      return;
     }
+    setOpen(false);
+    router.push(`/songs/${result.data.id}`);
   }
 
   return (

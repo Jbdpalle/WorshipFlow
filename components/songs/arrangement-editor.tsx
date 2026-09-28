@@ -102,13 +102,13 @@ export function ArrangementEditor({ songId, initialSections }: { songId: string;
           onClick={async () => {
             if (!newSectionLabel.trim()) return;
             setError(null);
-            try {
-              await addSection(songId, newSectionLabel.trim());
-              setNewSectionLabel("");
-              router.refresh();
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Unable to add that section.");
+            const result = await addSection(songId, newSectionLabel.trim());
+            if (!result.ok) {
+              setError(result.error);
+              return;
             }
+            setNewSectionLabel("");
+            router.refresh();
           }}
         >
           <Plus className="h-4 w-4" /> Add
@@ -164,23 +164,20 @@ function SectionCard({
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 onBlur={async () => {
-                  try {
-                    await renameSection(section.id, label);
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "Unable to rename that section.");
-                  }
+                  const result = await renameSection(section.id, label);
+                  if (!result.ok) setError(result.error);
                 }}
                 className="h-8 max-w-xs font-semibold"
               />
               <button
                 onClick={async () => {
                   setError(null);
-                  try {
-                    await deleteSection(section.id);
-                    onDeleted();
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "Unable to delete that section.");
+                  const result = await deleteSection(section.id);
+                  if (!result.ok) {
+                    setError(result.error);
+                    return;
                   }
+                  onDeleted();
                 }}
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                 aria-label="Delete section"

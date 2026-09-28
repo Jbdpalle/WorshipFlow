@@ -72,19 +72,19 @@ export function ChangeLogPanel({ songId, changes }: { songId: string; changes: C
               onClick={async () => {
                 setSaving(true);
                 setError(null);
-                try {
-                  await recordChange({ songId, field, fromValue, toValue, reason });
-                  setShowForm(false);
-                  setField("");
-                  setFromValue("");
-                  setToValue("");
-                  setReason("");
-                  router.refresh();
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "Unable to save that change.");
-                } finally {
+                const result = await recordChange({ songId, field, fromValue, toValue, reason });
+                if (!result.ok) {
+                  setError(result.error);
                   setSaving(false);
+                  return;
                 }
+                setShowForm(false);
+                setField("");
+                setFromValue("");
+                setToValue("");
+                setReason("");
+                router.refresh();
+                setSaving(false);
               }}
             >
               Save change

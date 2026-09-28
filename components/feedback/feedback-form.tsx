@@ -61,15 +61,15 @@ export function FeedbackForm() {
           onClick={async () => {
             setSending(true);
             setError(null);
-            try {
-              await submitFeedback({ type, message, page: pathname ?? undefined });
-              setSent(true);
-              setMessage("");
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Unable to send feedback. Please try again.");
-            } finally {
+            const result = await submitFeedback({ type, message, page: pathname ?? undefined });
+            if (!result.ok) {
+              setError(result.error);
               setSending(false);
+              return;
             }
+            setSent(true);
+            setMessage("");
+            setSending(false);
           }}
         >
           {sending ? "Sending…" : "Send Feedback"}

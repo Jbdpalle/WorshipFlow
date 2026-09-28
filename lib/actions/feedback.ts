@@ -2,9 +2,14 @@
 
 import { prisma } from "@/lib/db/prisma";
 import { getOptionalUser } from "@/lib/auth/guard";
+import type { ActionResult } from "@/lib/actions/action-result";
 
-export async function submitFeedback(input: { type: string; message: string; page?: string }) {
-  if (!input.message.trim()) throw new Error("Feedback message is required.");
+export async function submitFeedback(input: {
+  type: string;
+  message: string;
+  page?: string;
+}): Promise<ActionResult> {
+  if (!input.message.trim()) return { ok: false, error: "Feedback message is required." };
   const user = await getOptionalUser();
 
   await prisma.feedback.create({
@@ -15,4 +20,5 @@ export async function submitFeedback(input: { type: string; message: string; pag
       page: input.page || null,
     },
   });
+  return { ok: true };
 }

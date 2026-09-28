@@ -58,12 +58,12 @@ export function TeamRoster({ members }: { members: Member[] }) {
               <button
                 onClick={async () => {
                   setError(null);
-                  try {
-                    await removeTeamMember(m.id);
-                    router.refresh();
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "Unable to remove that member.");
+                  const result = await removeTeamMember(m.id);
+                  if (!result.ok) {
+                    setError(result.error);
+                    return;
                   }
+                  router.refresh();
                 }}
                 className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                 aria-label="Remove"
@@ -83,16 +83,16 @@ export function TeamRoster({ members }: { members: Member[] }) {
             if (!form.name.trim()) return;
             setSaving(true);
             setError(null);
-            try {
-              await addTeamMember(form);
-              setOpen(false);
-              setForm({ name: "", role: ROLES[0], instrument: "" });
-              router.refresh();
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Unable to add that team member.");
-            } finally {
+            const result = await addTeamMember(form);
+            if (!result.ok) {
+              setError(result.error);
               setSaving(false);
+              return;
             }
+            setOpen(false);
+            setForm({ name: "", role: ROLES[0], instrument: "" });
+            router.refresh();
+            setSaving(false);
           }}
         >
           <Input

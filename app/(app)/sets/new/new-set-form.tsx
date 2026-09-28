@@ -34,24 +34,24 @@ export function NewSetForm() {
     }
     setLoading(true);
     setError(null);
-    try {
-      const set = await createSet({
-        title,
-        eventType,
-        theme,
-        keywords,
-        verses: verses.split("\n").map((v) => v.trim()).filter(Boolean),
-        serviceDate: serviceDate || undefined,
-        location,
-        church,
-        serviceType,
-        leaderName,
-      });
-      router.push(`/sets/${set.id}`);
-    } catch {
-      setError("Something went wrong creating the set.");
+    const result = await createSet({
+      title,
+      eventType,
+      theme,
+      keywords,
+      verses: verses.split("\n").map((v) => v.trim()).filter(Boolean),
+      serviceDate: serviceDate || undefined,
+      location,
+      church,
+      serviceType,
+      leaderName,
+    });
+    if (!result.ok) {
+      setError(result.error);
       setLoading(false);
+      return;
     }
+    router.push(`/sets/${result.data.id}`);
   }
 
   return (

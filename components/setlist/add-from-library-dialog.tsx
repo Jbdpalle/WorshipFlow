@@ -45,16 +45,21 @@ export function AddFromLibraryDialog({
     if (!newTitle.trim()) return;
     setCreating(true);
     setError(null);
-    try {
-      const song = await createSong({ title: newTitle.trim() });
-      await addSongToSet(setId, song.id);
-      setNewTitle("");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to add that song.");
-    } finally {
+    const created = await createSong({ title: newTitle.trim() });
+    if (!created.ok) {
+      setError(created.error);
       setCreating(false);
+      return;
     }
+    const added = await addSongToSet(setId, created.data.id);
+    if (!added.ok) {
+      setError(added.error);
+      setCreating(false);
+      return;
+    }
+    setNewTitle("");
+    router.refresh();
+    setCreating(false);
   }
 
   return (

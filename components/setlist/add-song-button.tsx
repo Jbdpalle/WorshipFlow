@@ -22,15 +22,15 @@ export function AddSongButton({ setId, songId }: { setId: string; songId: string
         onClick={async () => {
           setLoading(true);
           setError(null);
-          try {
-            await addSongToSet(setId, songId);
-            setAdded(true);
-            router.refresh();
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to add.");
-          } finally {
+          const result = await addSongToSet(setId, songId);
+          if (!result.ok) {
+            setError(result.error);
             setLoading(false);
+            return;
           }
+          setAdded(true);
+          router.refresh();
+          setLoading(false);
         }}
       >
         {added ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}

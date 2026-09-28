@@ -81,15 +81,14 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
 
   useEffect(() => {
     let cancelled = false;
-    startRehearsal(song.id, setSong.id, song.bpm ?? undefined)
-      .then((r) => {
-        if (!cancelled) setRehearsalId(r.id);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unable to start rehearsal tracking for this song.");
-        }
-      });
+    startRehearsal(song.id, setSong.id, song.bpm ?? undefined).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setRehearsalId(result.data.id);
+      } else {
+        setError(result.error);
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -205,12 +204,12 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
               onClick={async () => {
                 if (!rehearsalId) return;
                 setError(null);
-                try {
-                  await setRehearsalCheck(rehearsalId, s.value);
-                  setActiveStatus(s.value);
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "Unable to save that status.");
+                const result = await setRehearsalCheck(rehearsalId, s.value);
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
                 }
+                setActiveStatus(s.value);
               }}
             >
               {s.label}
@@ -236,13 +235,13 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
           onClick={async () => {
             if (!rehearsalId) return;
             setError(null);
-            try {
-              await saveRehearsalNotes(rehearsalId, notes.split("\n"));
-              setNotes("");
-              setSaved(true);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Unable to save those notes.");
+            const result = await saveRehearsalNotes(rehearsalId, notes.split("\n"));
+            if (!result.ok) {
+              setError(result.error);
+              return;
             }
+            setNotes("");
+            setSaved(true);
           }}
         >
           <Save className="h-4 w-4" /> Save

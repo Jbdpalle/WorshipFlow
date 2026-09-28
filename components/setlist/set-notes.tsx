@@ -19,12 +19,12 @@ export function SetNotes({ setId, initialNotes }: { setId: string; initialNotes:
         }}
         onBlur={async () => {
           setError(null);
-          try {
-            await updateSetNotes(setId, value);
-            setSaved(true);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to save notes.");
+          const result = await updateSetNotes(setId, value);
+          if (!result.ok) {
+            setError(result.error);
+            return;
           }
+          setSaved(true);
         }}
         placeholder="Notes for the whole service — flow, transitions, reminders for the team."
         rows={3}
