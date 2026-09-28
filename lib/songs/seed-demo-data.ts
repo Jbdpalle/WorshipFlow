@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { DEFAULT_SONG_STRUCTURE } from "@/lib/songs/constants";
+import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
 
 type SectionNotes = Record<string, Partial<Record<string, string>>>;
 
@@ -162,6 +163,7 @@ export async function seedDemoDataForTeam(teamId: string) {
     const created = await prisma.teamMember.create({
       data: { teamId, name: dm.name, role: dm.role, instrument: dm.instrument },
     });
+    await ensurePrimaryTeamMemberRole(prisma, created.id, dm.role);
     memberByRole.set(dm.role, created.id);
   }
 

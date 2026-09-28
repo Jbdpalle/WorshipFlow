@@ -12,9 +12,19 @@ datasource db {
 }
 
 // ── Identity & Tenancy ──────────────────────────────────────────────
-// A User authenticates. A Team is the tenant boundary: every worship set,
-// song library entry, and note belongs to exactly one Team, so one leader's
-// data is never visible to another leader's team.
+// A User authenticates. A Church is the top-level tenant boundary. A
+// User's access to a Church is granted by Membership (not by owning a
+// Team), so one person can belong to more than one church, and a
+// church can hold more than one Team (e.g. a band and a tech crew).
+// A Team is the working group everything else (songs, sets, rehearsals)
+// is scoped to, same as before — it now just hangs off a Church.
+
+enum ChurchRole {
+  OWNER
+  ADMIN
+  LEADER
+  MEMBER
+}
 
 model User {
   id           String   @id @default(cuid())
@@ -24,25 +34,61 @@ model User {
   isDemo       Boolean  @default(false)
   createdAt    DateTime @default(now())
 
-  ownedTeams    Team[]         @relation("TeamOwner")
-  memberships   TeamMember[]
-  personalNotes PersonalNote[]
-  rehearsalChecks RehearsalCheck[]
-  feedback      Feedback[]
-  changeLogs    ChangeLog[]
+  ownedChurches     Church[]         @relation("ChurchOwner")
+  churchMemberships Membership[]
+  ownedTeams        Team[]           @relation("TeamOwner")
+  memberships       TeamMember[]
+  personalNotes     PersonalNote[]
+  rehearsalChecks   RehearsalCheck[]
+  feedback          Feedback[]
+  changeLogs        ChangeLog[]
 }
 
-model Team {
+model Church {
   id        String   @id @default(cuid())
   name      String
   ownerId   String
   createdAt DateTime @default(now())
 
+  owner       User         @relation("ChurchOwner", fields: [ownerId], references: [id])
+  memberships Membership[]
+  teams       Team[]
+
+  @@index([ownerId])
+}
+
+// A User's role and access within one Church. Distinct from
+// TeamMemberRole below: this governs permissions (who can manage the
+// church), TeamMemberRole is the musical/functional roles a roster
+// entry plays (Drums, Vocals, ...).
+model Membership {
+  id        String     @id @default(cuid())
+  userId    String
+  churchId  String
+  role      ChurchRole @default(MEMBER)
+  createdAt DateTime   @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, churchId])
+  @@index([churchId])
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  churchId  String
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  church  Church       @relation(fields: [churchId], references: [id], onDelete: Cascade)
   owner   User         @relation("TeamOwner", fields: [ownerId], references: [id])
   members TeamMember[]
   songs   Song[]
   sets    WorshipSet[]
 
+  @@index([churchId])
   @@index([ownerId])
 }
 
@@ -51,6 +97,9 @@ model TeamMember {
   teamId     String
   userId     String?
   name       String
+  // Primary/display role, kept for the scheduling UI and imports that
+  // still expect one label per person; `roles` is the full multi-role
+  // set and the source of truth for "who can do what."
   role       String
   instrument String?
   bio        String?
@@ -58,10 +107,24 @@ model TeamMember {
 
   team          Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user          User?             @relation(fields: [userId], references: [id])
+  roles         TeamMemberRole[]
   assignments   SongAssignment[]
   personalNotes PersonalNote[]
 
   @@index([teamId])
+}
+
+// A member can play more than one role (e.g. Acoustic Guitar AND
+// Backing Vocal), so roles are a set rather than a single field.
+model TeamMemberRole {
+  id           String @id @default(cuid())
+  teamMemberId String
+  role         String
+
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([teamMemberId, role])
+  @@index([teamMemberId])
 }
 
 // ── Songs & Library ─────────────────────────────────────────────────

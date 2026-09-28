@@ -13,25 +13,33 @@ async function main() {
   }
 
   const passwordHash = await bcrypt.hash("worshipflow", 10);
-  const user = await prisma.user.create({
-    data: {
-      name: "Joel Martinez",
-      email,
-      passwordHash,
-      ownedTeams: {
-        create: {
-          name: "Grace Community Worship",
-          members: { create: { name: "Joel Martinez", role: "Worship Leader" } },
-        },
-      },
-    },
-    include: { ownedTeams: { include: { members: true } } },
-  });
 
-  const team = user.ownedTeams[0];
-  await prisma.teamMember.updateMany({
-    where: { teamId: team.id, role: "Worship Leader" },
-    data: { userId: user.id },
+  const { user, team } = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: { name: "Joel Martinez", email, passwordHash },
+    });
+
+    const church = await tx.church.create({
+      data: { name: "Grace Community Worship", ownerId: user.id },
+    });
+
+    await tx.membership.create({
+      data: { userId: user.id, churchId: church.id, role: "OWNER" },
+    });
+
+    const team = await tx.team.create({
+      data: { name: "Grace Community Worship", ownerId: user.id, churchId: church.id },
+    });
+
+    const member = await tx.teamMember.create({
+      data: { teamId: team.id, userId: user.id, name: "Joel Martinez", role: "Worship Leader" },
+    });
+
+    await tx.teamMemberRole.create({
+      data: { teamMemberId: member.id, role: "Worship Leader" },
+    });
+
+    return { user, team };
   });
 
   await seedDemoDataForTeam(team.id);

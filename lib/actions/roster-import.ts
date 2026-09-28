@@ -8,6 +8,7 @@ import {
   parseRosterCsvBuffer,
   type RosterRow,
 } from "@/lib/songs/roster-import";
+import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -80,6 +81,9 @@ async function applyRosterRows(teamId: string, rows: RosterRow[]): Promise<Roste
       byName.set(name.toLowerCase(), member);
       summary.membersUpdated++;
     }
+    // A person can play different roles across weeks (e.g. Acoustic one
+    // Sunday, Bass the next); accumulate all of them, not just the latest.
+    await ensurePrimaryTeamMemberRole(prisma, member.id, row.role);
 
     const date = parseRosterDate(row.dateText);
     if (date) {

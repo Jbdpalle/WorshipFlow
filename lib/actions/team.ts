@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
+import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
 
 export async function addTeamMember(input: {
   name: string;
@@ -11,7 +12,7 @@ export async function addTeamMember(input: {
   bio?: string;
 }) {
   const { team } = await requireUser();
-  await prisma.teamMember.create({
+  const member = await prisma.teamMember.create({
     data: {
       teamId: team.id,
       name: input.name,
@@ -20,6 +21,7 @@ export async function addTeamMember(input: {
       bio: input.bio || null,
     },
   });
+  await ensurePrimaryTeamMemberRole(prisma, member.id, input.role);
   revalidatePath("/team");
 }
 
@@ -31,6 +33,7 @@ export async function updateTeamMember(
   const member = await prisma.teamMember.findUnique({ where: { id: memberId } });
   if (!member || member.teamId !== team.id) throw new Error("Not found.");
   await prisma.teamMember.update({ where: { id: memberId }, data: input });
+  if (input.role) await ensurePrimaryTeamMemberRole(prisma, memberId, input.role);
   revalidatePath("/team");
 }
 
