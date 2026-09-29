@@ -54,10 +54,10 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
       </nav>
 
       <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
-        <div className="min-w-0 text-xs text-muted-foreground">
+        <Link href="/settings" className="min-w-0 text-xs text-muted-foreground hover:text-foreground">
           <div className="truncate font-medium text-foreground">{userName}</div>
           <div className="truncate">{teamName}</div>
-        </div>
+        </Link>
         <LogoutButton />
       </div>
     </aside>

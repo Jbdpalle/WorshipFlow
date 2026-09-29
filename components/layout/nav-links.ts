@@ -6,6 +6,7 @@ import {
   UserCircle,
   Timer,
   MessageSquarePlus,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,4 +35,5 @@ export const MOBILE_TAB_LINKS: NavLink[] = [
 export const MOBILE_MORE_LINKS: NavLink[] = [
   { href: "/metronome", label: "Metronome", icon: Timer },
   { href: "/feedback", label: "Feedback", icon: MessageSquarePlus },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
