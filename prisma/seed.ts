@@ -16,11 +16,11 @@ async function main() {
 
   const { user, team } = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { name: "Joel Martinez", email, passwordHash },
+      data: { name: "Joel Palle", email, passwordHash },
     });
 
     const church = await tx.church.create({
-      data: { name: "Grace Community Worship", ownerId: user.id },
+      data: { name: "Crossway Community Church", ownerId: user.id },
     });
 
     await tx.membership.create({
@@ -28,11 +28,11 @@ async function main() {
     });
 
     const team = await tx.team.create({
-      data: { name: "Grace Community Worship", ownerId: user.id, churchId: church.id },
+      data: { name: "Crossway Community Church", ownerId: user.id, churchId: church.id },
     });
 
     const member = await tx.teamMember.create({
-      data: { teamId: team.id, userId: user.id, name: "Joel Martinez", role: "Worship Leader" },
+      data: { teamId: team.id, userId: user.id, name: "Joel Palle", role: "Worship Leader" },
     });
 
     await tx.teamMemberRole.create({
