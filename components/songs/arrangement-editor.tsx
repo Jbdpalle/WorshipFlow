@@ -272,13 +272,17 @@ function LyricsChordsBlock({
       <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <FileText className="h-3.5 w-3.5" /> Lyrics &amp; chords
       </label>
+      <p className="text-xs text-muted-foreground">
+        Put chords on their own line above the words they go with — the Chart page can then show
+        lyrics-only (for singers), chords-only, or both, from this one field.
+      </p>
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onBlur={() => updateSectionLyrics(sectionId, content)}
         rows={Math.min(12, Math.max(3, content.split("\n").length))}
         className="font-mono text-xs leading-relaxed whitespace-pre"
-        placeholder="Chords and lyrics for this section…"
+        placeholder={"G           D\nAmazing grace, how sweet the sound"}
       />
     </div>
   );

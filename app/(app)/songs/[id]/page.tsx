@@ -7,12 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { SongHeaderEditor } from "@/components/songs/song-header-editor";
 import { TagEditor } from "@/components/songs/tag-editor";
+import { ThemeVerseSuggestion } from "@/components/songs/theme-verse-suggestion";
 import { ArrangementEditor } from "@/components/songs/arrangement-editor";
 import { TeamNotesEditor, PersonalNoteEditor } from "@/components/songs/note-editors";
 import { RehearsalHistoryList } from "@/components/songs/rehearsal-history";
 import { ChangeLogPanel } from "@/components/songs/change-log";
 import { LastTimeCallout } from "@/components/songs/last-time-callout";
 import { BookOpenText } from "lucide-react";
+
+// "Suggest theme & verse" calls the Anthropic API, which can take longer
+// than Vercel's default serverless timeout — see the same note on
+// app/(app)/songs/page.tsx.
+export const maxDuration = 60;
 
 export default async function SongDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -52,6 +58,7 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
         <CardContent className="space-y-4">
           <SongHeaderEditor songId={song.id} song={song} />
           <TagEditor songId={song.id} tags={song.tags} />
+          <ThemeVerseSuggestion songId={song.id} />
         </CardContent>
       </Card>
 

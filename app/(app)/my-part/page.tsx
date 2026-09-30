@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
 import { PrepareMeCard } from "@/components/team/prepare-me-card";
 
+// "Prepare Me" calls the Anthropic API, which can take longer than
+// Vercel's default serverless timeout — see the same note on
+// app/(app)/songs/page.tsx.
+export const maxDuration = 60;
+
 export default async function MyPartPage({
   searchParams,
 }: {
