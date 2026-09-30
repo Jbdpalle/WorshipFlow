@@ -41,7 +41,20 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-async function applyRosterRows(teamId: string, rows: RosterRow[]): Promise<RosterImportSummary> {
+// Wraps the actual per-row work below: any single row can throw (a DB
+// constraint, a transient connection issue), and left uncaught that would
+// fail the whole import with an opaque, redacted production error instead
+// of a message that at least says something went wrong and to retry.
+async function applyRosterRows(teamId: string, rows: RosterRow[]): Promise<ActionResultData<RosterImportSummary>> {
+  try {
+    return { ok: true, data: await applyRosterRowsUnsafe(teamId, rows) };
+  } catch (err) {
+    console.error("Roster import failed partway through:", err);
+    return { ok: false, error: "Something went wrong partway through importing — please try again." };
+  }
+}
+
+async function applyRosterRowsUnsafe(teamId: string, rows: RosterRow[]): Promise<RosterImportSummary> {
   const summary: RosterImportSummary = {
     membersCreated: 0,
     membersUpdated: 0,
@@ -150,11 +163,12 @@ export async function importRosterFromSpreadsheet(
     };
   }
 
-  const summary = await applyRosterRows(team.id, rows);
+  const result = await applyRosterRows(team.id, rows);
+  if (!result.ok) return result;
   revalidatePath("/team");
   revalidatePath("/sets");
   revalidatePath("/my-part");
-  return { ok: true, data: summary };
+  return result;
 }
 
 export async function importRosterFromImage(
@@ -254,9 +268,10 @@ If you cannot read the image clearly enough to extract real names, respond with 
     };
   }
 
-  const summary = await applyRosterRows(team.id, rows);
+  const result = await applyRosterRows(team.id, rows);
+  if (!result.ok) return result;
   revalidatePath("/team");
   revalidatePath("/sets");
   revalidatePath("/my-part");
-  return { ok: true, data: summary };
+  return result;
 }

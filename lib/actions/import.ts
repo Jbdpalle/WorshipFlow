@@ -66,25 +66,35 @@ async function importOnePdf(teamId: string, file: File): Promise<OneFileResult> 
   }
   void parser.destroy().catch(() => {});
 
-  const parsed = parseChordChartText(text);
+  // Everything after a successful parse (turning the text into a title/
+  // sections guess, then creating the row) can still throw — a DB error,
+  // or an edge case in the parsing itself — and an uncaught throw here
+  // means the whole batch fails with an opaque, redacted production error
+  // instead of a message naming the actual file and problem.
+  try {
+    const parsed = parseChordChartText(text);
 
-  const song = await prisma.song.create({
-    data: {
-      teamId,
-      title: parsed.title,
-      artist: parsed.artist,
-      key: parsed.key,
-      sections: {
-        create: parsed.sections.map((s, order) => ({
-          label: s.label,
-          order,
-          lyricsChords: s.content || null,
-        })),
+    const song = await prisma.song.create({
+      data: {
+        teamId,
+        title: parsed.title,
+        artist: parsed.artist,
+        key: parsed.key,
+        sections: {
+          create: parsed.sections.map((s, order) => ({
+            label: s.label,
+            order,
+            lyricsChords: s.content || null,
+          })),
+        },
       },
-    },
-  });
+    });
 
-  return { ok: true, id: song.id, title: song.title, filename };
+    return { ok: true, id: song.id, title: song.title, filename };
+  } catch (err) {
+    console.error(`Creating song from ${filename} failed:`, err);
+    return { ok: false, filename, error: "Couldn't save this song — please try importing it again." };
+  }
 }
 
 // Accepts one or more PDF files under the "file" field. Each file is
