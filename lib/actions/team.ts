@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
-import type { ActionResult } from "@/lib/actions/action-result";
+import { runAction, type ActionResult } from "@/lib/actions/action-result";
 
 export async function addTeamMember(input: {
   name: string;
@@ -12,39 +12,45 @@ export async function addTeamMember(input: {
   instrument?: string;
   bio?: string;
 }): Promise<ActionResult> {
-  const { team } = await requireUser();
-  const member = await prisma.teamMember.create({
-    data: {
-      teamId: team.id,
-      name: input.name,
-      role: input.role,
-      instrument: input.instrument || null,
-      bio: input.bio || null,
-    },
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const member = await prisma.teamMember.create({
+      data: {
+        teamId: team.id,
+        name: input.name,
+        role: input.role,
+        instrument: input.instrument || null,
+        bio: input.bio || null,
+      },
+    });
+    await ensurePrimaryTeamMemberRole(prisma, member.id, input.role);
+    revalidatePath("/team");
+    return { ok: true };
   });
-  await ensurePrimaryTeamMemberRole(prisma, member.id, input.role);
-  revalidatePath("/team");
-  return { ok: true };
 }
 
 export async function updateTeamMember(
   memberId: string,
   input: Partial<{ name: string; role: string; instrument: string; bio: string }>,
 ): Promise<ActionResult> {
-  const { team } = await requireUser();
-  const member = await prisma.teamMember.findUnique({ where: { id: memberId } });
-  if (!member || member.teamId !== team.id) return { ok: false, error: "Not found." };
-  await prisma.teamMember.update({ where: { id: memberId }, data: input });
-  if (input.role) await ensurePrimaryTeamMemberRole(prisma, memberId, input.role);
-  revalidatePath("/team");
-  return { ok: true };
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const member = await prisma.teamMember.findUnique({ where: { id: memberId } });
+    if (!member || member.teamId !== team.id) return { ok: false, error: "Not found." };
+    await prisma.teamMember.update({ where: { id: memberId }, data: input });
+    if (input.role) await ensurePrimaryTeamMemberRole(prisma, memberId, input.role);
+    revalidatePath("/team");
+    return { ok: true };
+  });
 }
 
 export async function removeTeamMember(memberId: string): Promise<ActionResult> {
-  const { team } = await requireUser();
-  const member = await prisma.teamMember.findUnique({ where: { id: memberId } });
-  if (!member || member.teamId !== team.id) return { ok: false, error: "Not found." };
-  await prisma.teamMember.delete({ where: { id: memberId } });
-  revalidatePath("/team");
-  return { ok: true };
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const member = await prisma.teamMember.findUnique({ where: { id: memberId } });
+    if (!member || member.teamId !== team.id) return { ok: false, error: "Not found." };
+    await prisma.teamMember.delete({ where: { id: memberId } });
+    revalidatePath("/team");
+    return { ok: true };
+  });
 }

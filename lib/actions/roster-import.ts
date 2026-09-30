@@ -9,7 +9,7 @@ import {
   type RosterRow,
 } from "@/lib/songs/roster-import";
 import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
-import type { ActionResultData } from "@/lib/actions/action-result";
+import { runAction, type ActionResultData } from "@/lib/actions/action-result";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -142,82 +142,85 @@ async function applyRosterRowsUnsafe(teamId: string, rows: RosterRow[]): Promise
 export async function importRosterFromSpreadsheet(
   formData: FormData,
 ): Promise<ActionResultData<RosterImportSummary>> {
-  const { team } = await requireUser();
+  return runAction(async () => {
+    const { team } = await requireUser();
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { ok: false, error: "No file was provided." };
-  if (file.size > MAX_FILE_BYTES) return { ok: false, error: "File is too large (max 10MB)." };
+    const file = formData.get("file");
+    if (!(file instanceof File)) return { ok: false, error: "No file was provided." };
+    if (file.size > MAX_FILE_BYTES) return { ok: false, error: "File is too large (max 10MB)." };
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
 
-  const rows = isCsv
-    ? await parseRosterCsvBuffer(buffer)
-    : await parseRosterWorkbookBuffer(buffer);
+    const rows = isCsv
+      ? await parseRosterCsvBuffer(buffer)
+      : await parseRosterWorkbookBuffer(buffer);
 
-  if (rows.length === 0) {
-    return {
-      ok: false,
-      error:
-        "Couldn't find any rows with a name in that file. Expect columns like Name, Role, and optionally Date.",
-    };
-  }
+    if (rows.length === 0) {
+      return {
+        ok: false,
+        error:
+          "Couldn't find any rows with a name in that file. Expect columns like Name, Role, and optionally Date.",
+      };
+    }
 
-  const result = await applyRosterRows(team.id, rows);
-  if (!result.ok) return result;
-  revalidatePath("/team");
-  revalidatePath("/sets");
-  revalidatePath("/my-part");
-  return result;
+    const result = await applyRosterRows(team.id, rows);
+    if (!result.ok) return result;
+    revalidatePath("/team");
+    revalidatePath("/sets");
+    revalidatePath("/my-part");
+    return result;
+  });
 }
 
 export async function importRosterFromImage(
   formData: FormData,
 ): Promise<ActionResultData<RosterImportSummary>> {
-  const { team } = await requireUser();
+  return runAction(async () => {
+    const { team } = await requireUser();
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return {
-      ok: false,
-      error:
-        "Image roster import needs an ANTHROPIC_API_KEY set in your environment variables. Spreadsheet import (.xlsx/.csv) works without one.",
-    };
-  }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return {
+        ok: false,
+        error:
+          "Image roster import needs an ANTHROPIC_API_KEY set in your environment variables. Spreadsheet import (.xlsx/.csv) works without one.",
+      };
+    }
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { ok: false, error: "No image was provided." };
-  if (file.size > MAX_FILE_BYTES) return { ok: false, error: "Image is too large (max 10MB)." };
+    const file = formData.get("file");
+    if (!(file instanceof File)) return { ok: false, error: "No image was provided." };
+    if (file.size > MAX_FILE_BYTES) return { ok: false, error: "Image is too large (max 10MB)." };
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const base64 = buffer.toString("base64");
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const base64 = buffer.toString("base64");
 
-  const SUPPORTED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
-  type SupportedMediaType = (typeof SUPPORTED_MEDIA_TYPES)[number];
-  const normalizedType = file.type === "image/jpg" ? "image/jpeg" : file.type;
-  if (!SUPPORTED_MEDIA_TYPES.includes(normalizedType as SupportedMediaType)) {
-    return { ok: false, error: "Please upload a PNG, JPEG, GIF, or WEBP image." };
-  }
-  const mediaType = normalizedType as SupportedMediaType;
+    const SUPPORTED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+    type SupportedMediaType = (typeof SUPPORTED_MEDIA_TYPES)[number];
+    const normalizedType = file.type === "image/jpg" ? "image/jpeg" : file.type;
+    if (!SUPPORTED_MEDIA_TYPES.includes(normalizedType as SupportedMediaType)) {
+      return { ok: false, error: "Please upload a PNG, JPEG, GIF, or WEBP image." };
+    }
+    const mediaType = normalizedType as SupportedMediaType;
 
-  let textBlock: { type: "text"; text: string } | undefined;
-  try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    let textBlock: { type: "text"; text: string } | undefined;
+    try {
+      const { default: Anthropic } = await import("@anthropic-ai/sdk");
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2048,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: mediaType, data: base64 },
-            },
-            {
-              type: "text",
-              text: `This is a photo or screenshot of a worship team roster/schedule. It may be laid out as a simple list ("Name — Role"), or as a table/grid — most commonly with one row per service date and one column per role (e.g. columns "Leader", "Acoustic", "Bass", "Keys", "Drums", "Vocals"), where each cell holds the name(s) assigned to that role for that date.
+      const message = await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2048,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: { type: "base64", media_type: mediaType, data: base64 },
+              },
+              {
+                type: "text",
+                text: `This is a photo or screenshot of a worship team roster/schedule. It may be laid out as a simple list ("Name — Role"), or as a table/grid — most commonly with one row per service date and one column per role (e.g. columns "Leader", "Acoustic", "Bass", "Keys", "Drums", "Vocals"), where each cell holds the name(s) assigned to that role for that date.
 
 Extract every (person, role, date) combination:
 - If a table has dates down the rows and roles across the columns (or vice versa), treat each row/column intersection as one entry: the cell's role comes from its column header (or row header), and the date from that row's (or column's) date.
@@ -229,49 +232,50 @@ Respond with ONLY a JSON array, no other text, in this exact shape:
 [{"name": "Full Name", "role": "Role or Instrument", "date": "YYYY-MM-DD" | null}]
 
 If you cannot read the image clearly enough to extract real names, respond with an empty array: []`,
-            },
-          ],
-        },
-      ],
-    });
+              },
+            ],
+          },
+        ],
+      });
 
-    const block = message.content.find((b) => b.type === "text");
-    if (block && block.type === "text") textBlock = block;
-  } catch (err) {
-    console.error("Roster image extraction failed:", err);
-    return { ok: false, error: "The image analysis service is unavailable right now — please try again." };
-  }
+      const block = message.content.find((b) => b.type === "text");
+      if (block && block.type === "text") textBlock = block;
+    } catch (err) {
+      console.error("Roster image extraction failed:", err);
+      return { ok: false, error: "The image analysis service is unavailable right now — please try again." };
+    }
 
-  if (!textBlock) {
-    return { ok: false, error: "Couldn't read a response from the image — please try again." };
-  }
+    if (!textBlock) {
+      return { ok: false, error: "Couldn't read a response from the image — please try again." };
+    }
 
-  let parsed: { name: string; role: string; date: string | null }[];
-  try {
-    const jsonMatch = textBlock.text.match(/\[[\s\S]*\]/);
-    parsed = JSON.parse(jsonMatch ? jsonMatch[0] : textBlock.text);
-  } catch {
-    return {
-      ok: false,
-      error: "Couldn't understand that image as a roster — try a clearer typed image or a spreadsheet.",
-    };
-  }
+    let parsed: { name: string; role: string; date: string | null }[];
+    try {
+      const jsonMatch = textBlock.text.match(/\[[\s\S]*\]/);
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : textBlock.text);
+    } catch {
+      return {
+        ok: false,
+        error: "Couldn't understand that image as a roster — try a clearer typed image or a spreadsheet.",
+      };
+    }
 
-  const rows: RosterRow[] = parsed
-    .filter((p) => p && typeof p.name === "string" && p.name.trim())
-    .map((p) => ({ name: p.name.trim(), role: (p.role || "Other").trim(), dateText: p.date }));
+    const rows: RosterRow[] = parsed
+      .filter((p) => p && typeof p.name === "string" && p.name.trim())
+      .map((p) => ({ name: p.name.trim(), role: (p.role || "Other").trim(), dateText: p.date }));
 
-  if (rows.length === 0) {
-    return {
-      ok: false,
-      error: "Couldn't find any names in that image — try a clearer typed image or a spreadsheet.",
-    };
-  }
+    if (rows.length === 0) {
+      return {
+        ok: false,
+        error: "Couldn't find any names in that image — try a clearer typed image or a spreadsheet.",
+      };
+    }
 
-  const result = await applyRosterRows(team.id, rows);
-  if (!result.ok) return result;
-  revalidatePath("/team");
-  revalidatePath("/sets");
-  revalidatePath("/my-part");
-  return result;
+    const result = await applyRosterRows(team.id, rows);
+    if (!result.ok) return result;
+    revalidatePath("/team");
+    revalidatePath("/sets");
+    revalidatePath("/my-part");
+    return result;
+  });
 }

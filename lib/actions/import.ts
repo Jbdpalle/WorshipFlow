@@ -5,7 +5,7 @@ import { PDFParse } from "pdf-parse";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { parseChordChartText } from "@/lib/songs/pdf-import";
-import type { ActionResultData } from "@/lib/actions/action-result";
+import { runAction, type ActionResultData } from "@/lib/actions/action-result";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10MB — plenty for a chord chart, well under Vercel's body limit
 
@@ -101,23 +101,25 @@ async function importOnePdf(teamId: string, file: File): Promise<OneFileResult> 
 // parsed and created independently — one bad file (scanned image, wrong
 // type, too large) doesn't stop the rest of the batch from importing.
 export async function importSongsFromPdfs(formData: FormData): Promise<ActionResultData<PdfImportSummary>> {
-  const { team } = await requireUser();
+  return runAction(async () => {
+    const { team } = await requireUser();
 
-  const files = formData.getAll("file").filter((f): f is File => f instanceof File);
-  if (files.length === 0) return { ok: false, error: "No PDF file was provided." };
+    const files = formData.getAll("file").filter((f): f is File => f instanceof File);
+    if (files.length === 0) return { ok: false, error: "No PDF file was provided." };
 
-  const summary: PdfImportSummary = { imported: [], failed: [] };
-  // Sequential on purpose: keeps memory/DB load bounded for a batch of
-  // PDFs rather than parsing them all in parallel.
-  for (const file of files) {
-    const result = await importOnePdf(team.id, file);
-    if (result.ok) {
-      summary.imported.push({ id: result.id, title: result.title, filename: result.filename });
-    } else {
-      summary.failed.push({ filename: result.filename, error: result.error });
+    const summary: PdfImportSummary = { imported: [], failed: [] };
+    // Sequential on purpose: keeps memory/DB load bounded for a batch of
+    // PDFs rather than parsing them all in parallel.
+    for (const file of files) {
+      const result = await importOnePdf(team.id, file);
+      if (result.ok) {
+        summary.imported.push({ id: result.id, title: result.title, filename: result.filename });
+      } else {
+        summary.failed.push({ filename: result.filename, error: result.error });
+      }
     }
-  }
 
-  revalidatePath("/songs");
-  return { ok: true, data: summary };
+    revalidatePath("/songs");
+    return { ok: true, data: summary };
+  });
 }
