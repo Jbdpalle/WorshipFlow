@@ -8,6 +8,31 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { importSongsFromPdfs, type PdfImportSummary } from "@/lib/actions/import";
 
+// A defensive backstop on top of the server-side per-file timeout: if a
+// batch request hangs for any reason at all (server, network, hosting
+// infra), the UI still stops spinning and lets the user retry instead of
+// waiting forever with no feedback.
+const CLIENT_BATCH_TIMEOUT_MS = 60_000;
+
+function withClientTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("That took too long and may still be running on the server — try again in a moment.")),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 // Server Actions have a request body limit (a real bulk import — dozens of
 // chord charts in one request — can exceed it, and hosting platforms
 // impose their own caps too), so a large selection is sent as several
@@ -68,15 +93,20 @@ export function ImportPdfDialog() {
       setProgress({ done: i, total: batches.length });
       const formData = new FormData();
       for (const file of batches[i]) formData.append("file", file);
-      const result = await importSongsFromPdfs(formData);
-      if (result.ok) {
-        combined.imported.push(...result.data.imported);
-        combined.failed.push(...result.data.failed);
-      } else {
-        // A whole batch can fail before reaching per-file handling (e.g. a
-        // request-level error) — record every file in it as failed rather
-        // than losing the batch silently, and keep going with the rest.
-        combined.failed.push(...batches[i].map((f) => ({ filename: f.name, error: result.error })));
+      try {
+        const result = await withClientTimeout(importSongsFromPdfs(formData), CLIENT_BATCH_TIMEOUT_MS);
+        if (result.ok) {
+          combined.imported.push(...result.data.imported);
+          combined.failed.push(...result.data.failed);
+        } else {
+          // A whole batch can fail before reaching per-file handling (e.g. a
+          // request-level error) — record every file in it as failed rather
+          // than losing the batch silently, and keep going with the rest.
+          combined.failed.push(...batches[i].map((f) => ({ filename: f.name, error: result.error })));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Something went wrong with this batch.";
+        combined.failed.push(...batches[i].map((f) => ({ filename: f.name, error: message })));
       }
     }
 

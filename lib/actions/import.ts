@@ -18,6 +18,26 @@ type OneFileResult =
   | { ok: true; id: string; title: string; filename: string }
   | { ok: false; filename: string; error: string };
 
+// pdf-parse's underlying worker has been observed to hang indefinitely
+// rather than reject in some environments, leaving a request stuck forever
+// with no error to show — bound every parse so a single bad PDF can never
+// take the whole import down with it.
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 async function importOnePdf(teamId: string, file: File): Promise<OneFileResult> {
   const filename = file.name;
 
@@ -27,18 +47,24 @@ async function importOnePdf(teamId: string, file: File): Promise<OneFileResult> 
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-
   const parser = new PDFParse({ data: buffer });
+
   let text: string;
   try {
-    const result = await parser.getText();
+    const result = await withTimeout(parser.getText(), 25_000, "PDF text extraction");
     text = result.text;
   } catch (err) {
     console.error(`PDF text extraction failed for ${filename}:`, err);
-    return { ok: false, filename, error: "Could not read this PDF — it may be a scanned image rather than text." };
-  } finally {
-    await parser.destroy();
+    // Fire-and-forget: destroy() itself could hang too, and we've already
+    // decided this file failed, so don't let cleanup block the response.
+    void parser.destroy().catch(() => {});
+    return {
+      ok: false,
+      filename,
+      error: "Could not read this PDF — it may be a scanned image, or it took too long to process. Try again.",
+    };
   }
+  void parser.destroy().catch(() => {});
 
   const parsed = parseChordChartText(text);
 
