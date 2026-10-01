@@ -66,6 +66,30 @@ export async function updateSetNotes(setId: string, notes: string): Promise<Acti
   });
 }
 
+// Theme and leaderName are otherwise only ever set once, at creation
+// (/sets/new) — this is the only way to edit either afterward, added so
+// the dashboard's "Needs Attention" actions have somewhere real to land.
+export async function updateSetMeta(
+  setId: string,
+  input: { theme?: string | null; leaderName?: string | null },
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSet(setId, team.id);
+    if (!lookup.ok) return lookup;
+    await prisma.worshipSet.update({
+      where: { id: setId },
+      data: {
+        ...(input.theme !== undefined ? { theme: input.theme?.trim() || null } : {}),
+        ...(input.leaderName !== undefined ? { leaderName: input.leaderName?.trim() || null } : {}),
+      },
+    });
+    revalidatePath(`/sets/${setId}`);
+    revalidatePath("/dashboard");
+    return { ok: true };
+  });
+}
+
 export async function addSongToSet(setId: string, songId: string): Promise<ActionResult> {
   return runAction(async () => {
     const { team } = await requireUser();

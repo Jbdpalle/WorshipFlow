@@ -9,6 +9,7 @@ import { SetlistBoard } from "@/components/setlist/setlist-board";
 import { ThemeSuggestions } from "@/components/setlist/theme-suggestions";
 import { AddFromLibraryDialog } from "@/components/setlist/add-from-library-dialog";
 import { SetNotes } from "@/components/setlist/set-notes";
+import { SetMetaEditor } from "@/components/setlist/set-meta-editor";
 import { CalendarDays, PlayCircle } from "lucide-react";
 
 export default async function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -87,6 +88,19 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Service Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SetMetaEditor
+                setId={set.id}
+                initialTheme={set.theme ?? ""}
+                initialLeaderName={set.leaderName ?? ""}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Set Notes</CardTitle>
