@@ -18,13 +18,13 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Trash2, Music2 } from "lucide-react";
+import { GripVertical, X, Trash2, Music2, BookOpenText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ROLES } from "@/lib/songs/constants";
+import { ROLES, CHROMATIC_KEYS } from "@/lib/songs/constants";
 import {
   reorderSetSongs,
   removeSongFromSet,
@@ -38,6 +38,7 @@ export type SetSongData = {
   order: number;
   purpose: string | null;
   transitionNotes: string | null;
+  overrideKey: string | null;
   song: {
     id: string;
     title: string;
@@ -131,6 +132,7 @@ function SetSongCard({
   });
   const [purpose, setPurpose] = useState(item.purpose ?? "");
   const [transitionNotes, setTransitionNotes] = useState(item.transitionNotes ?? "");
+  const [overrideKey, setOverrideKey] = useState(item.overrideKey);
   const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
   const [assignMember, setAssignMember] = useState(teamMembers[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -177,9 +179,41 @@ function SetSongCard({
                 )}
               </div>
               <div className="flex items-center gap-1.5">
-                {item.song.key && <Badge variant="outline">Key {item.song.key}</Badge>}
+                {item.song.key && (
+                  <div className="flex items-center gap-1">
+                    <Select
+                      value={overrideKey ?? item.song.key}
+                      onChange={(e) =>
+                        startTransition(async () => {
+                          const next = e.target.value === item.song.key ? null : e.target.value;
+                          setOverrideKey(next);
+                          showErrorIfAny(await updateSetSongDetails(item.id, { overrideKey: next }));
+                        })
+                      }
+                      className="h-7 w-16 text-xs"
+                    >
+                      {CHROMATIC_KEYS.map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </Select>
+                    {overrideKey && overrideKey !== item.song.key && (
+                      <span className="text-[10px] text-muted-foreground">
+                        (original {item.song.key})
+                      </span>
+                    )}
+                  </div>
+                )}
                 {item.song.bpm && <Badge variant="outline">{item.song.bpm} BPM</Badge>}
                 {item.song.energy && <Badge>{item.song.energy}</Badge>}
+                <Link
+                  href={`/songs/${item.song.id}/chart?setSongId=${item.id}`}
+                  className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
+                  aria-label="View chart"
+                >
+                  <BookOpenText className="h-4 w-4" />
+                </Link>
                 <button
                   onClick={async () => {
                     const result = await removeSongFromSet(item.id);

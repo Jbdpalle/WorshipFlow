@@ -1,3 +1,23 @@
+export const CHROMATIC_KEYS = [
+  "C",
+  "C#",
+  "Db",
+  "D",
+  "D#",
+  "Eb",
+  "E",
+  "F",
+  "F#",
+  "Gb",
+  "G",
+  "G#",
+  "Ab",
+  "A",
+  "A#",
+  "Bb",
+  "B",
+] as const;
+
 export const ROLES = [
   "Worship Leader",
   "Lead Vocal",

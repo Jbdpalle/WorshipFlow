@@ -130,7 +130,7 @@ export async function updateSetSongDetails(
   input: {
     purpose?: string;
     transitionNotes?: string;
-    overrideKey?: string;
+    overrideKey?: string | null;
     overrideBpm?: number | null;
     capo?: number | null;
   },

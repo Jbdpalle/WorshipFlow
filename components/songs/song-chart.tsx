@@ -5,7 +5,9 @@ import Link from "next/link";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import { LyricsChordsView, type LyricsChordsMode } from "@/components/songs/lyrics-chords-view";
+import { CHROMATIC_KEYS } from "@/lib/songs/constants";
 import { cn } from "@/lib/utils/cn";
 
 type Section = { id: string; label: string; lyricsChords: string | null };
@@ -29,9 +31,10 @@ const MODES: { value: LyricsChordsMode; label: string }[] = [
   { value: "numbers", label: "Numbers" },
 ];
 
-export function SongChart({ song }: { song: SongInfo }) {
+export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: string | null }) {
   const [size, setSize] = useState<Size>("md");
   const [mode, setMode] = useState<LyricsChordsMode>("all");
+  const [displayKey, setDisplayKey] = useState<string | null>(initialKey ?? song.key);
 
   useEffect(() => {
     // Reads a per-viewer browser preference that isn't available during SSR,
@@ -87,7 +90,27 @@ export function SongChart({ song }: { song: SongInfo }) {
         <h1 className="text-2xl font-bold">{song.title}</h1>
         {song.artist && <p className="text-sm text-muted-foreground">{song.artist}</p>}
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          {song.key && <Badge variant="outline">Key {song.key}</Badge>}
+          {song.key ? (
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-muted-foreground">Key</label>
+              <Select
+                value={displayKey ?? song.key}
+                onChange={(e) => setDisplayKey(e.target.value)}
+                className="h-7 w-16 text-xs"
+              >
+                {CHROMATIC_KEYS.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </Select>
+              {displayKey && displayKey !== song.key && (
+                <Badge variant="accent">transposed from {song.key}</Badge>
+              )}
+            </div>
+          ) : (
+            <Badge variant="outline">No key set</Badge>
+          )}
           {song.bpm && <Badge variant="outline">{song.bpm} BPM</Badge>}
           {song.timeSignature && <Badge variant="outline">{song.timeSignature}</Badge>}
           <div className="ml-auto flex gap-1 rounded-lg bg-surface-muted p-1">
@@ -132,6 +155,7 @@ export function SongChart({ song }: { song: SongInfo }) {
                 size={size}
                 mode={mode}
                 songKey={song.key}
+                transposeToKey={displayKey}
               />
             </div>
           ))}
