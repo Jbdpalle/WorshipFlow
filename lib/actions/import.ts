@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import "@/lib/songs/pdf-dom-polyfill";
 import { PDFParse } from "pdf-parse";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
