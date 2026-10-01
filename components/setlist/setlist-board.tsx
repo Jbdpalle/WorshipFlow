@@ -18,20 +18,23 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Trash2, Music2, BookOpenText } from "lucide-react";
+import { GripVertical, X, Trash2, Music2, BookOpenText, Star, ChevronDown, CheckCircle2, AlertCircle, Circle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ROLES, CHROMATIC_KEYS } from "@/lib/songs/constants";
+import type { SongFlowStatus } from "@/lib/songs/readiness";
 import {
   reorderSetSongs,
   removeSongFromSet,
   updateSetSongDetails,
   assignMemberToSetSong,
   removeAssignment,
+  updateSetMeta,
 } from "@/lib/actions/sets";
+import { cn } from "@/lib/utils/cn";
 
 export type SetSongData = {
   id: string;
@@ -47,19 +50,28 @@ export type SetSongData = {
     bpm: number | null;
     energy: string | null;
   };
+  songFlowStatus: SongFlowStatus;
   assignments: { id: string; role: string; teamMember: { id: string; name: string } }[];
 };
 
 type TeamMemberOption = { id: string; name: string; role: string };
 
+const FLOW_STATUS: Record<SongFlowStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
+  ready: { label: "Song Flow ready", icon: CheckCircle2, className: "text-success" },
+  needs_work: { label: "Song Flow needs work", icon: AlertCircle, className: "text-accent" },
+  not_started: { label: "Song Flow not started", icon: Circle, className: "text-muted-foreground" },
+};
+
 export function SetlistBoard({
   setId,
   initialSongs,
   teamMembers,
+  anchorSongId,
 }: {
   setId: string;
   initialSongs: SetSongData[];
   teamMembers: TeamMemberOption[];
+  anchorSongId: string | null;
 }) {
   const [items, setItems] = useState(initialSongs);
   const [syncedSongs, setSyncedSongs] = useState(initialSongs);
@@ -101,9 +113,11 @@ export function SetlistBoard({
           {items.map((item, index) => (
             <SetSongCard
               key={item.id}
+              setId={setId}
               item={item}
               index={index}
               teamMembers={teamMembers}
+              isAnchor={anchorSongId === item.song.id}
               onRemoved={() => {
                 setItems((prev) => prev.filter((i) => i.id !== item.id));
                 router.refresh();
@@ -117,14 +131,18 @@ export function SetlistBoard({
 }
 
 function SetSongCard({
+  setId,
   item,
   index,
   teamMembers,
+  isAnchor,
   onRemoved,
 }: {
+  setId: string;
   item: SetSongData;
   index: number;
   teamMembers: TeamMemberOption[];
+  isAnchor: boolean;
   onRemoved: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -135,6 +153,7 @@ function SetSongCard({
   const [overrideKey, setOverrideKey] = useState(item.overrideKey);
   const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
   const [assignMember, setAssignMember] = useState(teamMembers[0]?.id ?? "");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
@@ -150,6 +169,9 @@ function SetSongCard({
     opacity: isDragging ? 0.6 : 1,
   };
 
+  const flow = FLOW_STATUS[item.songFlowStatus];
+  const FlowIcon = flow.icon;
+
   return (
     <div ref={setNodeRef} style={style}>
       <Card className="p-4">
@@ -163,7 +185,7 @@ function SetSongCard({
             <GripVertical className="h-5 w-5" />
           </button>
 
-          <div className="flex-1 min-w-0 space-y-3">
+          <div className="flex-1 min-w-0 space-y-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2">
@@ -173,6 +195,22 @@ function SetSongCard({
                   <Link href={`/songs/${item.song.id}`} className="font-semibold hover:text-accent">
                     {item.song.title}
                   </Link>
+                  <button
+                    onClick={async () => {
+                      setError(null);
+                      showErrorIfAny(
+                        await updateSetMeta(setId, { anchorSongId: isAnchor ? null : item.song.id }),
+                      );
+                      router.refresh();
+                    }}
+                    aria-label={isAnchor ? "Remove as anchor song" : "Mark as anchor song"}
+                    className={cn(
+                      "rounded-md p-0.5",
+                      isAnchor ? "text-accent" : "text-muted-foreground/40 hover:text-accent",
+                    )}
+                  >
+                    <Star className="h-4 w-4" fill={isAnchor ? "currentColor" : "none"} />
+                  </button>
                 </div>
                 {item.song.artist && (
                   <p className="text-xs text-muted-foreground">{item.song.artist}</p>
@@ -198,15 +236,9 @@ function SetSongCard({
                         </option>
                       ))}
                     </Select>
-                    {overrideKey && overrideKey !== item.song.key && (
-                      <span className="text-[10px] text-muted-foreground">
-                        (original {item.song.key})
-                      </span>
-                    )}
                   </div>
                 )}
                 {item.song.bpm && <Badge variant="outline">{item.song.bpm} BPM</Badge>}
-                {item.song.energy && <Badge>{item.song.energy}</Badge>}
                 <Link
                   href={`/songs/${item.song.id}/chart?setSongId=${item.id}`}
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
@@ -227,101 +259,124 @@ function SetSongCard({
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">
-                  Purpose in the set
-                </label>
-                <Textarea
-                  rows={2}
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
-                  onBlur={() =>
-                    startTransition(async () => {
-                      showErrorIfAny(await updateSetSongDetails(item.id, { purpose }));
-                    })
-                  }
-                  placeholder="Move congregation from praise into reflection."
-                  className="mt-1 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">
-                  Transition notes
-                </label>
-                <Textarea
-                  rows={2}
-                  value={transitionNotes}
-                  onChange={(e) => setTransitionNotes(e.target.value)}
-                  onBlur={() =>
-                    startTransition(async () => {
-                      showErrorIfAny(await updateSetSongDetails(item.id, { transitionNotes }));
-                    })
-                  }
-                  placeholder="Let the final chord ring, move directly into the next song."
-                  className="mt-1 text-sm"
-                />
-              </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href={`/songs/${item.song.id}`}
+                className={cn("flex items-center gap-1.5 text-xs font-medium hover:underline", flow.className)}
+              >
+                <FlowIcon className="h-3.5 w-3.5" /> {flow.label}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setDetailsOpen((o) => !o)}
+                className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", detailsOpen && "rotate-180")} />
+                Details
+              </button>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Team assigned</label>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {item.assignments.map((a) => (
-                  <Badge key={a.id} variant="outline" className="gap-1 pr-1">
-                    {a.role}: {a.teamMember.name}
-                    <button
-                      onClick={async () => {
-                        if (showErrorIfAny(await removeAssignment(a.id))) router.refresh();
-                      }}
-                      className="ml-1 rounded-full hover:bg-danger/20"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {teamMembers.length > 0 && (
-                  <div className="flex items-center gap-1">
-                    <Select
-                      value={assignRole}
-                      onChange={(e) => setAssignRole(e.target.value)}
-                      className="h-7 w-32 text-xs"
-                    >
-                      {ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </Select>
-                    <Select
-                      value={assignMember}
-                      onChange={(e) => setAssignMember(e.target.value)}
-                      className="h-7 w-28 text-xs"
-                    >
-                      {teamMembers.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </Select>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="h-7 px-2 text-xs"
-                      onClick={async () => {
-                        if (!assignMember) return;
-                        if (showErrorIfAny(await assignMemberToSetSong(item.id, assignMember, assignRole))) {
-                          router.refresh();
-                        }
-                      }}
-                    >
-                      Assign
-                    </Button>
+            {detailsOpen && (
+              <div className="space-y-3 border-t border-border pt-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Purpose in the set (optional)
+                    </label>
+                    <Textarea
+                      rows={2}
+                      value={purpose}
+                      onChange={(e) => setPurpose(e.target.value)}
+                      onBlur={() =>
+                        startTransition(async () => {
+                          showErrorIfAny(await updateSetSongDetails(item.id, { purpose }));
+                        })
+                      }
+                      placeholder="Move congregation from praise into reflection."
+                      className="mt-1 text-sm"
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Transition into next song (optional)
+                    </label>
+                    <Textarea
+                      rows={2}
+                      value={transitionNotes}
+                      onChange={(e) => setTransitionNotes(e.target.value)}
+                      onBlur={() =>
+                        startTransition(async () => {
+                          showErrorIfAny(await updateSetSongDetails(item.id, { transitionNotes }));
+                        })
+                      }
+                      placeholder="Hold the last chord. Keys continue pads into the next song."
+                      className="mt-1 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Per-song assignment override (optional — the set&apos;s team covers most cases)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {item.assignments.map((a) => (
+                      <Badge key={a.id} variant="outline" className="gap-1 pr-1">
+                        {a.role}: {a.teamMember.name}
+                        <button
+                          onClick={async () => {
+                            if (showErrorIfAny(await removeAssignment(a.id))) router.refresh();
+                          }}
+                          className="ml-1 rounded-full hover:bg-danger/20"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                    {teamMembers.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Select
+                          value={assignRole}
+                          onChange={(e) => setAssignRole(e.target.value)}
+                          className="h-7 w-32 text-xs"
+                        >
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </Select>
+                        <Select
+                          value={assignMember}
+                          onChange={(e) => setAssignMember(e.target.value)}
+                          className="h-7 w-28 text-xs"
+                        >
+                          {teamMembers.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </Select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 px-2 text-xs"
+                          onClick={async () => {
+                            if (!assignMember) return;
+                            if (showErrorIfAny(await assignMemberToSetSong(item.id, assignMember, assignRole))) {
+                              router.refresh();
+                            }
+                          }}
+                        >
+                          Assign
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
             {error && <p className="text-sm text-danger">{error}</p>}
           </div>
         </div>

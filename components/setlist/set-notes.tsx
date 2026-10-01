@@ -26,7 +26,7 @@ export function SetNotes({ setId, initialNotes }: { setId: string; initialNotes:
           }
           setSaved(true);
         }}
-        placeholder="Notes for the whole service — flow, transitions, reminders for the team."
+        placeholder={'Keep this one intimate. Build toward free worship. Connect this to the sermon.'}
         rows={3}
       />
       {error ? (

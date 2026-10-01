@@ -55,7 +55,14 @@ export async function generatePrepareMeSummary(memberId: string, setId: string):
         const song = a.setSong.song;
         const notes = song.sections
           .map((s) => {
-            const note = s.roleNotes.find((n) => n.role === a.role);
+            // A note aimed at one specific person (visibility: PERSON) must
+            // never be fed into another member's AI summary, even if they
+            // share the same role string.
+            const note = s.roleNotes.find((n) => {
+              if (n.role !== a.role) return false;
+              if (n.visibility === "PERSON") return n.teamMemberId === memberId;
+              return true;
+            });
             return note ? `${s.label}: ${note.content}` : null;
           })
           .filter(Boolean)

@@ -40,6 +40,7 @@ model User {
   memberships       TeamMember[]
   personalNotes     PersonalNote[]
   rehearsalChecks   RehearsalCheck[]
+  arrangementChanges ArrangementChange[]
   feedback          Feedback[]
   changeLogs        ChangeLog[]
 }
@@ -110,6 +111,8 @@ model TeamMember {
   roles         TeamMemberRole[]
   assignments   SongAssignment[]
   personalNotes PersonalNote[]
+  roleNoteDirections SongRoleNote[]
+  setAssignments     SetTeamMember[]
 
   @@index([teamId])
 }
@@ -143,17 +146,20 @@ model Song {
   biblicalConnection String?
   lyricsSummary     String?  // no full copyrighted lyrics stored
   notes             String?
+  visionNote        String?  // "Where are we taking this song?" — free-form leadership direction, distinct from `notes`
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  team          Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  tags          SongTag[]
-  sections      SongSection[]
-  bibleRefs     BibleReference[]
-  setSongs      SetSong[]
-  rehearsals    Rehearsal[]
-  personalNotes PersonalNote[]
-  changeLogs    ChangeLog[]
+  team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tags              SongTag[]
+  sections          SongSection[]
+  bibleRefs         BibleReference[]
+  setSongs          SetSong[]
+  rehearsals        Rehearsal[]
+  personalNotes     PersonalNote[]
+  changeLogs        ChangeLog[]
+  arrangementChanges ArrangementChange[]
+  anchorForSets     WorshipSet[]       @relation("AnchorSong")
 
   @@index([teamId])
 }
@@ -175,26 +181,43 @@ model SongSection {
   label         String // Intro, Verse 1, Chorus, Bridge, ...
   order         Int
   barCount      Int?
+  repeatCount   Int?    // e.g. "Bridge x4" without four separate section rows
   lyricsChords  String? // raw chords/lyrics text for this section, e.g. from a PDF import
 
-  song      Song           @relation(fields: [songId], references: [id], onDelete: Cascade)
-  roleNotes SongRoleNote[]
+  song               Song                @relation(fields: [songId], references: [id], onDelete: Cascade)
+  roleNotes          SongRoleNote[]
+  arrangementChanges ArrangementChange[]
+  liveForSets        WorshipSet[]
 
   @@index([songId])
+}
+
+// Visibility of a role direction: TEAM (default, everyone on the song sees
+// it), ROLE (only members who play that role), PERSON (only the specific
+// assignee). Personal, author-only notes stay on the separate PersonalNote
+// model — this is about scoping a *shared* direction, not a private one.
+enum NoteVisibility {
+  TEAM
+  ROLE
+  PERSON
 }
 
 // Role is a fixed vocabulary (Worship Leader, Lead Vocal, Acoustic Guitar, ...)
 // represented as a plain string so the MVP can extend it without a migration.
 model SongRoleNote {
-  id        String   @id @default(cuid())
-  sectionId String
-  role      String
-  content   String
-  updatedAt DateTime @updatedAt
+  id           String         @id @default(cuid())
+  sectionId    String
+  role         String
+  content      String
+  teamMemberId String?        // optional: directs this at one specific person rather than the whole role
+  visibility   NoteVisibility @default(TEAM)
+  updatedAt    DateTime       @updatedAt
 
-  section SongSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  section    SongSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
 
   @@index([sectionId])
+  @@index([teamMemberId])
   @@unique([sectionId, role])
 }
 
@@ -232,22 +255,55 @@ model WorshipSet {
   eventType   EventType @default(SERVICE)
   title       String
   theme       String?
-  keywords    String? // comma-separated
+  keywords    String? // comma-separated — "Key Words" in the Set Direction UI
   serviceDate DateTime?
   location    String?
   church      String?
   serviceType String?
   leaderName  String?
-  notes       String? // whole-set notes
+  notes       String? // whole-set notes — "Leader's Note" in the Set Direction UI
+  anchorSongId String? // optional: the one song this service is built around
+
+  // Live rehearsal position, for polling-based team sync (Director Mode
+  // writes these; Rehearsal Mode / My Part poll them). Null when no
+  // rehearsal is currently live for this set.
+  liveSetSongId String?
+  liveSectionId String?
+  liveUpdatedAt DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  team      Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  songs     SetSong[]
-  bibleRefs BibleReference[]
+  team         Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  songs        SetSong[]
+  bibleRefs    BibleReference[]
+  teamMembers  SetTeamMember[]
+  anchorSong   Song?            @relation("AnchorSong", fields: [anchorSongId], references: [id], onDelete: SetNull)
+  liveSetSong  SetSong?         @relation("LiveSetSong", fields: [liveSetSongId], references: [id], onDelete: SetNull)
+  liveSection  SongSection?     @relation(fields: [liveSectionId], references: [id], onDelete: SetNull)
 
   @@index([teamId])
   @@index([eventType])
+  @@index([anchorSongId])
+  @@index([liveSetSongId])
+  @@index([liveSectionId])
+}
+
+// The service's roster, assigned once for the whole set instead of
+// per-song. SongAssignment (per SetSong) still exists for the optional
+// per-song override.
+model SetTeamMember {
+  id           String @id @default(cuid())
+  setId        String
+  teamMemberId String
+  role         String
+
+  set        WorshipSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([setId, teamMemberId, role])
+  @@index([setId])
+  @@index([teamMemberId])
 }
 
 model SetSong {
@@ -265,6 +321,7 @@ model SetSong {
   song        Song             @relation(fields: [songId], references: [id], onDelete: Cascade)
   assignments SongAssignment[]
   rehearsals  Rehearsal[]
+  liveForSets WorshipSet[]     @relation("LiveSetSong")
 
   @@index([setId])
   @@index([songId])
@@ -296,10 +353,11 @@ model Rehearsal {
   summary    String?
   occurredAt DateTime @default(now())
 
-  setSong SetSong?         @relation(fields: [setSongId], references: [id], onDelete: SetNull)
-  song    Song             @relation(fields: [songId], references: [id], onDelete: Cascade)
+  setSong SetSong?            @relation(fields: [setSongId], references: [id], onDelete: SetNull)
+  song    Song                @relation(fields: [songId], references: [id], onDelete: Cascade)
   notes   RehearsalNote[]
   checks  RehearsalCheck[]
+  arrangementChanges ArrangementChange[]
 
   @@index([songId])
   @@index([setSongId])
@@ -326,6 +384,42 @@ model RehearsalCheck {
   user      User      @relation(fields: [userId], references: [id])
 
   @@index([rehearsalId])
+}
+
+// A proposed in-rehearsal change to one role's direction for one section.
+// PROPOSED is the "try this" exploratory state; KEEP applies
+// `proposedContent` onto the live SongRoleNote.content and marks this row
+// KEPT; DISCARD marks it DISCARDED and leaves the live note untouched.
+// Distinct from ChangeLog, which is a manually-typed historical journal
+// entry and never mutates the live arrangement itself.
+enum ArrangementChangeStatus {
+  PROPOSED
+  KEPT
+  DISCARDED
+}
+
+model ArrangementChange {
+  id              String                  @id @default(cuid())
+  songId          String
+  sectionId       String
+  role            String
+  proposedContent String
+  previousContent String?
+  status          ArrangementChangeStatus @default(PROPOSED)
+  rehearsalId     String?
+  createdByUserId String?
+  createdAt       DateTime                @default(now())
+  resolvedAt      DateTime?
+
+  song      Song       @relation(fields: [songId], references: [id], onDelete: Cascade)
+  section   SongSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  rehearsal Rehearsal? @relation(fields: [rehearsalId], references: [id], onDelete: SetNull)
+  createdBy User?      @relation(fields: [createdByUserId], references: [id])
+
+  @@index([songId])
+  @@index([sectionId])
+  @@index([rehearsalId])
+  @@index([status])
 }
 
 // Structured "what changed" record, distinct from free-text rehearsal notes.

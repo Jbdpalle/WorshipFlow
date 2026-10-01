@@ -1,25 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, Save, Timer } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Save, Timer, FlaskConical, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import { Metronome } from "@/components/metronome/metronome";
 import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { LastTimeCallout } from "@/components/songs/last-time-callout";
-import { REHEARSAL_CHECK_STATUSES } from "@/lib/songs/constants";
-import { startRehearsal, saveRehearsalNotes, setRehearsalCheck } from "@/lib/actions/rehearsal";
+import { ROLES, REHEARSAL_CHECK_STATUSES } from "@/lib/songs/constants";
+import {
+  startRehearsal,
+  saveRehearsalNotes,
+  setRehearsalCheck,
+  proposeArrangementChange,
+  keepArrangementChange,
+  discardArrangementChange,
+  setLivePosition,
+  getLivePosition,
+} from "@/lib/actions/rehearsal";
 import { cn } from "@/lib/utils/cn";
 
-type RoleNote = { id: string; role: string; content: string };
+type RoleNote = {
+  id: string;
+  role: string;
+  content: string;
+  teamMemberId: string | null;
+  visibility: "TEAM" | "ROLE" | "PERSON";
+};
+type ArrangementChange = {
+  id: string;
+  role: string;
+  proposedContent: string;
+  previousContent: string | null;
+};
 type Section = {
   id: string;
   label: string;
   order: number;
+  repeatCount: number | null;
   lyricsChords: string | null;
   roleNotes: RoleNote[];
+  arrangementChanges: ArrangementChange[];
 };
 type ChangeEntry = { id: string; field: string; fromValue: string | null; toValue: string | null };
 type SetSongData = {
@@ -36,9 +60,62 @@ type SetSongData = {
   };
 };
 
-export function RehearsalMode({ setTitle, songs }: { setTitle: string; songs: SetSongData[] }) {
-  const [songIndex, setSongIndex] = useState(0);
+const POLL_MS = 3500;
+
+export function RehearsalMode({
+  setId,
+  setTitle,
+  songs,
+  isLeaderView,
+  viewerTeamMemberId,
+  initialLiveSetSongId,
+  initialLiveSectionId,
+}: {
+  setId: string;
+  setTitle: string;
+  songs: SetSongData[];
+  isLeaderView: boolean;
+  viewerTeamMemberId: string | null;
+  initialLiveSetSongId: string | null;
+  initialLiveSectionId: string | null;
+}) {
+  const initialSongIndex = Math.max(
+    0,
+    songs.findIndex((s) => s.id === initialLiveSetSongId),
+  );
+  const [songIndex, setSongIndex] = useState(initialSongIndex);
+  const [followBanner, setFollowBanner] = useState<string | null>(null);
   const setSong = songs[songIndex];
+
+  // Non-leader clients poll the live position and jump to follow the
+  // leader — this is polling-based near-real-time, not push/WebSocket (no
+  // realtime provider is configured in this environment). See
+  // WORSHIPFLOW_SONG_FLOW_AUDIT.md section 5.
+  const lastSeenRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isLeaderView) return;
+    const interval = setInterval(async () => {
+      const result = await getLivePosition(setId);
+      if (!result.ok || !result.data.setSongId) return;
+      if (result.data.updatedAt === lastSeenRef.current) return;
+      lastSeenRef.current = result.data.updatedAt;
+
+      const nextSongIndex = songs.findIndex((s) => s.id === result.data.setSongId);
+      if (nextSongIndex === -1) return;
+      setSongIndex((prev) => {
+        if (prev !== nextSongIndex) {
+          const title = songs[nextSongIndex]?.song.title;
+          setFollowBanner(title ? `Leader moved to ${title}` : "Leader moved to a different song");
+        }
+        return nextSongIndex;
+      });
+      window.dispatchEvent(
+        new CustomEvent("worshipflow:live-section", { detail: { sectionId: result.data.sectionId } }),
+      );
+    }, POLL_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setId, isLeaderView]);
 
   if (!setSong) {
     return <p className="text-muted-foreground">This set has no songs yet.</p>;
@@ -46,11 +123,28 @@ export function RehearsalMode({ setTitle, songs }: { setTitle: string; songs: Se
 
   return (
     <div className="space-y-5">
+      {isLeaderView ? (
+        <p className="flex items-center gap-1.5 text-xs font-medium text-accent">
+          <Radio className="h-3.5 w-3.5" /> Directing live — the team follows your Prev/Next
+        </p>
+      ) : (
+        followBanner && (
+          <p className="rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
+            {followBanner}
+          </p>
+        )
+      )}
+
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         {songs.map((s, i) => (
           <button
             key={s.id}
-            onClick={() => setSongIndex(i)}
+            onClick={() => {
+              setSongIndex(i);
+              if (isLeaderView) {
+                setLivePosition(setId, s.id, s.song.sections[0]?.id ?? null);
+              }
+            }}
             className={cn(
               "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium tap-target",
               i === songIndex
@@ -63,16 +157,43 @@ export function RehearsalMode({ setTitle, songs }: { setTitle: string; songs: Se
         ))}
       </div>
 
-      <SongRehearsalPanel key={setSong.id} setTitle={setTitle} setSong={setSong} />
+      <SongRehearsalPanel
+        key={setSong.id}
+        setId={setId}
+        setTitle={setTitle}
+        setSong={setSong}
+        isLeaderView={isLeaderView}
+        viewerTeamMemberId={viewerTeamMemberId}
+        initialLiveSectionId={setSong.id === initialLiveSetSongId ? initialLiveSectionId : null}
+      />
     </div>
   );
 }
 
-function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: SetSongData }) {
+function SongRehearsalPanel({
+  setId,
+  setTitle,
+  setSong,
+  isLeaderView,
+  viewerTeamMemberId,
+  initialLiveSectionId,
+}: {
+  setId: string;
+  setTitle: string;
+  setSong: SetSongData;
+  isLeaderView: boolean;
+  viewerTeamMemberId: string | null;
+  initialLiveSectionId: string | null;
+}) {
+  const router = useRouter();
   const song = setSong.song;
   const sections = song.sections;
 
-  const [sectionIndex, setSectionIndex] = useState(0);
+  const initialSectionIndex = Math.max(
+    0,
+    sections.findIndex((s) => s.id === initialLiveSectionId),
+  );
+  const [sectionIndex, setSectionIndex] = useState(initialSectionIndex);
   const [rehearsalId, setRehearsalId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
@@ -95,13 +216,39 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id, setSong.id]);
 
+  // Follow the leader's section moves within the current song (the parent
+  // dispatches this after each poll — see RehearsalMode above).
+  useEffect(() => {
+    if (isLeaderView) return;
+    function onLiveSection(e: Event) {
+      const sectionId = (e as CustomEvent<{ sectionId: string | null }>).detail?.sectionId;
+      if (!sectionId) return;
+      const idx = sections.findIndex((s) => s.id === sectionId);
+      if (idx !== -1) setSectionIndex(idx);
+    }
+    window.addEventListener("worshipflow:live-section", onLiveSection);
+    return () => window.removeEventListener("worshipflow:live-section", onLiveSection);
+  }, [isLeaderView, sections]);
+
+  function goTo(nextIndex: number) {
+    setSectionIndex(nextIndex);
+    if (isLeaderView) {
+      setLivePosition(setId, setSong.id, sections[nextIndex]?.id ?? null);
+    }
+  }
+
   const current = sections[sectionIndex];
   const next = sections[sectionIndex + 1];
 
   const instructionsByRole = useMemo(() => {
     if (!current) return [];
-    return current.roleNotes.filter((n) => n.content.trim().length > 0);
-  }, [current]);
+    return current.roleNotes.filter((n) => {
+      if (!n.content.trim()) return false;
+      if (isLeaderView) return true;
+      if (n.visibility === "PERSON") return n.teamMemberId === viewerTeamMemberId;
+      return true;
+    });
+  }, [current, isLeaderView, viewerTeamMemberId]);
 
   return (
     <div className="space-y-5">
@@ -119,27 +266,24 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
       <LastTimeCallout lastRehearsal={song.rehearsals[0] ?? null} recentChanges={song.changeLogs} />
 
       {sections.length === 0 ? (
-        <p className="text-muted-foreground">
-          This song has no arrangement yet.{" "}
-          <Link href={`/songs/${song.id}`} className="text-accent underline">
-            Add one
-          </Link>
-          .
-        </p>
+        <p className="text-muted-foreground">This song has no arrangement yet.</p>
       ) : (
         <>
           <div className="rounded-2xl border-2 border-accent bg-accent/10 p-5 text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">
               Current Section
             </p>
-            <h2 className="mt-1 text-3xl font-bold">{current?.label}</h2>
+            <h2 className="mt-1 text-3xl font-bold">
+              {current?.label}
+              {current?.repeatCount && current.repeatCount > 1 ? ` ×${current.repeatCount}` : ""}
+            </h2>
             {next && <p className="mt-2 text-sm text-muted-foreground">Next: {next.label}</p>}
             <div className="mt-4 flex justify-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 disabled={sectionIndex === 0}
-                onClick={() => setSectionIndex((i) => Math.max(0, i - 1))}
+                onClick={() => goTo(Math.max(0, sectionIndex - 1))}
               >
                 <ChevronLeft className="h-4 w-4" /> Prev
               </Button>
@@ -147,7 +291,7 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
                 variant="secondary"
                 size="sm"
                 disabled={sectionIndex >= sections.length - 1}
-                onClick={() => setSectionIndex((i) => Math.min(sections.length - 1, i + 1))}
+                onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
               >
                 Next <ChevronRight className="h-4 w-4" />
               </Button>
@@ -180,6 +324,17 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
               ))
             )}
           </div>
+
+          {current && (
+            <ExperimentPanel
+              key={current.id}
+              sectionId={current.id}
+              rehearsalId={rehearsalId}
+              changes={current.arrangementChanges}
+              isLeaderView={isLeaderView}
+              onChanged={() => router.refresh()}
+            />
+          )}
         </>
       )}
 
@@ -249,6 +404,138 @@ function SongRehearsalPanel({ setTitle, setSong }: { setTitle: string; setSong: 
         {saved && <p className="text-xs text-success">Saved to rehearsal history.</p>}
         {error && <p className="text-xs text-danger">{error}</p>}
       </div>
+    </div>
+  );
+}
+
+function ExperimentPanel({
+  sectionId,
+  rehearsalId,
+  changes,
+  isLeaderView,
+  onChanged,
+}: {
+  sectionId: string;
+  rehearsalId: string | null;
+  changes: ArrangementChange[];
+  isLeaderView: boolean;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<string>(ROLES[0]);
+  const [content, setContent] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="space-y-2 rounded-lg border border-dashed border-border p-3">
+      <div className="flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+          <FlaskConical className="h-4 w-4" /> Try something different
+        </h3>
+        {!open && (
+          <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
+            Propose a change
+          </Button>
+        )}
+      </div>
+
+      {changes.length > 0 && (
+        <div className="space-y-2">
+          {changes.map((c) => (
+            <div key={c.id} className="rounded-lg bg-accent/10 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="accent">EXPERIMENT</Badge>
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {c.role}
+                </span>
+              </div>
+              <p className="mt-1 text-sm">{c.proposedContent}</p>
+              {isLeaderView && (
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      const result = await keepArrangementChange(c.id);
+                      setBusy(false);
+                      if (!result.ok) setError(result.error);
+                      else onChanged();
+                    }}
+                  >
+                    Keep Change
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      const result = await discardArrangementChange(c.id);
+                      setBusy(false);
+                      if (!result.ok) setError(result.error);
+                      else onChanged();
+                    }}
+                  >
+                    Discard
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Select value={role} onChange={(e) => setRole(e.target.value)} className="h-8 w-36 text-xs">
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={2}
+            placeholder="Drums enter second half of this section instead."
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              disabled={busy || !content.trim()}
+              onClick={async () => {
+                setBusy(true);
+                setError(null);
+                const result = await proposeArrangementChange({
+                  sectionId,
+                  role,
+                  proposedContent: content,
+                  rehearsalId: rehearsalId ?? undefined,
+                });
+                setBusy(false);
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
+                }
+                setContent("");
+                setOpen(false);
+                onChanged();
+              }}
+            >
+              Propose (Experiment)
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }

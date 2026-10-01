@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { generatePrepareMeSummary } from "@/lib/actions/prepare";
 
 type ChangeEntry = { id: string; field: string; fromValue: string | null; toValue: string | null };
-type Section = { id: string; label: string; roleNotes: { id: string; role: string; content: string }[] };
+type RoleNote = {
+  id: string;
+  role: string;
+  content: string;
+  teamMemberId: string | null;
+  visibility: "TEAM" | "ROLE" | "PERSON";
+};
+type Section = { id: string; label: string; roleNotes: RoleNote[] };
 type PrepareAssignment = {
   id: string;
   role: string;
@@ -67,7 +74,14 @@ export function PrepareMeCard({
           const song = a.setSong.song;
           const notes = song.sections
             .map((s) => {
-              const note = s.roleNotes.find((n) => n.role === a.role);
+              // Same PERSON-visibility rule as My Part's main list: a note
+              // aimed at one specific person must not be shown to someone
+              // else who merely shares the same role.
+              const note = s.roleNotes.find((n) => {
+                if (n.role !== a.role) return false;
+                if (n.visibility === "PERSON") return n.teamMemberId === memberId;
+                return true;
+              });
               return note ? { label: s.label, content: note.content } : null;
             })
             .filter((n): n is { label: string; content: string } => n !== null);

@@ -10,6 +10,9 @@ import { ThemeSuggestions } from "@/components/setlist/theme-suggestions";
 import { AddFromLibraryDialog } from "@/components/setlist/add-from-library-dialog";
 import { SetNotes } from "@/components/setlist/set-notes";
 import { SetMetaEditor } from "@/components/setlist/set-meta-editor";
+import { SetTeam } from "@/components/setlist/set-team";
+import { SetReadiness } from "@/components/setlist/set-readiness";
+import { getSetReadiness, getSongFlowStatus } from "@/lib/songs/readiness";
 import { CalendarDays, PlayCircle } from "lucide-react";
 
 export default async function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,10 +23,11 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
     where: { id },
     include: {
       bibleRefs: true,
+      teamMembers: { include: { teamMember: true }, orderBy: { id: "asc" } },
       songs: {
         orderBy: { order: "asc" },
         include: {
-          song: true,
+          song: { include: { sections: { include: { roleNotes: true } } } },
           assignments: { include: { teamMember: true } },
         },
       },
@@ -42,6 +46,11 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
   ]);
 
   const alreadyInSetIds = new Set(set.songs.map((s) => s.songId));
+  const readiness = getSetReadiness(set);
+  const songsWithFlowStatus = set.songs.map((s) => ({
+    ...s,
+    songFlowStatus: getSongFlowStatus(s.song),
+  }));
 
   return (
     <div className="space-y-6">
@@ -74,36 +83,55 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         </Link>
       </div>
 
+      <SetReadiness items={readiness} />
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Worship Team</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SetTeam
+                setId={set.id}
+                members={set.teamMembers}
+                teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+              />
+            </CardContent>
+          </Card>
+
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Setlist</h2>
             <AddFromLibraryDialog setId={set.id} librarySongs={librarySongsRaw} />
           </div>
           <SetlistBoard
             setId={set.id}
-            initialSongs={set.songs}
+            initialSongs={songsWithFlowStatus}
             teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+            anchorSongId={set.anchorSongId}
           />
         </div>
 
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Service Details</CardTitle>
+              <CardTitle className="text-base">Set Direction</CardTitle>
             </CardHeader>
             <CardContent>
               <SetMetaEditor
                 setId={set.id}
                 initialTheme={set.theme ?? ""}
                 initialLeaderName={set.leaderName ?? ""}
+                initialKeywords={set.keywords ?? ""}
+                initialAnchorSongId={set.anchorSongId ?? ""}
+                songOptions={set.songs.map((s) => ({ songId: s.song.id, title: s.song.title }))}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Set Notes</CardTitle>
+              <CardTitle className="text-base">Leader&apos;s Note</CardTitle>
             </CardHeader>
             <CardContent>
               <SetNotes setId={set.id} initialNotes={set.notes ?? ""} />

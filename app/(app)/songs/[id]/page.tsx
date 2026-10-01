@@ -10,7 +10,7 @@ import { DeleteSongButton } from "@/components/songs/delete-song-button";
 import { TagEditor } from "@/components/songs/tag-editor";
 import { ThemeVerseSuggestion } from "@/components/songs/theme-verse-suggestion";
 import { ArrangementEditor } from "@/components/songs/arrangement-editor";
-import { TeamNotesEditor, PersonalNoteEditor } from "@/components/songs/note-editors";
+import { TeamNotesEditor, PersonalNoteEditor, SongVisionEditor } from "@/components/songs/note-editors";
 import { RehearsalHistoryList } from "@/components/songs/rehearsal-history";
 import { ChangeLogPanel } from "@/components/songs/change-log";
 import { LastTimeCallout } from "@/components/songs/last-time-callout";
@@ -25,23 +25,26 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const { user, team } = await requireUser();
 
-  const song = await prisma.song.findUnique({
-    where: { id },
-    include: {
-      tags: true,
-      bibleRefs: true,
-      sections: {
-        orderBy: { order: "asc" },
-        include: { roleNotes: true },
+  const [song, teamMembers] = await Promise.all([
+    prisma.song.findUnique({
+      where: { id },
+      include: {
+        tags: true,
+        bibleRefs: true,
+        sections: {
+          orderBy: { order: "asc" },
+          include: { roleNotes: true },
+        },
+        rehearsals: {
+          orderBy: { occurredAt: "desc" },
+          include: { notes: true },
+        },
+        changeLogs: { orderBy: { createdAt: "desc" } },
+        personalNotes: { where: { userId: user.id } },
       },
-      rehearsals: {
-        orderBy: { occurredAt: "desc" },
-        include: { notes: true },
-      },
-      changeLogs: { orderBy: { createdAt: "desc" } },
-      personalNotes: { where: { userId: user.id } },
-    },
-  });
+    }),
+    prisma.teamMember.findMany({ where: { teamId: team.id }, orderBy: { name: "asc" } }),
+  ]);
 
   if (!song || song.teamId !== team.id) notFound();
 
@@ -68,12 +71,28 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
 
       <LastTimeCallout lastRehearsal={song.rehearsals[0] ?? null} recentChanges={song.changeLogs.slice(0, 3)} />
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Song Vision</CardTitle>
+          <p className="text-sm text-muted-foreground">Where are we taking this song?</p>
+        </CardHeader>
+        <CardContent>
+          <SongVisionEditor songId={song.id} initialVision={song.visionNote ?? ""} />
+        </CardContent>
+      </Card>
+
       <Tabs
         tabs={[
           {
             key: "arrangement",
-            label: "Arrangement & Role Notes",
-            content: <ArrangementEditor songId={song.id} initialSections={song.sections} />,
+            label: "Song Flow",
+            content: (
+              <ArrangementEditor
+                songId={song.id}
+                initialSections={song.sections}
+                teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+              />
+            ),
           },
           {
             key: "notes",

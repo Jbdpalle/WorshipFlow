@@ -2,7 +2,7 @@ import { analyzeTheme, matchSongsToTheme } from "@/lib/songs/theme-engine";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AddSongButton } from "@/components/setlist/add-song-button";
-import { Sparkles } from "lucide-react";
+import { Tags } from "lucide-react";
 
 type LibrarySong = {
   id: string;
@@ -50,12 +50,12 @@ export function ThemeSuggestions({
     <Card>
       <CardHeader className="space-y-1">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-accent" />
-          <CardTitle className="text-base">Suggested Songs</CardTitle>
+          <Tags className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-base">Theme Matches</CardTitle>
         </div>
         <CardDescription>
-          Grouped by biblical theme from your library. This is a starting point, not a
-          recommendation of what God wants — you decide what fits.
+          Songs from your library tagged with a matching theme — a keyword match, not a
+          recommendation. Use the library search below for anything else.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

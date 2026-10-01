@@ -74,6 +74,7 @@ export async function updateSong(
     biblicalConnection: string;
     lyricsSummary: string;
     notes: string;
+    visionNote: string;
   }>,
 ): Promise<ActionResult> {
   return runAction(async () => {
@@ -176,6 +177,62 @@ export async function updateSectionLyrics(sectionId: string, lyricsChords: strin
   });
 }
 
+export async function updateSectionRepeatCount(
+  sectionId: string,
+  repeatCount: number | null,
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSection(sectionId, team.id);
+    if (!lookup.ok) return lookup;
+    await prisma.songSection.update({
+      where: { id: sectionId },
+      data: { repeatCount: repeatCount && repeatCount > 1 ? repeatCount : null },
+    });
+    revalidatePath(`/songs/${lookup.section.songId}`);
+    return { ok: true };
+  });
+}
+
+export async function duplicateSection(sectionId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSection(sectionId, team.id);
+    if (!lookup.ok) return lookup;
+
+    const [original, roleNotes, siblingCount] = await Promise.all([
+      prisma.songSection.findUniqueOrThrow({ where: { id: sectionId } }),
+      prisma.songRoleNote.findMany({ where: { sectionId } }),
+      prisma.songSection.count({ where: { songId: lookup.section.songId } }),
+    ]);
+
+    const copy = await prisma.songSection.create({
+      data: {
+        songId: lookup.section.songId,
+        label: original.label,
+        order: siblingCount,
+        barCount: original.barCount,
+        repeatCount: original.repeatCount,
+        lyricsChords: original.lyricsChords,
+      },
+    });
+    if (roleNotes.length > 0) {
+      await prisma.songRoleNote.createMany({
+        data: roleNotes.map((n) => ({
+          sectionId: copy.id,
+          role: n.role,
+          content: n.content,
+          teamMemberId: n.teamMemberId,
+          visibility: n.visibility,
+        })),
+      });
+    }
+
+    revalidatePath(`/songs/${lookup.section.songId}`);
+    return { ok: true };
+  });
+}
+
 export async function deleteSection(sectionId: string): Promise<ActionResult> {
   return runAction(async () => {
     const { team } = await requireUser();
@@ -218,6 +275,7 @@ export async function upsertRoleNote(
   role: string,
   content: string,
   songIdForRevalidate: string,
+  options?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON" },
 ): Promise<ActionResult> {
   return runAction(async () => {
     const { team } = await requireUser();
@@ -227,10 +285,14 @@ export async function upsertRoleNote(
     if (!content.trim()) {
       await prisma.songRoleNote.deleteMany({ where: { sectionId, role } });
     } else {
+      const extra = {
+        ...(options?.teamMemberId !== undefined ? { teamMemberId: options.teamMemberId } : {}),
+        ...(options?.visibility !== undefined ? { visibility: options.visibility } : {}),
+      };
       await prisma.songRoleNote.upsert({
         where: { sectionId_role: { sectionId, role } },
-        update: { content },
-        create: { sectionId, role, content },
+        update: { content, ...extra },
+        create: { sectionId, role, content, ...extra },
       });
     }
 

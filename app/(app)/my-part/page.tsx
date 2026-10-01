@@ -121,16 +121,31 @@ export default async function MyPartPage({
               </CardHeader>
               <CardContent className="space-y-2">
                 {a.setSong.song.sections.map((section) => {
-                  const note = section.roleNotes.find((n) => n.role === a.role);
+                  // A role note aimed at one specific person (visibility:
+                  // PERSON) is only shown to that person — someone else
+                  // playing the same role must not see it, even though the
+                  // role string matches. TEAM/ROLE notes are visible to
+                  // anyone assigned that role.
+                  const note = section.roleNotes.find((n) => {
+                    if (n.role !== a.role) return false;
+                    if (n.visibility === "PERSON") return n.teamMemberId === activeMember!.id;
+                    return true;
+                  });
                   if (!note) return null;
                   return (
                     <div key={section.id} className="rounded-lg bg-surface-muted px-3 py-2 text-sm">
-                      <span className="font-semibold">{section.label}: </span>
+                      <span className="font-semibold">
+                        {section.label}
+                        {section.repeatCount && section.repeatCount > 1 ? ` ×${section.repeatCount}` : ""}:{" "}
+                      </span>
                       {note.content}
                     </div>
                   );
                 })}
-                {a.setSong.song.sections.every((s) => !s.roleNotes.some((n) => n.role === a.role)) && (
+                {a.setSong.song.sections.every((s) => {
+                  const note = s.roleNotes.find((n) => n.role === a.role);
+                  return !note || (note.visibility === "PERSON" && note.teamMemberId !== activeMember!.id);
+                }) && (
                   <p className="text-sm text-muted-foreground">
                     No specific instructions yet for {a.role} — play it as written.
                   </p>

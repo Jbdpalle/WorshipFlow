@@ -66,22 +66,37 @@ export async function updateSetNotes(setId: string, notes: string): Promise<Acti
   });
 }
 
-// Theme and leaderName are otherwise only ever set once, at creation
-// (/sets/new) — this is the only way to edit either afterward, added so
-// the dashboard's "Needs Attention" actions have somewhere real to land.
+// Theme, leaderName, keywords and anchorSongId are otherwise only ever set
+// once, at creation (/sets/new) — this is the only way to edit any of them
+// afterward (the "Set Direction" card on the Set Detail page).
 export async function updateSetMeta(
   setId: string,
-  input: { theme?: string | null; leaderName?: string | null },
+  input: {
+    theme?: string | null;
+    leaderName?: string | null;
+    keywords?: string | null;
+    anchorSongId?: string | null;
+  },
 ): Promise<ActionResult> {
   return runAction(async () => {
     const { team } = await requireUser();
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
+
+    if (input.anchorSongId) {
+      const song = await prisma.setSong.findFirst({
+        where: { setId, songId: input.anchorSongId },
+      });
+      if (!song) return { ok: false, error: "That song isn't in this set." };
+    }
+
     await prisma.worshipSet.update({
       where: { id: setId },
       data: {
         ...(input.theme !== undefined ? { theme: input.theme?.trim() || null } : {}),
         ...(input.leaderName !== undefined ? { leaderName: input.leaderName?.trim() || null } : {}),
+        ...(input.keywords !== undefined ? { keywords: input.keywords?.trim() || null } : {}),
+        ...(input.anchorSongId !== undefined ? { anchorSongId: input.anchorSongId || null } : {}),
       },
     });
     revalidatePath(`/sets/${setId}`);
@@ -211,6 +226,47 @@ export async function removeAssignment(assignmentId: string): Promise<ActionResu
 
     await prisma.songAssignment.delete({ where: { id: assignmentId } });
     revalidatePath(`/sets/${assignment.setSong.set.id}`);
+    return { ok: true };
+  });
+}
+
+// The service's roster, assigned once for the whole set rather than
+// per-song (SongAssignment above still exists for the optional per-song
+// override).
+export async function assignMemberToSet(
+  setId: string,
+  teamMemberId: string,
+  role: string,
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSet(setId, team.id);
+    if (!lookup.ok) return lookup;
+
+    const member = await prisma.teamMember.findUnique({ where: { id: teamMemberId } });
+    if (!member || member.teamId !== team.id) return { ok: false, error: "Team member not found." };
+
+    await prisma.setTeamMember.upsert({
+      where: { setId_teamMemberId_role: { setId, teamMemberId, role } },
+      update: {},
+      create: { setId, teamMemberId, role },
+    });
+    revalidatePath(`/sets/${setId}`);
+    return { ok: true };
+  });
+}
+
+export async function removeSetMember(setTeamMemberId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const row = await prisma.setTeamMember.findUnique({
+      where: { id: setTeamMemberId },
+      include: { set: true },
+    });
+    if (!row || row.set.teamId !== team.id) return { ok: false, error: "Not found." };
+
+    await prisma.setTeamMember.delete({ where: { id: setTeamMemberId } });
+    revalidatePath(`/sets/${row.setId}`);
     return { ok: true };
   });
 }
