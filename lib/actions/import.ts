@@ -74,6 +74,22 @@ async function importOnePdf(teamId: string, file: File): Promise<OneFileResult> 
   try {
     const parsed = parseChordChartText(text);
 
+    // getText() can succeed with nothing usable in it — an image-only PDF
+    // with no text layer, or a genuinely blank file (pdf-parse still
+    // returns its own page-marker footer text even then, so checking the
+    // raw text for blankness doesn't catch this; checking what actually
+    // came out the other end of parsing does). Unguarded, this fell
+    // through into creating a junk "Untitled Song" with zero sections —
+    // no error, no content, no way to tell the import "worked" from the
+    // file actually being unreadable.
+    if (parsed.title === "Untitled Song" && parsed.sections.length === 0) {
+      return {
+        ok: false,
+        filename,
+        error: "No readable text found in this PDF — it may be a scanned image with no text layer.",
+      };
+    }
+
     const song = await prisma.song.create({
       data: {
         teamId,

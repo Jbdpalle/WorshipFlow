@@ -76,7 +76,12 @@ export function parseChordChartText(rawText: string): ParsedChordChart {
   }
 
   // Skip everything up to the first recognized section header (chord
-  // glossary / diagram legend block).
+  // glossary / diagram legend block) — but remember where the body
+  // actually started, so a chart that never uses one of our recognized
+  // header words (a single continuous block, or unusual section names)
+  // can still fall back to its real content below instead of this scan
+  // silently consuming it as if it were glossary filler.
+  const bodyStart = cursor;
   while (cursor < nonEmpty.length && !isSectionHeader(nonEmpty[cursor])) {
     cursor++;
   }
@@ -104,7 +109,7 @@ export function parseChordChartText(rawText: string): ParsedChordChart {
   flush();
 
   if (sections.length === 0) {
-    const bodyLines = nonEmpty.slice(cursor);
+    const bodyLines = nonEmpty.slice(bodyStart);
     if (bodyLines.length > 0) {
       sections.push({ label: "Full Song", content: bodyLines.join("\n").trim() });
     }
