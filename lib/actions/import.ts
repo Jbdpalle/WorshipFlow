@@ -114,6 +114,43 @@ async function importOnePdf(teamId: string, file: File): Promise<OneFileResult> 
   }
 }
 
+// Same parsing path as PDF import, minus the PDF step — for pasting a
+// chord chart (or plain lyrics with no chords/section labels at all; the
+// parser's "Full Song" fallback handles that case the same way it handles
+// a PDF with no recognized section headers) directly instead of uploading
+// a file.
+export async function importSongFromText(text: string): Promise<ActionResultData<{ id: string }>> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+
+    if (!text.trim()) return { ok: false, error: "Paste some lyrics or chords first." };
+
+    const parsed = parseChordChartText(text);
+    if (parsed.title === "Untitled Song" && parsed.sections.length === 0) {
+      return { ok: false, error: "Couldn't find any readable text in that." };
+    }
+
+    const song = await prisma.song.create({
+      data: {
+        teamId: team.id,
+        title: parsed.title,
+        artist: parsed.artist,
+        key: parsed.key,
+        sections: {
+          create: parsed.sections.map((s, order) => ({
+            label: s.label,
+            order,
+            lyricsChords: s.content || null,
+          })),
+        },
+      },
+    });
+
+    revalidatePath("/songs");
+    return { ok: true, data: { id: song.id } };
+  });
+}
+
 // Accepts one or more PDF files under the "file" field. Each file is
 // parsed and created independently — one bad file (scanned image, wrong
 // type, too large) doesn't stop the rest of the batch from importing.

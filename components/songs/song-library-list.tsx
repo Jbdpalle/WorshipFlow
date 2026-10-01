@@ -17,10 +17,25 @@ type LibrarySong = {
   tags: { id: string; label: string }[];
 };
 
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
 export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
   const [query, setQuery] = useState("");
+  const [activeLetter, setActiveLetter] = useState<string | null>(null);
+
+  const availableLetters = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of songs) {
+      const first = s.title.trim()[0]?.toUpperCase();
+      if (first && ALPHABET.includes(first)) set.add(first);
+    }
+    return set;
+  }, [songs]);
 
   const filtered = useMemo(() => {
+    if (activeLetter) {
+      return songs.filter((s) => s.title.trim().toUpperCase().startsWith(activeLetter));
+    }
     const q = query.toLowerCase().trim();
     if (!q) return songs;
     return songs.filter((s) =>
@@ -28,7 +43,17 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
         .filter(Boolean)
         .some((f) => f!.toLowerCase().includes(q)),
     );
-  }, [songs, query]);
+  }, [songs, query, activeLetter]);
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    if (value) setActiveLetter(null);
+  }
+
+  function handleLetterClick(letter: string) {
+    setQuery("");
+    setActiveLetter((prev) => (prev === letter ? null : letter));
+  }
 
   return (
     <div className="space-y-4">
@@ -36,16 +61,40 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => handleQueryChange(e.target.value)}
           placeholder="Search title, artist, theme, tags, scripture…"
           className="pl-9"
         />
       </div>
 
+      <div className="flex flex-wrap gap-1">
+        {ALPHABET.map((letter) => {
+          const hasMatch = availableLetters.has(letter);
+          const active = activeLetter === letter;
+          return (
+            <button
+              key={letter}
+              type="button"
+              disabled={!hasMatch}
+              onClick={() => handleLetterClick(letter)}
+              className={`flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors ${
+                active
+                  ? "bg-accent text-accent-foreground"
+                  : hasMatch
+                    ? "bg-surface-muted text-foreground hover:bg-surface-muted/70"
+                    : "text-muted-foreground/30"
+              }`}
+            >
+              {letter}
+            </button>
+          );
+        })}
+      </div>
+
       {filtered.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            No songs match &quot;{query}&quot;.
+            {activeLetter ? `No songs start with "${activeLetter}".` : `No songs match "${query}".`}
           </CardContent>
         </Card>
       ) : (

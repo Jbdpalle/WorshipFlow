@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { SongHeaderEditor } from "@/components/songs/song-header-editor";
+import { DeleteSongButton } from "@/components/songs/delete-song-button";
 import { TagEditor } from "@/components/songs/tag-editor";
 import { ThemeVerseSuggestion } from "@/components/songs/theme-verse-suggestion";
 import { ArrangementEditor } from "@/components/songs/arrangement-editor";
@@ -49,11 +50,14 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Song</CardTitle>
-          <Link href={`/songs/${song.id}/chart`}>
-            <Button variant="secondary" size="sm">
-              <BookOpenText className="h-4 w-4" /> View Chart
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href={`/songs/${song.id}/chart`}>
+              <Button variant="secondary" size="sm">
+                <BookOpenText className="h-4 w-4" /> View Chart
+              </Button>
+            </Link>
+            <DeleteSongButton songId={song.id} songTitle={song.title} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <SongHeaderEditor songId={song.id} song={song} />
