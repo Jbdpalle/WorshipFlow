@@ -6,7 +6,13 @@ import { Badge } from "@/components/ui/badge";
 
 export default async function FeedbackPage() {
   const { user } = await requireUser();
-  const isAdmin = process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL;
+  // ADMIN_EMAIL is a comma-separated list so more than one person can see
+  // the feedback inbox (e.g. the product owner and a team lead).
+  const adminEmails = (process.env.ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  const isAdmin = adminEmails.includes(user.email);
 
   const inbox = isAdmin
     ? await prisma.feedback.findMany({
