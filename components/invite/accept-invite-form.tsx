@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { acceptInviteNewUser, acceptInviteExistingUser } from "@/lib/actions/invites";
+import { useMounted } from "@/hooks/use-mounted";
 
 export function AcceptInviteForm({
   token,
@@ -21,6 +22,7 @@ export function AcceptInviteForm({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mounted = useMounted();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +73,7 @@ export function AcceptInviteForm({
         />
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="w-full" disabled={loading || !mounted}>
         {loading ? "Joining…" : userExists ? "Log in and join" : "Join the team"}
       </Button>
     </form>

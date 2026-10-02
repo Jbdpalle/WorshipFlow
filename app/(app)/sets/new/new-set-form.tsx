@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSet } from "@/lib/actions/sets";
+import { useMounted } from "@/hooks/use-mounted";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +26,7 @@ export function NewSetForm() {
   const [leaderName, setLeaderName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mounted = useMounted();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -136,7 +138,7 @@ export function NewSetForm() {
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex justify-end gap-2">
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || !mounted}>
           {loading ? "Creating…" : "Create Worship Set"}
         </Button>
       </div>
