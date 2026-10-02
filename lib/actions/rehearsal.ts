@@ -189,6 +189,8 @@ export type LivePosition = {
   setSongId: string | null;
   sectionId: string | null;
   updatedAt: string | null;
+  announcement: string | null;
+  announcementAt: string | null;
 };
 
 export async function getLivePosition(setId: string): Promise<ActionResultData<LivePosition>> {
@@ -196,7 +198,14 @@ export async function getLivePosition(setId: string): Promise<ActionResultData<L
     const { team } = await requireUser();
     const set = await prisma.worshipSet.findUnique({
       where: { id: setId },
-      select: { teamId: true, liveSetSongId: true, liveSectionId: true, liveUpdatedAt: true },
+      select: {
+        teamId: true,
+        liveSetSongId: true,
+        liveSectionId: true,
+        liveUpdatedAt: true,
+        liveAnnouncement: true,
+        liveAnnouncementAt: true,
+      },
     });
     if (!set || set.teamId !== team.id) return { ok: false, error: "Not found." };
 
@@ -206,8 +215,26 @@ export async function getLivePosition(setId: string): Promise<ActionResultData<L
         setSongId: set.liveSetSongId,
         sectionId: set.liveSectionId,
         updatedAt: set.liveUpdatedAt?.toISOString() ?? null,
+        announcement: set.liveAnnouncement,
+        announcementAt: set.liveAnnouncementAt?.toISOString() ?? null,
       },
     };
+  });
+}
+
+export async function announceToTeam(setId: string, message: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: "Only the worship leader can announce." };
+    if (!message.trim()) return { ok: false, error: "Enter an announcement first." };
+    const set = await prisma.worshipSet.findUnique({ where: { id: setId } });
+    if (!set || set.teamId !== team.id) return { ok: false, error: "Not found." };
+
+    await prisma.worshipSet.update({
+      where: { id: setId },
+      data: { liveAnnouncement: message.trim(), liveAnnouncementAt: new Date() },
+    });
+    return { ok: true };
   });
 }
 

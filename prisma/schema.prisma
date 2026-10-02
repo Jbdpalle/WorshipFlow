@@ -309,6 +309,11 @@ model WorshipSet {
   liveSetSongId String?
   liveSectionId String?
   liveUpdatedAt DateTime?
+  // A one-off message the leader broadcasts to everyone following along
+  // (Director Mode's "Announce" control) — piggybacks on the same polling
+  // channel as the live position above rather than a second sync pathway.
+  liveAnnouncement   String?
+  liveAnnouncementAt DateTime?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

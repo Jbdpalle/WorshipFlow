@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Save, Timer, FlaskConical, Radio, Wind } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Timer, FlaskConical, Radio, Wind, Megaphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
   discardArrangementChange,
   setLivePosition,
   getLivePosition,
+  announceToTeam,
 } from "@/lib/actions/rehearsal";
 import { cn } from "@/lib/utils/cn";
 
@@ -88,18 +89,27 @@ export function RehearsalMode({
   );
   const [songIndex, setSongIndex] = useState(initialSongIndex);
   const [followBanner, setFollowBanner] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState<string | null>(null);
   const setSong = songs[songIndex];
 
-  // Non-leader clients poll the live position and jump to follow the
-  // leader — this is polling-based near-real-time, not push/WebSocket (no
-  // realtime provider is configured in this environment). See
-  // WORSHIPFLOW_SONG_FLOW_AUDIT.md section 5.
+  // Non-leader clients poll the live position (and any announcement) and
+  // jump to follow the leader — this is polling-based near-real-time, not
+  // push/WebSocket (no realtime provider is configured in this
+  // environment). See WORSHIPFLOW_SONG_FLOW_AUDIT.md section 5.
   const lastSeenRef = useRef<string | null>(null);
+  const lastAnnouncementRef = useRef<string | null>(null);
   useEffect(() => {
     if (isLeaderView) return;
     const interval = setInterval(async () => {
       const result = await getLivePosition(setId);
-      if (!result.ok || !result.data.setSongId) return;
+      if (!result.ok) return;
+
+      if (result.data.announcementAt && result.data.announcementAt !== lastAnnouncementRef.current) {
+        lastAnnouncementRef.current = result.data.announcementAt;
+        if (result.data.announcement) setAnnouncement(result.data.announcement);
+      }
+
+      if (!result.data.setSongId) return;
       if (result.data.updatedAt === lastSeenRef.current) return;
       lastSeenRef.current = result.data.updatedAt;
 
@@ -127,15 +137,33 @@ export function RehearsalMode({
   return (
     <div className="space-y-5">
       {isLeaderView ? (
-        <p className="flex items-center gap-1.5 text-xs font-medium text-accent">
-          <Radio className="h-3.5 w-3.5" /> Directing live — the team follows your Prev/Next
-        </p>
-      ) : (
-        followBanner && (
-          <p className="rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
-            {followBanner}
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-accent">
+            <Radio className="h-3.5 w-3.5" /> Directing live — the team follows your Prev/Next
           </p>
-        )
+          <AnnounceControl setId={setId} />
+        </div>
+      ) : (
+        <>
+          {followBanner && (
+            <p className="rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
+              {followBanner}
+            </p>
+          )}
+          {announcement && (
+            <div className="flex items-start gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm">
+              <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+              <p className="flex-1">{announcement}</p>
+              <button
+                onClick={() => setAnnouncement(null)}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss announcement"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -560,6 +588,60 @@ function ExperimentPanel({
         </div>
       )}
       {error && <p className="text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+function AnnounceControl({ setId }: { setId: string }) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (!open) {
+    return (
+      <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
+        <Megaphone className="h-3.5 w-3.5" /> Announce
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        value={message}
+        onChange={(e) => {
+          setMessage(e.target.value);
+          setSent(false);
+        }}
+        placeholder="e.g. Hold here, we're praying first"
+        className="h-8 w-48 rounded-lg border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:w-64"
+      />
+      <Button
+        type="button"
+        size="sm"
+        className="h-8 px-2 text-xs"
+        disabled={sending || !message.trim()}
+        onClick={async () => {
+          setSending(true);
+          const result = await announceToTeam(setId, message);
+          setSending(false);
+          if (result.ok) {
+            setSent(true);
+            setMessage("");
+          }
+        }}
+      >
+        {sending ? "…" : sent ? "Sent" : "Send"}
+      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-muted-foreground hover:text-foreground"
+        aria-label="Close announce"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }
