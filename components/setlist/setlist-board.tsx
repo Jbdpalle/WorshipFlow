@@ -39,7 +39,6 @@ import { cn } from "@/lib/utils/cn";
 export type SetSongData = {
   id: string;
   order: number;
-  purpose: string | null;
   transitionNotes: string | null;
   overrideKey: string | null;
   song: {
@@ -148,7 +147,6 @@ function SetSongCard({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
   });
-  const [purpose, setPurpose] = useState(item.purpose ?? "");
   const [transitionNotes, setTransitionNotes] = useState(item.transitionNotes ?? "");
   const [overrideKey, setOverrideKey] = useState(item.overrideKey);
   const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
@@ -278,41 +276,22 @@ function SetSongCard({
 
             {detailsOpen && (
               <div className="space-y-3 border-t border-border pt-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Purpose in the set (optional)
-                    </label>
-                    <Textarea
-                      rows={2}
-                      value={purpose}
-                      onChange={(e) => setPurpose(e.target.value)}
-                      onBlur={() =>
-                        startTransition(async () => {
-                          showErrorIfAny(await updateSetSongDetails(item.id, { purpose }));
-                        })
-                      }
-                      placeholder="Move congregation from praise into reflection."
-                      className="mt-1 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Transition into next song (optional)
-                    </label>
-                    <Textarea
-                      rows={2}
-                      value={transitionNotes}
-                      onChange={(e) => setTransitionNotes(e.target.value)}
-                      onBlur={() =>
-                        startTransition(async () => {
-                          showErrorIfAny(await updateSetSongDetails(item.id, { transitionNotes }));
-                        })
-                      }
-                      placeholder="Hold the last chord. Keys continue pads into the next song."
-                      className="mt-1 text-sm"
-                    />
-                  </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Transition into next song (optional)
+                  </label>
+                  <Textarea
+                    rows={2}
+                    value={transitionNotes}
+                    onChange={(e) => setTransitionNotes(e.target.value)}
+                    onBlur={() =>
+                      startTransition(async () => {
+                        showErrorIfAny(await updateSetSongDetails(item.id, { transitionNotes }));
+                      })
+                    }
+                    placeholder="Hold the last chord. Keys continue pads into the next song."
+                    className="mt-1 text-sm"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
