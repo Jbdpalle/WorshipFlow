@@ -215,6 +215,7 @@ model SongSection {
   barCount      Int?
   repeatCount   Int?    // e.g. "Bridge x4" without four separate section rows
   dynamics      String? // Intimate | Light | Building | Strong | Full — a simple label, not a mixing console
+  isFreeform    Boolean @default(false) // spontaneous/unstructured (e.g. Free Worship) — de-emphasizes the usual structure fields rather than adding new ones
   lyricsChords  String? // raw chords/lyrics text for this section, e.g. from a PDF import
 
   song               Song                @relation(fields: [songId], references: [id], onDelete: Cascade)

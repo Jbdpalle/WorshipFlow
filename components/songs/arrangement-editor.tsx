@@ -17,13 +17,14 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2, X, FileText, Copy, Settings2 } from "lucide-react";
+import { GripVertical, Plus, Trash2, X, FileText, Copy, Settings2, Wind } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { ROLES, DYNAMICS_LEVELS } from "@/lib/songs/constants";
+import { cn } from "@/lib/utils/cn";
 import {
   addSection,
   deleteSection,
@@ -31,6 +32,7 @@ import {
   renameSection,
   reorderSections,
   updateSectionDynamics,
+  setSectionFreeform,
   updateSectionLyrics,
   updateSectionRepeatCount,
   upsertRoleNote,
@@ -49,6 +51,7 @@ type Section = {
   order: number;
   repeatCount: number | null;
   dynamics: string | null;
+  isFreeform: boolean;
   lyricsChords: string | null;
   roleNotes: RoleNote[];
 };
@@ -160,6 +163,7 @@ function SectionCard({
   const [label, setLabel] = useState(section.label);
   const [repeatCount, setRepeatCount] = useState(section.repeatCount ?? 1);
   const [dynamics, setDynamics] = useState(section.dynamics ?? "");
+  const [isFreeform, setIsFreeform] = useState(section.isFreeform);
   const [roleNotes, setRoleNotes] = useState(section.roleNotes);
   const [addingRole, setAddingRole] = useState(false);
   const [newRole, setNewRole] = useState<string>(ROLES[0]);
@@ -198,19 +202,23 @@ function SectionCard({
                   }}
                   className="h-8 max-w-[11rem] font-semibold"
                 />
-                <span className="text-xs text-muted-foreground">×</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={repeatCount}
-                  onChange={(e) => setRepeatCount(Number(e.target.value) || 1)}
-                  onBlur={async () => {
-                    const result = await updateSectionRepeatCount(section.id, repeatCount);
-                    if (!result.ok) setError(result.error);
-                  }}
-                  className="h-8 w-14 text-center"
-                  aria-label="Repeat count"
-                />
+                {!isFreeform && (
+                  <>
+                    <span className="text-xs text-muted-foreground">×</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={repeatCount}
+                      onChange={(e) => setRepeatCount(Number(e.target.value) || 1)}
+                      onBlur={async () => {
+                        const result = await updateSectionRepeatCount(section.id, repeatCount);
+                        if (!result.ok) setError(result.error);
+                      }}
+                      className="h-8 w-14 text-center"
+                      aria-label="Repeat count"
+                    />
+                  </>
+                )}
                 <Select
                   value={dynamics}
                   onChange={async (e) => {
@@ -231,6 +239,26 @@ function SectionCard({
                 </Select>
               </div>
               <div className="flex items-center gap-1">
+                <button
+                  onClick={async () => {
+                    setError(null);
+                    const next = !isFreeform;
+                    setIsFreeform(next);
+                    const result = await setSectionFreeform(section.id, next);
+                    if (!result.ok) {
+                      setError(result.error);
+                      setIsFreeform(!next);
+                    }
+                  }}
+                  className={cn(
+                    "rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted",
+                    isFreeform && "bg-accent/15 text-accent hover:bg-accent/20",
+                  )}
+                  aria-label="Toggle spontaneous / freeform section"
+                  title="Spontaneous / freeform section (e.g. Free Worship) — fewer required fields"
+                >
+                  <Wind className="h-4 w-4" />
+                </button>
                 <button
                   onClick={async () => {
                     setError(null);

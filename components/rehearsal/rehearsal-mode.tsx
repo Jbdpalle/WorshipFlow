@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Save, Timer, FlaskConical, Radio } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Timer, FlaskConical, Radio, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ type Section = {
   order: number;
   repeatCount: number | null;
   dynamics: string | null;
+  isFreeform: boolean;
   lyricsChords: string | null;
   roleNotes: RoleNote[];
   arrangementChanges: ArrangementChange[];
@@ -270,13 +271,26 @@ function SongRehearsalPanel({
         <p className="text-muted-foreground">This song has no arrangement yet.</p>
       ) : (
         <>
-          <div className="rounded-2xl border-2 border-accent bg-accent/10 p-5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">
-              Current Section
+          <div
+            className={cn(
+              "rounded-2xl p-5 text-center",
+              current?.isFreeform
+                ? "border border-dashed border-border bg-surface-muted"
+                : "border-2 border-accent bg-accent/10",
+            )}
+          >
+            <p
+              className={cn(
+                "flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wide",
+                current?.isFreeform ? "text-muted-foreground" : "text-accent",
+              )}
+            >
+              {current?.isFreeform && <Wind className="h-3.5 w-3.5" />}
+              {current?.isFreeform ? "Spontaneous — follow as led" : "Current Section"}
             </p>
             <h2 className="mt-1 text-3xl font-bold">
               {current?.label}
-              {current?.repeatCount && current.repeatCount > 1 ? ` ×${current.repeatCount}` : ""}
+              {!current?.isFreeform && current?.repeatCount && current.repeatCount > 1 ? ` ×${current.repeatCount}` : ""}
             </h2>
             {current?.dynamics && (
               <Badge variant="outline" className="mt-1.5">
