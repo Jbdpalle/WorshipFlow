@@ -214,6 +214,7 @@ model SongSection {
   order         Int
   barCount      Int?
   repeatCount   Int?    // e.g. "Bridge x4" without four separate section rows
+  dynamics      String? // Intimate | Light | Building | Strong | Full — a simple label, not a mixing console
   lyricsChords  String? // raw chords/lyrics text for this section, e.g. from a PDF import
 
   song               Song                @relation(fields: [songId], references: [id], onDelete: Cascade)

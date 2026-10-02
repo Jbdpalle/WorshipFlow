@@ -41,6 +41,7 @@ type Section = {
   label: string;
   order: number;
   repeatCount: number | null;
+  dynamics: string | null;
   lyricsChords: string | null;
   roleNotes: RoleNote[];
   arrangementChanges: ArrangementChange[];
@@ -277,6 +278,11 @@ function SongRehearsalPanel({
               {current?.label}
               {current?.repeatCount && current.repeatCount > 1 ? ` ×${current.repeatCount}` : ""}
             </h2>
+            {current?.dynamics && (
+              <Badge variant="outline" className="mt-1.5">
+                {current.dynamics}
+              </Badge>
+            )}
             {next && <p className="mt-2 text-sm text-muted-foreground">Next: {next.label}</p>}
             <div className="mt-4 flex justify-center gap-2">
               <Button

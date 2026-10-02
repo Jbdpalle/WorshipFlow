@@ -194,6 +194,21 @@ export async function updateSectionRepeatCount(
   });
 }
 
+export async function updateSectionDynamics(sectionId: string, dynamics: string | null): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSection(sectionId, team.id);
+    if (!lookup.ok) return lookup;
+    await prisma.songSection.update({
+      where: { id: sectionId },
+      data: { dynamics: dynamics || null },
+    });
+    revalidatePath(`/songs/${lookup.section.songId}`);
+    revalidatePath("/rehearsal");
+    return { ok: true };
+  });
+}
+
 export async function duplicateSection(sectionId: string): Promise<ActionResult> {
   return runAction(async () => {
     const { team } = await requireUser();
@@ -213,6 +228,7 @@ export async function duplicateSection(sectionId: string): Promise<ActionResult>
         order: siblingCount,
         barCount: original.barCount,
         repeatCount: original.repeatCount,
+        dynamics: original.dynamics,
         lyricsChords: original.lyricsChords,
       },
     });

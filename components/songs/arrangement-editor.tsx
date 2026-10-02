@@ -23,13 +23,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import { ROLES } from "@/lib/songs/constants";
+import { ROLES, DYNAMICS_LEVELS } from "@/lib/songs/constants";
 import {
   addSection,
   deleteSection,
   duplicateSection,
   renameSection,
   reorderSections,
+  updateSectionDynamics,
   updateSectionLyrics,
   updateSectionRepeatCount,
   upsertRoleNote,
@@ -47,6 +48,7 @@ type Section = {
   label: string;
   order: number;
   repeatCount: number | null;
+  dynamics: string | null;
   lyricsChords: string | null;
   roleNotes: RoleNote[];
 };
@@ -157,6 +159,7 @@ function SectionCard({
   });
   const [label, setLabel] = useState(section.label);
   const [repeatCount, setRepeatCount] = useState(section.repeatCount ?? 1);
+  const [dynamics, setDynamics] = useState(section.dynamics ?? "");
   const [roleNotes, setRoleNotes] = useState(section.roleNotes);
   const [addingRole, setAddingRole] = useState(false);
   const [newRole, setNewRole] = useState<string>(ROLES[0]);
@@ -208,6 +211,24 @@ function SectionCard({
                   className="h-8 w-14 text-center"
                   aria-label="Repeat count"
                 />
+                <Select
+                  value={dynamics}
+                  onChange={async (e) => {
+                    const next = e.target.value;
+                    setDynamics(next);
+                    const result = await updateSectionDynamics(section.id, next || null);
+                    if (!result.ok) setError(result.error);
+                  }}
+                  className="h-8 w-28 text-xs"
+                  aria-label="Dynamics"
+                >
+                  <option value="">Dynamics</option>
+                  {DYNAMICS_LEVELS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div className="flex items-center gap-1">
                 <button

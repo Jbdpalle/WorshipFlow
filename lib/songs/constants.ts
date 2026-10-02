@@ -49,6 +49,10 @@ export const DEFAULT_SONG_STRUCTURE = [
 export const ENERGY_LEVELS = ["low", "medium", "high"] as const;
 export type EnergyLevel = (typeof ENERGY_LEVELS)[number];
 
+// Per-section dynamics — a simple label, not a mixing console.
+export const DYNAMICS_LEVELS = ["Intimate", "Light", "Building", "Strong", "Full"] as const;
+export type DynamicsLevel = (typeof DYNAMICS_LEVELS)[number];
+
 export const EVENT_TYPES = [
   { value: "SERVICE", label: "Sunday Service" },
   { value: "MINISTRY_SERVICE", label: "Ministry Service" },
