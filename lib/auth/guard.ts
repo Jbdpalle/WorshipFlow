@@ -36,3 +36,9 @@ export async function getOptionalUser() {
   if (!session) return null;
   return prisma.user.findUnique({ where: { id: session.userId } });
 }
+
+// Server-side gate for leader-only actions — re-checked here independent of
+// whatever the UI shows, per SEC-04 (client-side hiding is not security).
+export function isLeaderRole(role: string): boolean {
+  return role === "OWNER" || role === "ADMIN" || role === "LEADER";
+}

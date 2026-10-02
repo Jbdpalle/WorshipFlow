@@ -9,10 +9,16 @@ export const maxDuration = 60;
 
 export default async function TeamPage() {
   const { team } = await requireUser();
-  const members = await prisma.teamMember.findMany({
-    where: { teamId: team.id },
-    orderBy: { name: "asc" },
-  });
+  const [members, pendingInvites] = await Promise.all([
+    prisma.teamMember.findMany({
+      where: { teamId: team.id },
+      orderBy: { name: "asc" },
+    }),
+    prisma.invite.findMany({
+      where: { teamId: team.id, acceptedAt: null },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -20,7 +26,7 @@ export default async function TeamPage() {
         <h1 className="text-2xl font-semibold">Team</h1>
         <p className="text-sm text-muted-foreground">{team.name} — {members.length} members</p>
       </div>
-      <TeamRoster members={members} />
+      <TeamRoster members={members} pendingInvites={pendingInvites} />
     </div>
   );
 }

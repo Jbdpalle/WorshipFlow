@@ -2,16 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
-
-// Server-side gate for leader-only actions (keep/discard a rehearsal
-// change, drive Director Mode's live position). The client only hides
-// these controls from non-leaders — per SEC-04, that is not security, so
-// every one of them re-checks this here.
-function isLeaderRole(role: string): boolean {
-  return role === "OWNER" || role === "ADMIN" || role === "LEADER";
-}
 
 export async function startRehearsal(
   songId: string,

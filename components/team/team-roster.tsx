@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, UserRound } from "lucide-react";
+import { Plus, Trash2, UserRound, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,9 @@ import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
 import { ROLES } from "@/lib/songs/constants";
 import { addTeamMember, removeTeamMember } from "@/lib/actions/team";
+import { revokeInvite } from "@/lib/actions/invites";
 import { ImportRosterDialog } from "@/components/team/import-roster-dialog";
+import { InviteDialog } from "@/components/team/invite-dialog";
 
 type Member = {
   id: string;
@@ -21,7 +23,9 @@ type Member = {
   userId: string | null;
 };
 
-export function TeamRoster({ members }: { members: Member[] }) {
+type PendingInvite = { id: string; email: string; role: string; token: string; expiresAt: Date };
+
+export function TeamRoster({ members, pendingInvites }: { members: Member[]; pendingInvites: PendingInvite[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -34,6 +38,7 @@ export function TeamRoster({ members }: { members: Member[] }) {
         {error ? <p className="text-sm text-danger">{error}</p> : <span />}
         <div className="flex gap-2">
           <ImportRosterDialog />
+          <InviteDialog />
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" /> Add Team Member
           </Button>
@@ -53,7 +58,18 @@ export function TeamRoster({ members }: { members: Member[] }) {
                 {m.instrument && m.instrument !== m.role && (
                   <p className="text-xs text-muted-foreground">{m.instrument}</p>
                 )}
-                {!m.userId && <p className="mt-1 text-xs text-muted-foreground">Roster only — no login</p>}
+                {!m.userId && (
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground">Roster only — no login</p>
+                    <InviteDialog
+                      teamMemberId={m.id}
+                      teamMemberName={m.name}
+                      trigger={
+                        <button className="text-xs font-medium text-accent hover:underline">Invite</button>
+                      }
+                    />
+                  </div>
+                )}
               </div>
               <button
                 onClick={async () => {
@@ -74,6 +90,36 @@ export function TeamRoster({ members }: { members: Member[] }) {
           </Card>
         ))}
       </div>
+
+      {pendingInvites.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-muted-foreground">Pending invites</h2>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {pendingInvites.map((invite) => (
+              <Card key={invite.id}>
+                <CardContent className="flex items-center justify-between gap-2 pt-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{invite.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {invite.role} · expires {new Date(invite.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const result = await revokeInvite(invite.id);
+                      if (result.ok) router.refresh();
+                    }}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                    aria-label="Revoke invite"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Add team member">
         <form

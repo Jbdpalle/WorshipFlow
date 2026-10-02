@@ -43,6 +43,7 @@ model User {
   arrangementChanges ArrangementChange[]
   feedback          Feedback[]
   changeLogs        ChangeLog[]
+  acceptedInvites   Invite[]
 }
 
 model Church {
@@ -54,6 +55,7 @@ model Church {
   owner       User         @relation("ChurchOwner", fields: [ownerId], references: [id])
   memberships Membership[]
   teams       Team[]
+  invites     Invite[]
 
   @@index([ownerId])
 }
@@ -76,6 +78,34 @@ model Membership {
   @@index([churchId])
 }
 
+// An outstanding (or resolved) invitation for a specific email to join an
+// existing Church/Team — the only way, besides direct DB access, to link a
+// second real login to a team that already exists. Optionally targets a
+// specific existing TeamMember roster row (so accepting the invite links
+// TeamMember.userId instead of creating a duplicate roster entry).
+model Invite {
+  id               String     @id @default(cuid())
+  churchId         String
+  teamId           String
+  teamMemberId     String?
+  email            String
+  role             ChurchRole @default(MEMBER)
+  token            String     @unique @default(cuid())
+  createdAt        DateTime   @default(now())
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  acceptedByUserId String?
+
+  church     Church      @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  team       Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
+  acceptedBy User?       @relation(fields: [acceptedByUserId], references: [id])
+
+  @@index([churchId])
+  @@index([teamId])
+  @@index([email])
+}
+
 model Team {
   id        String   @id @default(cuid())
   churchId  String
@@ -88,6 +118,7 @@ model Team {
   members TeamMember[]
   songs   Song[]
   sets    WorshipSet[]
+  invites Invite[]
 
   @@index([churchId])
   @@index([ownerId])
@@ -113,6 +144,7 @@ model TeamMember {
   personalNotes PersonalNote[]
   roleNoteDirections SongRoleNote[]
   setAssignments     SetTeamMember[]
+  invites            Invite[]
 
   @@index([teamId])
 }
