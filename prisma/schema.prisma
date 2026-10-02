@@ -312,6 +312,7 @@ model WorshipSet {
   songs        SetSong[]
   bibleRefs    BibleReference[]
   teamMembers  SetTeamMember[]
+  transitions  Transition[]
   anchorSong   Song?            @relation("AnchorSong", fields: [anchorSongId], references: [id], onDelete: SetNull)
   liveSetSong  SetSong?         @relation("LiveSetSong", fields: [liveSetSongId], references: [id], onDelete: SetNull)
   liveSection  SongSection?     @relation(fields: [liveSectionId], references: [id], onDelete: SetNull)
@@ -346,6 +347,9 @@ model SetSong {
   songId           String
   order            Int
   purpose          String? // role in the set flow
+  // Deprecated in favor of the Transition model below (kept, not dropped —
+  // existing data was migrated forward; see migration
+  // 20261002193000_add_transitions). No longer written to by the UI.
   transitionNotes  String?
   overrideKey      String?
   overrideBpm      Int?
@@ -356,9 +360,47 @@ model SetSong {
   assignments SongAssignment[]
   rehearsals  Rehearsal[]
   liveForSets WorshipSet[]     @relation("LiveSetSong")
+  transitionFrom Transition?   @relation("TransitionFrom")
+  transitionsTo  Transition[]  @relation("TransitionTo")
 
   @@index([setId])
   @@index([songId])
+}
+
+// A transition is a first-class object between two adjacent songs in a
+// set — not a note attached to one song. One row per "leaving this song"
+// slot (@@unique on fromSetSongId), toSetSongId is nullable for the last
+// song in a set (nothing to transition into yet). No chord-suggestion or
+// auto-transition intelligence here by design — type + a free-form
+// direction is the whole model, per the product brief.
+enum TransitionType {
+  DIRECT
+  INSTRUMENTAL
+  PAD
+  SPOKEN
+  PRAYER
+  FREE_WORSHIP
+  COUNT_IN
+  PAUSE
+  CUSTOM
+}
+
+model Transition {
+  id            String         @id @default(cuid())
+  setId         String
+  fromSetSongId String         @unique
+  toSetSongId   String?
+  type          TransitionType @default(CUSTOM)
+  direction     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  set         WorshipSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  fromSetSong SetSong    @relation("TransitionFrom", fields: [fromSetSongId], references: [id], onDelete: Cascade)
+  toSetSong   SetSong?   @relation("TransitionTo", fields: [toSetSongId], references: [id], onDelete: SetNull)
+
+  @@index([setId])
+  @@index([toSetSongId])
 }
 
 // ── Bible References ────────────────────────────────────────────────

@@ -21,7 +21,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X, Trash2, Music2, BookOpenText, Star, ChevronDown, CheckCircle2, AlertCircle, Circle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ROLES, CHROMATIC_KEYS } from "@/lib/songs/constants";
@@ -35,11 +34,11 @@ import {
   updateSetMeta,
 } from "@/lib/actions/sets";
 import { cn } from "@/lib/utils/cn";
+import { TransitionIndicator, type TransitionData } from "@/components/setlist/transition-indicator";
 
 export type SetSongData = {
   id: string;
   order: number;
-  transitionNotes: string | null;
   overrideKey: string | null;
   song: {
     id: string;
@@ -51,6 +50,7 @@ export type SetSongData = {
   };
   songFlowStatus: SongFlowStatus;
   assignments: { id: string; role: string; teamMember: { id: string; name: string } }[];
+  transitionFrom: TransitionData;
 };
 
 type TeamMemberOption = { id: string; name: string; role: string };
@@ -108,20 +108,31 @@ export function SetlistBoard({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-3">
+        <div className="space-y-1">
           {items.map((item, index) => (
-            <SetSongCard
-              key={item.id}
-              setId={setId}
-              item={item}
-              index={index}
-              teamMembers={teamMembers}
-              isAnchor={anchorSongId === item.song.id}
-              onRemoved={() => {
-                setItems((prev) => prev.filter((i) => i.id !== item.id));
-                router.refresh();
-              }}
-            />
+            <div key={item.id} className="space-y-1">
+              <SetSongCard
+                setId={setId}
+                item={item}
+                index={index}
+                teamMembers={teamMembers}
+                isAnchor={anchorSongId === item.song.id}
+                onRemoved={() => {
+                  setItems((prev) => prev.filter((i) => i.id !== item.id));
+                  router.refresh();
+                }}
+              />
+              {index < items.length - 1 && (
+                <div className="px-2">
+                  <TransitionIndicator
+                    setId={setId}
+                    fromSetSongId={item.id}
+                    toSetSongId={items[index + 1].id}
+                    transition={item.transitionFrom}
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </SortableContext>
@@ -147,7 +158,6 @@ function SetSongCard({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
   });
-  const [transitionNotes, setTransitionNotes] = useState(item.transitionNotes ?? "");
   const [overrideKey, setOverrideKey] = useState(item.overrideKey);
   const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
   const [assignMember, setAssignMember] = useState(teamMembers[0]?.id ?? "");
@@ -276,24 +286,6 @@ function SetSongCard({
 
             {detailsOpen && (
               <div className="space-y-3 border-t border-border pt-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Transition into next song (optional)
-                  </label>
-                  <Textarea
-                    rows={2}
-                    value={transitionNotes}
-                    onChange={(e) => setTransitionNotes(e.target.value)}
-                    onBlur={() =>
-                      startTransition(async () => {
-                        showErrorIfAny(await updateSetSongDetails(item.id, { transitionNotes }));
-                      })
-                    }
-                    placeholder="Hold the last chord. Keys continue pads into the next song."
-                    className="mt-1 text-sm"
-                  />
-                </div>
-
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">
                     Per-song assignment override (optional — the set&apos;s team covers most cases)
