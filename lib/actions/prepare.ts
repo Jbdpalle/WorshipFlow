@@ -3,6 +3,7 @@
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { runAction } from "@/lib/actions/action-result";
+import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 
 export type PrepareMeResult = { ok: true; summary: string } | { ok: false; error: string };
 
@@ -58,11 +59,7 @@ export async function generatePrepareMeSummary(memberId: string, setId: string):
             // A note aimed at one specific person (visibility: PERSON) must
             // never be fed into another member's AI summary, even if they
             // share the same role string.
-            const note = s.roleNotes.find((n) => {
-              if (n.role !== a.role) return false;
-              if (n.visibility === "PERSON") return n.teamMemberId === memberId;
-              return true;
-            });
+            const note = selectRoleNoteForViewer(s.roleNotes, a.role, memberId);
             return note ? `${s.label}: ${note.content}` : null;
           })
           .filter(Boolean)

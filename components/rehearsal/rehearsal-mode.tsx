@@ -11,6 +11,7 @@ import { Metronome } from "@/components/metronome/metronome";
 import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { LastTimeCallout } from "@/components/songs/last-time-callout";
 import { ROLES, REHEARSAL_CHECK_STATUSES } from "@/lib/songs/constants";
+import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 import {
   startRehearsal,
   saveRehearsalNotes,
@@ -244,12 +245,15 @@ function SongRehearsalPanel({
 
   const instructionsByRole = useMemo(() => {
     if (!current) return [];
-    return current.roleNotes.filter((n) => {
-      if (!n.content.trim()) return false;
-      if (isLeaderView) return true;
-      if (n.visibility === "PERSON") return n.teamMemberId === viewerTeamMemberId;
-      return true;
-    });
+    // Leader sees every role's every note (including everyone's individual
+    // PERSON-scoped ones) — a non-leader sees one row per role: their own
+    // PERSON-scoped note if they have one, else the shared one, never both
+    // stacked for the same role.
+    if (isLeaderView) return current.roleNotes.filter((n) => n.content.trim());
+    const roles = Array.from(new Set(current.roleNotes.map((n) => n.role)));
+    return roles
+      .map((role) => selectRoleNoteForViewer(current.roleNotes, role, viewerTeamMemberId))
+      .filter((n): n is RoleNote => !!n && n.content.trim().length > 0);
   }, [current, isLeaderView, viewerTeamMemberId]);
 
   return (

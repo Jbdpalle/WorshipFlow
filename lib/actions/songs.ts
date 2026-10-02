@@ -311,18 +311,41 @@ export async function upsertRoleNote(
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
 
+    // A section+role can hold more than one row now (one shared TEAM/ROLE
+    // row, plus one PERSON-scoped row per assignee) — teamMemberId is part
+    // of the identity of which row this call targets, not just extra data,
+    // so both the delete and the upsert key off it explicitly. Prisma's
+    // compound-unique upsert can't take a literal null for teamMemberId
+    // (Postgres unique constraints can't treat NULL as a lookup key), so
+    // the shared (teamMemberId: null) case goes through an explicit
+    // find-then-update-or-create instead.
+    const teamMemberId = options?.teamMemberId !== undefined ? options.teamMemberId : null;
     if (!content.trim()) {
-      await prisma.songRoleNote.deleteMany({ where: { sectionId, role } });
-    } else {
-      const extra = {
-        ...(options?.teamMemberId !== undefined ? { teamMemberId: options.teamMemberId } : {}),
-        ...(options?.visibility !== undefined ? { visibility: options.visibility } : {}),
-      };
+      await prisma.songRoleNote.deleteMany({ where: { sectionId, role, teamMemberId } });
+    } else if (teamMemberId) {
       await prisma.songRoleNote.upsert({
-        where: { sectionId_role: { sectionId, role } },
-        update: { content, ...extra },
-        create: { sectionId, role, content, ...extra },
+        where: { sectionId_role_teamMemberId: { sectionId, role, teamMemberId } },
+        update: {
+          content,
+          ...(options?.visibility !== undefined ? { visibility: options.visibility } : {}),
+        },
+        create: { sectionId, role, content, teamMemberId, visibility: options?.visibility ?? "TEAM" },
       });
+    } else {
+      const existing = await prisma.songRoleNote.findFirst({ where: { sectionId, role, teamMemberId: null } });
+      if (existing) {
+        await prisma.songRoleNote.update({
+          where: { id: existing.id },
+          data: {
+            content,
+            ...(options?.visibility !== undefined ? { visibility: options.visibility } : {}),
+          },
+        });
+      } else {
+        await prisma.songRoleNote.create({
+          data: { sectionId, role, content, teamMemberId: null, visibility: options?.visibility ?? "TEAM" },
+        });
+      }
     }
 
     revalidatePath(`/songs/${songIdForRevalidate}`);

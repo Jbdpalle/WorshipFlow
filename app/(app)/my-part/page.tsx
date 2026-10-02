@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
 import { PrepareMeCard } from "@/components/team/prepare-me-card";
+import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 
 // "Prepare Me" calls the Anthropic API, which can take longer than
 // Vercel's default serverless timeout — see the same note on
@@ -121,16 +122,11 @@ export default async function MyPartPage({
               </CardHeader>
               <CardContent className="space-y-2">
                 {a.setSong.song.sections.map((section) => {
-                  // A role note aimed at one specific person (visibility:
-                  // PERSON) is only shown to that person — someone else
-                  // playing the same role must not see it, even though the
-                  // role string matches. TEAM/ROLE notes are visible to
-                  // anyone assigned that role.
-                  const note = section.roleNotes.find((n) => {
-                    if (n.role !== a.role) return false;
-                    if (n.visibility === "PERSON") return n.teamMemberId === activeMember!.id;
-                    return true;
-                  });
+                  // A note aimed at one specific person (visibility: PERSON)
+                  // takes priority over a shared TEAM/ROLE note for that
+                  // person, and is never shown to anyone else playing the
+                  // same role — see selectRoleNoteForViewer.
+                  const note = selectRoleNoteForViewer(section.roleNotes, a.role, activeMember!.id);
                   if (!note) return null;
                   return (
                     <div key={section.id} className="rounded-lg bg-surface-muted px-3 py-2 text-sm">
@@ -142,10 +138,9 @@ export default async function MyPartPage({
                     </div>
                   );
                 })}
-                {a.setSong.song.sections.every((s) => {
-                  const note = s.roleNotes.find((n) => n.role === a.role);
-                  return !note || (note.visibility === "PERSON" && note.teamMemberId !== activeMember!.id);
-                }) && (
+                {a.setSong.song.sections.every(
+                  (s) => !selectRoleNoteForViewer(s.roleNotes, a.role, activeMember!.id),
+                ) && (
                   <p className="text-sm text-muted-foreground">
                     No specific instructions yet for {a.role} — play it as written.
                   </p>

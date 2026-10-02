@@ -106,17 +106,27 @@ export async function keepArrangementChange(changeId: string): Promise<ActionRes
     if (!change || change.song.teamId !== team.id) return { ok: false, error: "Not found." };
     if (change.status !== "PROPOSED") return { ok: false, error: "Already resolved." };
 
-    await prisma.$transaction([
-      prisma.songRoleNote.upsert({
-        where: { sectionId_role: { sectionId: change.sectionId, role: change.role } },
-        update: { content: change.proposedContent },
-        create: { sectionId: change.sectionId, role: change.role, content: change.proposedContent },
-      }),
-      prisma.arrangementChange.update({
+    // An experiment always targets the shared (teamMemberId: null) role
+    // note, not a specific person's — same reason upsertRoleNote can't use
+    // a plain compound-unique upsert for that case: Postgres can't treat
+    // NULL as a unique lookup key, so this finds-then-updates-or-creates
+    // instead, inside one transaction with the rest of the Keep.
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.songRoleNote.findFirst({
+        where: { sectionId: change.sectionId, role: change.role, teamMemberId: null },
+      });
+      if (existing) {
+        await tx.songRoleNote.update({ where: { id: existing.id }, data: { content: change.proposedContent } });
+      } else {
+        await tx.songRoleNote.create({
+          data: { sectionId: change.sectionId, role: change.role, content: change.proposedContent },
+        });
+      }
+      await tx.arrangementChange.update({
         where: { id: changeId },
         data: { status: "KEPT", resolvedAt: new Date() },
-      }),
-      prisma.changeLog.create({
+      });
+      await tx.changeLog.create({
         data: {
           songId: change.songId,
           field: `${change.role} — arrangement`,
@@ -124,8 +134,8 @@ export async function keepArrangementChange(changeId: string): Promise<ActionRes
           toValue: change.proposedContent,
           reason: "Kept from a rehearsal experiment",
         },
-      }),
-    ]);
+      });
+    });
 
     revalidatePath(`/songs/${change.songId}`);
     revalidatePath(`/rehearsal`);

@@ -175,8 +175,12 @@ function SectionCard({
     opacity: isDragging ? 0.6 : 1,
   };
 
-  const usedRoles = new Set(roleNotes.map((n) => n.role));
-  const availableRoles = ROLES.filter((r) => !usedRoles.has(r));
+  // A role can now hold more than one note (one shared, plus one per
+  // specific person — see the SongRoleNote schema comment), so every role
+  // stays pickable here; adding one that already has a shared note just
+  // means assigning the new one to a specific person via its own Settings2
+  // panel, rather than colliding with the shared one.
+  const availableRoles = ROLES;
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -300,7 +304,7 @@ function SectionCard({
             <div className="space-y-2">
               {roleNotes.map((note) => (
                 <RoleNoteRow
-                  key={note.role}
+                  key={note.id}
                   songId={songId}
                   sectionId={section.id}
                   role={note.role}
@@ -309,7 +313,7 @@ function SectionCard({
                   initialVisibility={note.visibility}
                   teamMembers={teamMembers}
                   onRemoved={() =>
-                    setRoleNotes((prev) => prev.filter((n) => n.role !== note.role))
+                    setRoleNotes((prev) => prev.filter((n) => n.id !== note.id))
                   }
                 />
               ))}
@@ -335,7 +339,7 @@ function SectionCard({
                   onClick={() => {
                     setRoleNotes((prev) => [
                       ...prev,
-                      { id: `new-${newRole}`, role: newRole, content: "", teamMemberId: null, visibility: "TEAM" },
+                      { id: `new-${newRole}-${Date.now()}`, role: newRole, content: "", teamMemberId: null, visibility: "TEAM" },
                     ]);
                     setAddingRole(false);
                   }}
@@ -457,7 +461,7 @@ function RoleNoteRow({
         </button>
         <button
           onClick={async () => {
-            await upsertRoleNote(sectionId, role, "", songId);
+            await upsertRoleNote(sectionId, role, "", songId, { teamMemberId: teamMemberId || null });
             onRemoved();
           }}
           className="mt-1.5 shrink-0 text-muted-foreground hover:text-danger"

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { generatePrepareMeSummary } from "@/lib/actions/prepare";
+import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 
 type ChangeEntry = { id: string; field: string; fromValue: string | null; toValue: string | null };
 type RoleNote = {
@@ -74,14 +75,10 @@ export function PrepareMeCard({
           const song = a.setSong.song;
           const notes = song.sections
             .map((s) => {
-              // Same PERSON-visibility rule as My Part's main list: a note
-              // aimed at one specific person must not be shown to someone
-              // else who merely shares the same role.
-              const note = s.roleNotes.find((n) => {
-                if (n.role !== a.role) return false;
-                if (n.visibility === "PERSON") return n.teamMemberId === memberId;
-                return true;
-              });
+              // Same priority rule as My Part's main list: a note aimed at
+              // this specific person wins over a shared one, and is never
+              // shown to someone else who merely shares the same role.
+              const note = selectRoleNoteForViewer(s.roleNotes, a.role, memberId);
               return note ? { label: s.label, content: note.content } : null;
             })
             .filter((n): n is { label: string; content: string } => n !== null);

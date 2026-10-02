@@ -252,7 +252,12 @@ model SongRoleNote {
 
   @@index([sectionId])
   @@index([teamMemberId])
-  @@unique([sectionId, role])
+  // Includes teamMemberId (not just sectionId+role) so two different people
+  // sharing a role can each get their own individualized PERSON-scoped note
+  // in the same section — Postgres treats NULL as distinct, so the single
+  // shared TEAM/ROLE-wide row (teamMemberId IS NULL) keeps working exactly
+  // as before.
+  @@unique([sectionId, role, teamMemberId])
 }
 
 model SongAssignment {
