@@ -33,11 +33,15 @@ export function TransitionIndicator({
   fromSetSongId,
   toSetSongId,
   transition,
+  fromKey,
+  toKey,
 }: {
   setId: string;
   fromSetSongId: string;
   toSetSongId: string;
   transition: TransitionData;
+  fromKey?: string | null;
+  toKey?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -47,6 +51,10 @@ export function TransitionIndicator({
   const [error, setError] = useState<string | null>(null);
 
   const typeLabel = TRANSITION_TYPES.find((t) => t.value === (transition?.type ?? "DIRECT"))?.label;
+  // Only worth showing when the keys actually differ — a same-key
+  // transition doesn't need the reminder, and "same instrument, no key
+  // change" is exactly the case a key change could otherwise get lost in.
+  const keyChange = fromKey && toKey && fromKey !== toKey ? `${fromKey} → ${toKey}` : null;
 
   if (!open) {
     return (
@@ -60,13 +68,23 @@ export function TransitionIndicator({
         <ArrowDown className="h-3.5 w-3.5 shrink-0" />
         <span className={cn("font-medium", transition && "text-accent")}>{typeLabel}</span>
         {transition?.direction && <span className="truncate">— {transition.direction}</span>}
-        <Pencil className="ml-auto h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100" />
+        {keyChange && (
+          <span className="ml-auto shrink-0 rounded-full bg-accent/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-accent">
+            {keyChange}
+          </span>
+        )}
+        <Pencil className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100" />
       </button>
     );
   }
 
   return (
     <div className="space-y-2 rounded-lg border border-dashed border-border bg-surface-muted p-2.5">
+      {keyChange && (
+        <p className="flex items-center gap-1.5 text-xs font-medium text-accent">
+          Key change: <span className="font-mono">{keyChange}</span>
+        </p>
+      )}
       <div className="flex items-center gap-2">
         <ArrowDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <Select

@@ -34,9 +34,9 @@ export function TeamRoster({ members, pendingInvites }: { members: Member[]; pen
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         {error ? <p className="text-sm text-danger">{error}</p> : <span />}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <ImportRosterDialog />
           <InviteDialog />
           <Button onClick={() => setOpen(true)}>

@@ -2,10 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { loadSampleData } from "@/lib/actions/sample-data";
 
 type LibrarySong = {
   id: string;
@@ -20,8 +23,11 @@ type LibrarySong = {
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  const [loadingSample, setLoadingSample] = useState(false);
+  const [sampleError, setSampleError] = useState<string | null>(null);
 
   const availableLetters = useMemo(() => {
     const set = new Set<string>();
@@ -53,6 +59,38 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
   function handleLetterClick(letter: string) {
     setQuery("");
     setActiveLetter((prev) => (prev === letter ? null : letter));
+  }
+
+  if (songs.length === 0) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 py-10 text-center">
+          <p className="text-muted-foreground">
+            No songs yet — add your first one above, or explore with sample songs and a sample
+            roster first.
+          </p>
+          {sampleError && <p className="text-sm text-danger">{sampleError}</p>}
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={loadingSample}
+            onClick={async () => {
+              setLoadingSample(true);
+              setSampleError(null);
+              const result = await loadSampleData();
+              setLoadingSample(false);
+              if (!result.ok) {
+                setSampleError(result.error);
+                return;
+              }
+              router.refresh();
+            }}
+          >
+            <Sparkles className="h-4 w-4" /> {loadingSample ? "Loading…" : "Load sample songs to explore"}
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

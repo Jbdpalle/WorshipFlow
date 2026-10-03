@@ -55,14 +55,19 @@ export async function registerUser(input: z.infer<typeof registerSchema>) {
   }
 
   const passwordHash = await hashPassword(input.password);
-  const { user, team } = await createUserWithChurch({
+  // A real signup starts with an empty team — it is going to hold this
+  // leader's actual songs and people, not a cluttered mix of their first
+  // real entries alongside "Sarah — Lead Vocal" and "Your Amazing Love by
+  // WorshipFlow Demo Collective". Sample content remains available on
+  // request (see below) and is still what the throwaway "Try the demo"
+  // button seeds, since that account only exists to explore and is never
+  // meant to hold a real team's data.
+  const { user } = await createUserWithChurch({
     name: input.name,
     email: input.email,
     passwordHash,
     teamName: input.teamName,
   });
-
-  await seedDemoDataForTeam(team.id);
 
   return user;
 }

@@ -129,6 +129,8 @@ export function SetlistBoard({
                     fromSetSongId={item.id}
                     toSetSongId={items[index + 1].id}
                     transition={item.transitionFrom}
+                    fromKey={item.overrideKey ?? item.song.key}
+                    toKey={items[index + 1].overrideKey ?? items[index + 1].song.key}
                   />
                 </div>
               )}
