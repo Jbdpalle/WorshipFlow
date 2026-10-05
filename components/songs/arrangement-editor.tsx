@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
-import { ROLES, DYNAMICS_LEVELS } from "@/lib/songs/constants";
+import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
 import { cn } from "@/lib/utils/cn";
 import {
   addSection,
@@ -181,6 +181,7 @@ function SectionCard({
   // means assigning the new one to a specific person via its own Settings2
   // panel, rather than colliding with the shared one.
   const availableRoles = ROLES;
+  const availableDirectionGroups = DIRECTION_GROUPS;
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -324,13 +325,22 @@ function SectionCard({
                 <Select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value)}
-                  className="h-8 w-40 text-sm"
+                  className="h-8 w-44 text-sm"
                 >
-                  {availableRoles.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
+                  <optgroup label="Individual role">
+                    {availableRoles.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Group direction">
+                    {availableDirectionGroups.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </optgroup>
                 </Select>
                 <Button
                   type="button"
@@ -404,6 +414,16 @@ function LyricsChordsBlock({
   );
 }
 
+function directionPlaceholder(role: string) {
+  if (role === "Rest of the Band") {
+    return "What should the rest of the band do here? (e.g. rest, hold, come in quietly)";
+  }
+  if (role === "Rest of the Vocals") {
+    return "What should the rest of the vocals do here? (e.g. rest, hum, join on the chorus)";
+  }
+  return `What should ${role} do in this section?`;
+}
+
 function RoleNoteRow({
   songId,
   sectionId,
@@ -449,7 +469,7 @@ function RoleNoteRow({
           onBlur={() => save()}
           rows={1}
           className="min-h-0 py-1.5 text-sm"
-          placeholder={`What should ${role} do in this section?`}
+          placeholder={directionPlaceholder(role)}
         />
         <button
           type="button"

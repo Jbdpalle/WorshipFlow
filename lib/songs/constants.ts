@@ -35,6 +35,23 @@ export const ROLES = [
 
 export type Role = (typeof ROLES)[number];
 
+// Catch-all directions for the arrangement editor's "Add direction" — not
+// real instrument/vocal roles, so they never appear in Team/Set role
+// pickers, only in the per-section role-note editor and its readers. Lets a
+// leader say e.g. "Rest of the Band: tacet" once instead of writing a rest
+// note for every instrument that isn't individually called out.
+export const DIRECTION_GROUPS = ["Rest of the Band", "Rest of the Vocals"] as const;
+export type DirectionGroup = (typeof DIRECTION_GROUPS)[number];
+
+const VOCAL_ROLES: readonly string[] = ["Worship Leader", "Lead Vocal", "Backing Vocal"];
+
+// Which catch-all applies to a musician with no note of their own for a
+// section — singers fall back to "Rest of the Vocals", everyone else to
+// "Rest of the Band".
+export function catchAllDirectionFor(role: string): DirectionGroup {
+  return VOCAL_ROLES.includes(role) ? "Rest of the Vocals" : "Rest of the Band";
+}
+
 export const DEFAULT_SONG_STRUCTURE = [
   "Intro",
   "Verse 1",

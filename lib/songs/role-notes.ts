@@ -1,3 +1,5 @@
+import { catchAllDirectionFor } from "@/lib/songs/constants";
+
 // A section+role can now hold more than one SongRoleNote row — one shared
 // TEAM/ROLE-wide row (teamMemberId null) plus any number of PERSON-scoped
 // rows, one per assignee (see the @@unique comment on SongRoleNote). When a
@@ -9,7 +11,7 @@ type RoleNoteLike = {
   visibility: "TEAM" | "ROLE" | "PERSON";
 };
 
-export function selectRoleNoteForViewer<T extends RoleNoteLike>(
+function pickForRole<T extends RoleNoteLike>(
   roleNotes: T[],
   role: string,
   viewerTeamMemberId: string | null,
@@ -19,4 +21,17 @@ export function selectRoleNoteForViewer<T extends RoleNoteLike>(
     ? candidates.find((n) => n.visibility === "PERSON" && n.teamMemberId === viewerTeamMemberId)
     : undefined;
   return personal ?? candidates.find((n) => n.visibility !== "PERSON");
+}
+
+export function selectRoleNoteForViewer<T extends RoleNoteLike>(
+  roleNotes: T[],
+  role: string,
+  viewerTeamMemberId: string | null,
+): T | undefined {
+  const own = pickForRole(roleNotes, role, viewerTeamMemberId);
+  if (own) return own;
+  // No direction written for this specific role — fall back to the
+  // "Rest of the Band" / "Rest of the Vocals" catch-all, if the leader left
+  // one, so someone without an individual note still knows what to do.
+  return pickForRole(roleNotes, catchAllDirectionFor(role), viewerTeamMemberId);
 }
