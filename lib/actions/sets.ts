@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { EventType, WorshipSet } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
 
@@ -282,6 +282,58 @@ export async function removeSetMember(setTeamMemberId: string): Promise<ActionRe
 
     await prisma.setTeamMember.delete({ where: { id: setTeamMemberId } });
     revalidatePath(`/sets/${row.setId}`);
+    return { ok: true };
+  });
+}
+
+// Archive/unarchive is reversible and open to any team member — it's just
+// "hide this from the active list," not a destructive action. Delete is
+// permanent (cascades to every song/team/transition/change row the set
+// owns) and reserved for the leader, same precedent as other
+// whole-service-altering actions in this file.
+
+export async function archiveSet(setId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSet(setId, team.id);
+    if (!lookup.ok) return lookup;
+
+    await prisma.worshipSet.update({ where: { id: setId }, data: { archivedAt: new Date() } });
+    revalidatePath("/sets");
+    revalidatePath(`/sets/${setId}`);
+    revalidatePath("/dashboard");
+    trackEvent(team.id, "set_archived", { entityId: setId });
+    return { ok: true };
+  });
+}
+
+export async function unarchiveSet(setId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSet(setId, team.id);
+    if (!lookup.ok) return lookup;
+
+    await prisma.worshipSet.update({ where: { id: setId }, data: { archivedAt: null } });
+    revalidatePath("/sets");
+    revalidatePath(`/sets/${setId}`);
+    revalidatePath("/dashboard");
+    return { ok: true };
+  });
+}
+
+export async function deleteSet(setId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can delete a set." };
+    }
+    const lookup = await findOwnedSet(setId, team.id);
+    if (!lookup.ok) return lookup;
+
+    await prisma.worshipSet.delete({ where: { id: setId } });
+    revalidatePath("/sets");
+    revalidatePath("/dashboard");
+    trackEvent(team.id, "set_deleted", { entityId: setId });
     return { ok: true };
   });
 }

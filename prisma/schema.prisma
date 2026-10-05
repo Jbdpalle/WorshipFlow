@@ -304,6 +304,7 @@ model WorshipSet {
   leaderName  String?
   notes       String? // whole-set notes — "Leader's Note" in the Set Direction UI
   anchorSongId String? // optional: the one song this service is built around
+  archivedAt  DateTime? // set when archived — hidden from the default /sets list, not deleted
 
   // Live rehearsal position, for polling-based team sync (Director Mode
   // writes these; Rehearsal Mode / My Part poll them). Null when no
@@ -334,6 +335,7 @@ model WorshipSet {
   @@index([anchorSongId])
   @@index([liveSetSongId])
   @@index([liveSectionId])
+  @@index([archivedAt])
 }
 
 // The service's roster, assigned once for the whole set instead of

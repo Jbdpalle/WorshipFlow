@@ -61,6 +61,7 @@ export default async function MyPartPage({
             teamId: team.id,
             songs: { some: { assignments: { some: { teamMemberId: activeMember.id } } } },
             OR: [{ serviceDate: { gte: today } }, { serviceDate: null }],
+            archivedAt: null,
           },
           orderBy: [{ serviceDate: "asc" }, { createdAt: "desc" }],
           select: { id: true },

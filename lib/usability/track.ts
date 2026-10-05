@@ -17,7 +17,9 @@ export type UsabilityEventName =
   | "transition_created"
   | "director_mode_started"
   | "director_announce_used"
-  | "feedback_submitted";
+  | "feedback_submitted"
+  | "set_archived"
+  | "set_deleted";
 
 // Fire-and-forget by design: usability tracking must never be able to
 // break or slow down the real action it's attached to. Errors are

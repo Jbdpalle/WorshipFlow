@@ -54,7 +54,7 @@ export async function getDashboardData(
   today.setHours(0, 0, 0, 0);
 
   const sundaySets = await prisma.worshipSet.findMany({
-    where: { teamId, eventType: "SERVICE", serviceDate: { gte: today } },
+    where: { teamId, eventType: "SERVICE", serviceDate: { gte: today }, archivedAt: null },
     orderBy: { serviceDate: "asc" },
     take: 2,
     include: {
@@ -99,6 +99,7 @@ export async function getDashboardData(
       teamId,
       id: { notIn: excludeIds },
       serviceDate: { gte: today, lte: weekFromNow },
+      archivedAt: null,
     },
     orderBy: { serviceDate: "asc" },
     take: 4,

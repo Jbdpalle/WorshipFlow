@@ -11,21 +11,25 @@ import { cn } from "@/lib/utils/cn";
 export default async function SetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; archived?: string }>;
 }) {
-  const { type } = await searchParams;
+  const { type, archived } = await searchParams;
   const { team } = await requireUser();
+  const showArchived = archived === "1";
   const allSets = await prisma.worshipSet.findMany({
-    where: { teamId: team.id },
+    where: { teamId: team.id, archivedAt: showArchived ? { not: null } : null },
     orderBy: [{ serviceDate: "desc" }, { createdAt: "desc" }],
     include: { songs: true },
   });
   const sets = type ? allSets.filter((s) => s.eventType === type) : allSets;
+  const archivedCount = await prisma.worshipSet.count({ where: { teamId: team.id, archivedAt: { not: null } } });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Worship Sets &amp; Events</h1>
+        <h1 className="text-2xl font-semibold">
+          {showArchived ? "Archived Sets" : "Worship Sets & Events"}
+        </h1>
         <Link href="/sets/new">
           <Button>
             <Plus className="h-4 w-4" /> New Event
@@ -33,42 +37,55 @@ export default async function SetsPage({
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        <Link
-          href="/sets"
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-medium",
-            !type ? "bg-accent text-accent-foreground" : "bg-surface-muted text-muted-foreground",
-          )}
-        >
-          All ({allSets.length})
-        </Link>
-        {EVENT_TYPES.map((t) => {
-          const count = allSets.filter((s) => s.eventType === t.value).length;
-          if (count === 0) return null;
-          return (
-            <Link
-              key={t.value}
-              href={`/sets?type=${t.value}`}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium",
-                type === t.value
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-surface-muted text-muted-foreground",
-              )}
-            >
-              {t.label} ({count})
-            </Link>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          <Link
+            href="/sets"
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium",
+              !type && !showArchived ? "bg-accent text-accent-foreground" : "bg-surface-muted text-muted-foreground",
+            )}
+          >
+            All ({allSets.length})
+          </Link>
+          {!showArchived &&
+            EVENT_TYPES.map((t) => {
+              const count = allSets.filter((s) => s.eventType === t.value).length;
+              if (count === 0) return null;
+              return (
+                <Link
+                  key={t.value}
+                  href={`/sets?type=${t.value}`}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium",
+                    type === t.value
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-surface-muted text-muted-foreground",
+                  )}
+                >
+                  {t.label} ({count})
+                </Link>
+              );
+            })}
+        </div>
+        {archivedCount > 0 && (
+          <Link
+            href={showArchived ? "/sets" : "/sets?archived=1"}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {showArchived ? "← Back to active sets" : `Archived (${archivedCount})`}
+          </Link>
+        )}
       </div>
 
       {sets.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            {allSets.length === 0
-              ? "No worship sets yet. Create your first one to get started."
-              : "No events of this type yet."}
+            {showArchived
+              ? "No archived sets."
+              : allSets.length === 0
+                ? "No worship sets yet. Create your first one to get started."
+                : "No events of this type yet."}
           </CardContent>
         </Card>
       ) : (

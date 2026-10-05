@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,13 @@ import { SetNotes } from "@/components/setlist/set-notes";
 import { SetMetaEditor } from "@/components/setlist/set-meta-editor";
 import { SetTeam } from "@/components/setlist/set-team";
 import { SetReadiness } from "@/components/setlist/set-readiness";
+import { SetActions } from "@/components/setlist/set-actions";
 import { getSetReadiness, getSongFlowStatus } from "@/lib/songs/readiness";
 import { CalendarDays, PlayCircle } from "lucide-react";
 
 export default async function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { team } = await requireUser();
+  const { team, membershipRole } = await requireUser();
 
   const set = await prisma.worshipSet.findUnique({
     where: { id },
@@ -70,6 +71,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
               </span>
             )}
             {set.theme && <Badge variant="accent">{set.theme}</Badge>}
+            {set.archivedAt && <Badge variant="outline">Archived</Badge>}
             {set.bibleRefs.map((ref) => (
               <Badge key={ref.id} variant="outline">
                 {ref.reference}
@@ -77,11 +79,19 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
             ))}
           </div>
         </div>
-        <Link href={`/rehearsal/${set.id}`}>
-          <Button>
-            <PlayCircle className="h-4 w-4" /> Start Rehearsal
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-start gap-2">
+          <Link href={`/rehearsal/${set.id}`}>
+            <Button>
+              <PlayCircle className="h-4 w-4" /> Start Rehearsal
+            </Button>
+          </Link>
+          <SetActions
+            setId={set.id}
+            setTitle={set.title}
+            isArchived={!!set.archivedAt}
+            isLeader={isLeaderRole(membershipRole)}
+          />
+        </div>
       </div>
 
       <SetReadiness items={readiness} />
