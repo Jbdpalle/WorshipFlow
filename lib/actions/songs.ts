@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { DEFAULT_SONG_STRUCTURE } from "@/lib/songs/constants";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
+import { trackEvent } from "@/lib/usability/track";
 
 type SongLookup = { ok: true; song: Song } | { ok: false; error: string };
 type SectionLookup = { ok: true; section: SongSection & { songId: string } } | { ok: false; error: string };
@@ -148,6 +149,7 @@ export async function addSection(songId: string, label: string): Promise<ActionR
     const count = await prisma.songSection.count({ where: { songId } });
     await prisma.songSection.create({ data: { songId, label, order: count } });
     revalidatePath(`/songs/${songId}`);
+    if (count === 0) trackEvent(team.id, "song_arrangement_started", { entityId: songId });
     return { ok: true };
   });
 }

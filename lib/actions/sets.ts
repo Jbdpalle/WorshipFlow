@@ -5,6 +5,7 @@ import type { EventType, WorshipSet } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
+import { trackEvent } from "@/lib/usability/track";
 
 export async function createSet(input: {
   title: string;
@@ -43,6 +44,7 @@ export async function createSet(input: {
 
     revalidatePath("/sets");
     revalidatePath("/dashboard");
+    trackEvent(team.id, "set_created", { entityId: set.id });
     return { ok: true, data: { id: set.id } };
   });
 }
@@ -111,12 +113,25 @@ export async function addSongToSet(setId: string, songId: string): Promise<Actio
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
 
-    const song = await prisma.song.findUnique({ where: { id: songId } });
+    const song = await prisma.song.findUnique({
+      where: { id: songId },
+      include: { _count: { select: { sections: true } } },
+    });
     if (!song || song.teamId !== team.id) return { ok: false, error: "Song not found." };
 
     const count = await prisma.setSong.count({ where: { setId } });
     await prisma.setSong.create({ data: { setId, songId, order: count } });
     revalidatePath(`/sets/${setId}`);
+    trackEvent(team.id, "song_added_to_set", { entityId: songId, meta: { setId } });
+    // Distinguishes "picked an existing library song that already had an
+    // arrangement" from "added a brand-new, empty song" — the two cases
+    // Phase 2/3 of this round's audit asked to be able to tell apart,
+    // without needing the client to report its own intent.
+    if (song._count.sections > 0) {
+      trackEvent(team.id, "song_library_content_reused", { entityId: songId, meta: { setId } });
+    } else {
+      trackEvent(team.id, "song_content_manually_added", { entityId: songId, meta: { setId } });
+    }
     return { ok: true };
   });
 }

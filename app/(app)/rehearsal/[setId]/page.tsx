@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { RehearsalMode } from "@/components/rehearsal/rehearsal-mode";
+import { trackEvent } from "@/lib/usability/track";
 
 export default async function RehearsalPage({ params }: { params: Promise<{ setId: string }> }) {
   const { setId } = await params;
@@ -45,6 +46,7 @@ export default async function RehearsalPage({ params }: { params: Promise<{ setI
   // ready for when per-musician logins exist, but isLeaderView is true for
   // every real session right now.
   const isLeaderView = membershipRole !== "MEMBER";
+  if (isLeaderView) trackEvent(team.id, "director_mode_started", { userId: user.id, entityId: set.id });
 
   return (
     <div className="mx-auto max-w-xl">

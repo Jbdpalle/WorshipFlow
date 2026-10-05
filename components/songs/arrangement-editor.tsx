@@ -255,7 +255,7 @@ function SectionCard({
                     }
                   }}
                   className={cn(
-                    "rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted",
+                    "rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted",
                     isFreeform && "bg-accent/15 text-accent hover:bg-accent/20",
                   )}
                   aria-label="Toggle spontaneous / freeform section"
@@ -273,7 +273,7 @@ function SectionCard({
                     }
                     onDuplicated();
                   }}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
+                  className="rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted"
                   aria-label="Duplicate section"
                 >
                   <Copy className="h-4 w-4" />
@@ -288,7 +288,7 @@ function SectionCard({
                     }
                     onDeleted();
                   }}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                  className="rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                   aria-label="Delete section"
                 >
                   <Trash2 className="h-4 w-4" />

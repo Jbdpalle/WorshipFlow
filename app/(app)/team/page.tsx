@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { TeamRoster } from "@/components/team/team-roster";
 
@@ -8,7 +8,8 @@ import { TeamRoster } from "@/components/team/team-roster";
 export const maxDuration = 60;
 
 export default async function TeamPage() {
-  const { team } = await requireUser();
+  const { team, membershipRole } = await requireUser();
+  const isLeader = isLeaderRole(membershipRole);
   const [members, pendingInvites] = await Promise.all([
     prisma.teamMember.findMany({
       where: { teamId: team.id },
@@ -26,7 +27,7 @@ export default async function TeamPage() {
         <h1 className="text-2xl font-semibold">Team</h1>
         <p className="text-sm text-muted-foreground">{team.name} — {members.length} members</p>
       </div>
-      <TeamRoster members={members} pendingInvites={pendingInvites} />
+      <TeamRoster members={members} pendingInvites={pendingInvites} isLeader={isLeader} />
     </div>
   );
 }

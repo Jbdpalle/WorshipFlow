@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { OfflineBanner } from "@/components/layout/offline-banner";
 
 export function Shell({
   userName,
@@ -14,6 +15,7 @@ export function Shell({
 }) {
   return (
     <div className="min-h-screen bg-background">
+      <OfflineBanner />
       <Sidebar userName={userName} teamName={teamName} />
       <MobileHeader userName={userName} teamName={teamName} />
       <div className="pb-20 md:pb-0 md:pl-64">

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
+import { trackEvent } from "@/lib/usability/track";
 
 export async function startRehearsal(
   songId: string,
@@ -19,6 +20,7 @@ export async function startRehearsal(
       data: { songId, setSongId, bpmUsed: bpmUsed ?? song.bpm },
     });
     revalidatePath(`/songs/${songId}`);
+    trackEvent(team.id, "rehearsal_started", { entityId: rehearsal.id, meta: { songId } });
     return { ok: true, data: { id: rehearsal.id } };
   });
 }
@@ -234,6 +236,7 @@ export async function announceToTeam(setId: string, message: string): Promise<Ac
       where: { id: setId },
       data: { liveAnnouncement: message.trim(), liveAnnouncementAt: new Date() },
     });
+    trackEvent(team.id, "director_announce_used", { entityId: setId });
     return { ok: true };
   });
 }

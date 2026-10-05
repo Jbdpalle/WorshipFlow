@@ -25,7 +25,15 @@ type Member = {
 
 type PendingInvite = { id: string; email: string; role: string; token: string; expiresAt: Date };
 
-export function TeamRoster({ members, pendingInvites }: { members: Member[]; pendingInvites: PendingInvite[] }) {
+export function TeamRoster({
+  members,
+  pendingInvites,
+  isLeader,
+}: {
+  members: Member[];
+  pendingInvites: PendingInvite[];
+  isLeader: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,7 +46,7 @@ export function TeamRoster({ members, pendingInvites }: { members: Member[]; pen
         {error ? <p className="text-sm text-danger">{error}</p> : <span />}
         <div className="flex flex-wrap gap-2">
           <ImportRosterDialog />
-          <InviteDialog />
+          {isLeader && <InviteDialog />}
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" /> Add Team Member
           </Button>
@@ -61,13 +69,15 @@ export function TeamRoster({ members, pendingInvites }: { members: Member[]; pen
                 {!m.userId && (
                   <div className="mt-1 flex items-center gap-2">
                     <p className="text-xs text-muted-foreground">Roster only — no login</p>
-                    <InviteDialog
-                      teamMemberId={m.id}
-                      teamMemberName={m.name}
-                      trigger={
-                        <button className="text-xs font-medium text-accent hover:underline">Invite</button>
-                      }
-                    />
+                    {isLeader && (
+                      <InviteDialog
+                        teamMemberId={m.id}
+                        teamMemberName={m.name}
+                        trigger={
+                          <button className="text-xs font-medium text-accent hover:underline">Invite</button>
+                        }
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -81,7 +91,7 @@ export function TeamRoster({ members, pendingInvites }: { members: Member[]; pen
                   }
                   router.refresh();
                 }}
-                className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                 aria-label="Remove"
               >
                 <Trash2 className="h-4 w-4" />
@@ -109,7 +119,7 @@ export function TeamRoster({ members, pendingInvites }: { members: Member[]; pen
                       const result = await revokeInvite(invite.id);
                       if (result.ok) router.refresh();
                     }}
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                    className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                     aria-label="Revoke invite"
                   >
                     <X className="h-4 w-4" />

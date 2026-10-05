@@ -5,6 +5,7 @@ import type { TransitionType } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { runAction, type ActionResult } from "@/lib/actions/action-result";
+import { trackEvent } from "@/lib/usability/track";
 
 export async function upsertTransition(input: {
   setId: string;
@@ -42,6 +43,7 @@ export async function upsertTransition(input: {
     });
 
     revalidatePath(`/sets/${input.setId}`);
+    trackEvent(team.id, "transition_created", { entityId: input.fromSetSongId, meta: { setId: input.setId } });
     return { ok: true };
   });
 }

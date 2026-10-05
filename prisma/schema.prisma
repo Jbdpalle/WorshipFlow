@@ -44,6 +44,7 @@ model User {
   feedback          Feedback[]
   changeLogs        ChangeLog[]
   acceptedInvites   Invite[]
+  usabilityEvents   UsabilityEvent[]
 }
 
 model Church {
@@ -119,6 +120,7 @@ model Team {
   songs   Song[]
   sets    WorshipSet[]
   invites Invite[]
+  usabilityEvents UsabilityEvent[]
 
   @@index([churchId])
   @@index([ownerId])
@@ -554,9 +556,34 @@ model Feedback {
   type      String // bug | feature | general
   message   String
   page      String?
+  rating    Int? // optional 1-5 "how easy was this" — not required, never blocks submission
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 
+  @@index([createdAt])
+}
+
+// ── Usability tracking ──────────────────────────────────────────────
+// Deliberately minimal: a flat event log, not an analytics platform.
+// Each row is one meaningful workflow event (see lib/usability/track.ts
+// for the fixed event-name vocabulary) — no page views, no click
+// tracking, no IP/device fingerprinting. userId is nullable because a
+// few events (e.g. invite acceptance before the account exists) don't
+// have one yet at the moment they're logged.
+model UsabilityEvent {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String?
+  event     String
+  entityId  String?
+  meta      String? // small JSON string, optional — never free-form PII
+  createdAt DateTime @default(now())
+
+  team Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([teamId])
+  @@index([event])
   @@index([createdAt])
 }

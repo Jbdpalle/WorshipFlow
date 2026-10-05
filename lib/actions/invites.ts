@@ -7,6 +7,7 @@ import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
+import { trackEvent } from "@/lib/usability/track";
 
 const INVITE_DURATION_DAYS = 7;
 
@@ -58,6 +59,7 @@ export async function createInvite(input: {
         });
 
     revalidatePath("/team");
+    trackEvent(team.id, "team_member_invited", { entityId: invite.id });
     return { ok: true, data: { id: invite.id, token: invite.token } };
   });
 }
@@ -127,7 +129,7 @@ async function resolveValidInvite(token: string) {
   return { ok: true as const, invite };
 }
 
-async function finalizeAcceptance(inviteId: string, userId: string, teamMemberId: string | null) {
+async function finalizeAcceptance(inviteId: string, userId: string, teamMemberId: string | null, teamId: string) {
   await prisma.$transaction(async (tx) => {
     await tx.invite.update({
       where: { id: inviteId },
@@ -138,6 +140,7 @@ async function finalizeAcceptance(inviteId: string, userId: string, teamMemberId
     }
   });
   await createSession({ userId });
+  trackEvent(teamId, "invite_accepted", { userId, entityId: inviteId });
 }
 
 // Invited email has no existing account yet — create one, scoped to the
@@ -175,7 +178,7 @@ export async function acceptInviteNewUser(
       return created;
     });
 
-    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId);
+    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId, invite.teamId);
     return { ok: true };
   });
 }
@@ -202,7 +205,7 @@ export async function acceptInviteExistingUser(token: string, password: string):
       });
     }
 
-    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId);
+    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId, invite.teamId);
     return { ok: true };
   });
 }
