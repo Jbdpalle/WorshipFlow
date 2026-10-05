@@ -21,8 +21,8 @@ export function SetTeam({
   members: SetMemberRow[];
   teamMembers: TeamMemberOption[];
 }) {
-  const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
-  const [assignMember, setAssignMember] = useState(teamMembers[0]?.id ?? "");
+  const [assignRole, setAssignRole] = useState<string>("");
+  const [assignMember, setAssignMember] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -64,6 +64,9 @@ export function SetTeam({
             onChange={(e) => setAssignRole(e.target.value)}
             className="h-8 w-40 text-xs"
           >
+            <option value="" disabled>
+              Select a role
+            </option>
             {ROLES.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -75,6 +78,9 @@ export function SetTeam({
             onChange={(e) => setAssignMember(e.target.value)}
             className="h-8 w-36 text-xs"
           >
+            <option value="" disabled>
+              Select a person
+            </option>
             {teamMembers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -85,14 +91,17 @@ export function SetTeam({
             type="button"
             size="sm"
             variant="secondary"
+            disabled={!assignRole || !assignMember}
             onClick={async () => {
-              if (!assignMember) return;
+              if (!assignRole || !assignMember) return;
               setError(null);
               const result = await assignMemberToSet(setId, assignMember, assignRole);
               if (!result.ok) {
                 setError(result.error);
                 return;
               }
+              setAssignRole("");
+              setAssignMember("");
               router.refresh();
             }}
           >

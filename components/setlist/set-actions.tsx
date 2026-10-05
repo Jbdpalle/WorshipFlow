@@ -43,7 +43,7 @@ export function SetActions({
           {isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
           {isArchived ? "Unarchive" : "Archive"}
         </Button>
-        {isLeader && (
+        {isLeader && isArchived && (
           <Button
             variant="ghost"
             size="sm"
@@ -51,7 +51,7 @@ export function SetActions({
             onClick={async () => {
               if (
                 !window.confirm(
-                  `Delete "${setTitle}"? This removes its setlist, assignments, and transitions too — it can't be undone.`,
+                  `Delete "${setTitle}"? It will be permanently deleted — the setlist, assignments, and transitions all go with it. This can't be undone.`,
                 )
               ) {
                 return;
