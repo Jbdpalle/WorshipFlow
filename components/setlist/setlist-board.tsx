@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ROLES, CHROMATIC_KEYS } from "@/lib/songs/constants";
 import type { SongFlowStatus } from "@/lib/songs/readiness";
 import {
@@ -217,7 +218,9 @@ function SetSongCard({
                       isAnchor ? "text-accent" : "text-muted-foreground/40 hover:text-accent",
                     )}
                   >
-                    <Star className="h-4 w-4" fill={isAnchor ? "currentColor" : "none"} />
+                    <Tooltip content="The anchor song sets the theme suggestions for the rest of the set">
+                      <Star className="h-4 w-4" fill={isAnchor ? "currentColor" : "none"} />
+                    </Tooltip>
                   </button>
                 </div>
                 {item.song.artist && (
@@ -227,23 +230,25 @@ function SetSongCard({
               <div className="flex items-center gap-1.5">
                 {item.song.key && (
                   <div className="flex items-center gap-1">
-                    <Select
-                      value={overrideKey ?? item.song.key}
-                      onChange={(e) =>
-                        startTransition(async () => {
-                          const next = e.target.value === item.song.key ? null : e.target.value;
-                          setOverrideKey(next);
-                          showErrorIfAny(await updateSetSongDetails(item.id, { overrideKey: next }));
-                        })
-                      }
-                      className="h-7 w-16 text-xs"
-                    >
-                      {CHROMATIC_KEYS.map((k) => (
-                        <option key={k} value={k}>
-                          {k}
-                        </option>
-                      ))}
-                    </Select>
+                    <Tooltip content="Key for this service only — the song's own key elsewhere is unchanged">
+                      <Select
+                        value={overrideKey ?? item.song.key}
+                        onChange={(e) =>
+                          startTransition(async () => {
+                            const next = e.target.value === item.song.key ? null : e.target.value;
+                            setOverrideKey(next);
+                            showErrorIfAny(await updateSetSongDetails(item.id, { overrideKey: next }));
+                          })
+                        }
+                        className="h-7 w-16 text-xs"
+                      >
+                        {CHROMATIC_KEYS.map((k) => (
+                          <option key={k} value={k}>
+                            {k}
+                          </option>
+                        ))}
+                      </Select>
+                    </Tooltip>
                   </div>
                 )}
                 {item.song.bpm && <Badge variant="outline">{item.song.bpm} BPM</Badge>}
@@ -252,7 +257,9 @@ function SetSongCard({
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
                   aria-label="View chart"
                 >
-                  <BookOpenText className="h-4 w-4" />
+                  <Tooltip content="Open the musician's chart — lyrics and chords, large text">
+                    <BookOpenText className="h-4 w-4" />
+                  </Tooltip>
                 </Link>
                 <button
                   onClick={async () => {
@@ -262,7 +269,9 @@ function SetSongCard({
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
                   aria-label="Remove from set"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Tooltip content="Remove this song from the set">
+                    <Trash2 className="h-4 w-4" />
+                  </Tooltip>
                 </button>
               </div>
             </div>

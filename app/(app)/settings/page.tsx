@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { SettingsForm } from "@/components/settings/settings-form";
 import { RestartTourButton } from "@/components/demo/demo-tour-banner";
 import { ThemeSegmentedControl } from "@/components/layout/theme-toggle";
+import { TooltipToggle } from "@/components/layout/tooltip-toggle";
 
 export default async function SettingsPage() {
   const { user, church, membershipRole } = await requireUser();
@@ -39,8 +40,11 @@ export default async function SettingsPage() {
             System matches your device&apos;s light/dark setting automatically.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <ThemeSegmentedControl />
+          <div className="border-t border-border pt-4">
+            <TooltipToggle />
+          </div>
         </CardContent>
       </Card>
 

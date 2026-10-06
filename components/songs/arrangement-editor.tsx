@@ -36,6 +36,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { SaveStatus, type SaveState } from "@/components/ui/save-status";
+import { Tooltip } from "@/components/ui/tooltip";
+import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker";
+import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
 import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -50,6 +53,7 @@ import {
   updateSectionRepeatCount,
   upsertRoleNote,
   changeRoleNoteRole,
+  copyRoleNotes,
   updateSong,
 } from "@/lib/actions/songs";
 
@@ -195,6 +199,18 @@ export function ArrangementEditor({
               router.refresh();
             }}
             onDuplicated={() => router.refresh()}
+            onDirectionAdded={() => router.refresh()}
+            hasPreviousSection={selectedIndex > 0}
+            onCopyFromPrevious={async () => {
+              const previous = sections[selectedIndex - 1];
+              if (!previous) return;
+              const result = await copyRoleNotes(previous.id, selected.id, songId);
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
+              router.refresh();
+            }}
           />
         ) : (
           <Card className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
@@ -279,6 +295,9 @@ function FocusedSectionEditor({
   teamMembers,
   onDeleted,
   onDuplicated,
+  onDirectionAdded,
+  onCopyFromPrevious,
+  hasPreviousSection,
 }: {
   songId: string;
   section: Section;
@@ -288,24 +307,22 @@ function FocusedSectionEditor({
   teamMembers: TeamMemberOption[];
   onDeleted: () => void;
   onDuplicated: () => void;
+  onDirectionAdded: () => void;
+  onCopyFromPrevious: () => void;
+  hasPreviousSection: boolean;
 }) {
   const [label, setLabel] = useState(section.label);
   const [repeatCount, setRepeatCount] = useState(section.repeatCount ?? 1);
   const [dynamics, setDynamics] = useState(section.dynamics ?? "");
   const [isFreeform, setIsFreeform] = useState(section.isFreeform);
   const [roleNotes, setRoleNotes] = useState(section.roleNotes);
-  const [addingRole, setAddingRole] = useState(false);
-  const [newRole, setNewRole] = useState<string>(ROLES[0]);
-  const [customRole, setCustomRole] = useState("");
+  const [copyingPrevious, setCopyingPrevious] = useState(false);
   const dynamicsIsCustomInitially = Boolean(dynamics) && !(DYNAMICS_LEVELS as readonly string[]).includes(dynamics);
   const [dynamicsIsCustom, setDynamicsIsCustom] = useState(dynamicsIsCustomInitially);
   const [customDynamics, setCustomDynamics] = useState(dynamicsIsCustomInitially ? dynamics : "");
   const [headerSave, setHeaderSave] = useState<SaveState>("idle");
   const [dynamicsSave, setDynamicsSave] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
-
-  const availableRoles = ROLES;
-  const availableDirectionGroups = DIRECTION_GROUPS;
 
   async function flash(setStatus: (s: SaveState) => void, run: () => Promise<{ ok: boolean; error?: string }>) {
     setStatus("saving");
@@ -361,9 +378,10 @@ function FocusedSectionEditor({
               isFreeform && "bg-accent/15 text-accent hover:bg-accent/20",
             )}
             aria-label="Toggle spontaneous / freeform section"
-            title="Spontaneous / freeform section (e.g. Free Worship) — fewer required fields"
           >
-            <Wind className="h-4 w-4" />
+            <Tooltip content="Spontaneous / freeform section (e.g. Free Worship) — fewer required fields">
+              <Wind className="h-4 w-4" />
+            </Tooltip>
           </button>
           <button
             onClick={async () => {
@@ -378,7 +396,9 @@ function FocusedSectionEditor({
             className="rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted"
             aria-label="Duplicate section"
           >
-            <Copy className="h-4 w-4" />
+            <Tooltip content="Duplicate this section, with all its dynamics and directions">
+              <Copy className="h-4 w-4" />
+            </Tooltip>
           </button>
           <button
             onClick={async () => {
@@ -393,7 +413,9 @@ function FocusedSectionEditor({
             className="rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
             aria-label="Delete section"
           >
-            <Trash2 className="h-4 w-4" />
+            <Tooltip content="Delete this section — can't be undone">
+              <Trash2 className="h-4 w-4" />
+            </Tooltip>
           </button>
         </div>
       </div>
@@ -403,6 +425,36 @@ function FocusedSectionEditor({
         <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <SlidersHorizontal className="h-3.5 w-3.5" /> Dynamics
         </h3>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {SECTION_INTENT_CHIPS.map((chip) => (
+            <Tooltip key={chip} content={`Set this section's dynamics to "${chip}" — one tap, no typing`}>
+              <button
+                type="button"
+                onClick={async () => {
+                  setDynamicsIsCustom(false);
+                  setDynamics(chip);
+                  setDynamicsSave("saving");
+                  const result = await updateSectionDynamics(section.id, chip);
+                  if (!result.ok) {
+                    setError(result.error);
+                    setDynamicsSave("error");
+                    return;
+                  }
+                  setDynamicsSave("saved");
+                  setTimeout(() => setDynamicsSave("idle"), 1800);
+                }}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  dynamics === chip
+                    ? "border-accent bg-accent text-accent-foreground"
+                    : "border-border bg-surface text-foreground hover:bg-surface-muted",
+                )}
+              >
+                {chip}
+              </button>
+            </Tooltip>
+          ))}
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {dynamicsIsCustom ? (
             <div className="flex items-center gap-1">
@@ -519,9 +571,28 @@ function FocusedSectionEditor({
 
       {/* Role-specific and group directions */}
       <div className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Role Directions
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Role Directions
+          </h3>
+          {hasPreviousSection && (
+            <Tooltip content="Copy every direction from the previous section onto this one, then just change what's different">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={copyingPrevious}
+                onClick={async () => {
+                  setCopyingPrevious(true);
+                  await onCopyFromPrevious();
+                  setCopyingPrevious(false);
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" /> {copyingPrevious ? "Copying…" : "Copy from previous section"}
+              </Button>
+            </Tooltip>
+          )}
+        </div>
         {roleNotes.map((note) => (
           <RoleNoteRow
             key={note.id}
@@ -540,80 +611,12 @@ function FocusedSectionEditor({
           />
         ))}
 
-        {addingRole ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {newRole === CUSTOM_ROLE_VALUE ? (
-              <Input
-                autoFocus
-                value={customRole}
-                onChange={(e) => setCustomRole(e.target.value)}
-                placeholder="e.g. Percussion, Saxophone, Tech Booth"
-                className="h-8 w-56 text-sm"
-              />
-            ) : (
-              <Select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
-                className="h-8 w-44 text-sm"
-              >
-                <optgroup label="Individual role">
-                  {availableRoles.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Group direction">
-                  {availableDirectionGroups.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="This song only">
-                  <option value={CUSTOM_ROLE_VALUE}>Custom…</option>
-                </optgroup>
-              </Select>
-            )}
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={newRole === CUSTOM_ROLE_VALUE && !customRole.trim()}
-              onClick={() => {
-                const role = newRole === CUSTOM_ROLE_VALUE ? customRole.trim() : newRole;
-                if (!role) return;
-                setRoleNotes((prev) => [
-                  ...prev,
-                  { id: `new-${role}-${Date.now()}`, role, content: "", teamMemberId: null, visibility: "TEAM" },
-                ]);
-                setAddingRole(false);
-                setNewRole(ROLES[0]);
-                setCustomRole("");
-              }}
-            >
-              Add
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setAddingRole(false);
-                setNewRole(ROLES[0]);
-                setCustomRole("");
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          availableRoles.length > 0 && (
-            <Button type="button" size="sm" variant="ghost" onClick={() => setAddingRole(true)}>
-              <Plus className="h-3.5 w-3.5" /> Add direction
-            </Button>
-          )
-        )}
+        <QuickDirectionPicker
+          songId={songId}
+          sectionId={section.id}
+          teamMembers={teamMembers}
+          onAdded={onDirectionAdded}
+        />
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
     </Card>
@@ -786,33 +789,34 @@ function RoleNoteRow({
     <div className="rounded-lg bg-surface-muted p-2">
       <div className="flex items-start gap-2">
         {isPersisted ? (
-          <Select
-            value={roleChangeOptions.includes(role) ? role : CUSTOM_ROLE_VALUE}
-            onChange={(e) => {
-              if (e.target.value === CUSTOM_ROLE_VALUE) return;
-              changeRole(e.target.value);
-            }}
-            disabled={changingRole}
-            className="mt-0.5 h-7 w-28 shrink-0 text-[11px] font-semibold uppercase tracking-wide"
-            aria-label={`Change role from ${role}`}
-            title="Wrong instrument/role? Change it here — the direction text stays the same."
-          >
-            {!roleChangeOptions.includes(role) && <option value={CUSTOM_ROLE_VALUE}>{role}</option>}
-            <optgroup label="Individual role">
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Group direction">
-              {DIRECTION_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </optgroup>
-          </Select>
+          <Tooltip content="Wrong instrument or role? Change it here — the direction text stays the same.">
+            <Select
+              value={roleChangeOptions.includes(role) ? role : CUSTOM_ROLE_VALUE}
+              onChange={(e) => {
+                if (e.target.value === CUSTOM_ROLE_VALUE) return;
+                changeRole(e.target.value);
+              }}
+              disabled={changingRole}
+              className="mt-0.5 h-7 w-28 shrink-0 text-[11px] font-semibold uppercase tracking-wide"
+              aria-label={`Change role from ${role}`}
+            >
+              {!roleChangeOptions.includes(role) && <option value={CUSTOM_ROLE_VALUE}>{role}</option>}
+              <optgroup label="Individual role">
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Group direction">
+                {DIRECTION_GROUPS.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </optgroup>
+            </Select>
+          </Tooltip>
         ) : (
           <span className="mt-1.5 w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {role}
@@ -831,9 +835,10 @@ function RoleNoteRow({
           onClick={() => save()}
           className="mt-1.5 shrink-0 text-muted-foreground hover:text-foreground"
           aria-label={`Save ${role} instruction`}
-          title="Save"
         >
-          <Save className="h-4 w-4" />
+          <Tooltip content="Save this direction">
+            <Save className="h-4 w-4" />
+          </Tooltip>
         </button>
         <button
           type="button"
@@ -841,7 +846,9 @@ function RoleNoteRow({
           className="mt-1.5 shrink-0 text-muted-foreground hover:text-foreground"
           aria-label="Assignee and visibility"
         >
-          <Settings2 className="h-4 w-4" />
+          <Tooltip content="Aim this at one specific person, and choose who can see it">
+            <Settings2 className="h-4 w-4" />
+          </Tooltip>
         </button>
         <button
           onClick={async () => {
@@ -851,7 +858,9 @@ function RoleNoteRow({
           className="mt-1.5 shrink-0 text-muted-foreground hover:text-danger"
           aria-label={`Remove ${role} instruction`}
         >
-          <X className="h-4 w-4" />
+          <Tooltip content="Remove this direction">
+            <X className="h-4 w-4" />
+          </Tooltip>
         </button>
       </div>
       <SaveStatus state={status} className="ml-[7.5rem] mt-1" />

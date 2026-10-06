@@ -413,3 +413,64 @@ export async function changeRoleNoteRole(
     return { ok: true };
   });
 }
+
+// "Copy from previous section" — clones every direction from one section
+// onto another so the leader only has to change what's different, instead
+// of retyping a whole section's worth of directions. Never overwrites a
+// direction that already exists at the destination (same role + same
+// targeted person, including the shared "everyone" row where
+// teamMemberId is null) — copying is additive, not a replace.
+export async function copyRoleNotes(
+  fromSectionId: string,
+  toSectionId: string,
+  songIdForRevalidate: string,
+): Promise<ActionResultData<{ copied: number; skipped: number }>> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const [fromLookup, toLookup] = await Promise.all([
+      findOwnedSection(fromSectionId, team.id),
+      findOwnedSection(toSectionId, team.id),
+    ]);
+    if (!fromLookup.ok) return fromLookup;
+    if (!toLookup.ok) return toLookup;
+    if (fromLookup.section.songId !== toLookup.section.songId) {
+      return { ok: false, error: "Those sections belong to different songs." };
+    }
+
+    const sourceNotes = await prisma.songRoleNote.findMany({ where: { sectionId: fromSectionId } });
+
+    let copied = 0;
+    let skipped = 0;
+    for (const note of sourceNotes) {
+      if (!note.content.trim()) continue;
+      // Prisma's compound unique index can't be targeted directly when
+      // teamMemberId is null (Postgres treats every NULL as distinct for
+      // uniqueness — see the SongRoleNote schema comment), so this checks
+      // for an existing destination row explicitly rather than relying on
+      // a createMany/upsert to dedupe it.
+      const existing = await prisma.songRoleNote.findFirst({
+        where: { sectionId: toSectionId, role: note.role, teamMemberId: note.teamMemberId },
+        select: { id: true },
+      });
+      if (existing) {
+        skipped++;
+        continue;
+      }
+      await prisma.songRoleNote.create({
+        data: {
+          sectionId: toSectionId,
+          role: note.role,
+          content: note.content,
+          teamMemberId: note.teamMemberId,
+          visibility: note.visibility,
+        },
+      });
+      copied++;
+    }
+
+    revalidatePath(`/songs/${songIdForRevalidate}`);
+    revalidatePath("/my-part");
+    revalidatePath("/rehearsal");
+    return { ok: true, data: { copied, skipped } };
+  });
+}
