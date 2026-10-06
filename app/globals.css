@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Light is the default and the explicit choice — warm ivory background,
+   white work surfaces, mustard-gold accent, dark charcoal text (matches the
+   approved design concepts). Dark applies either from the OS preference
+   (when the person hasn't chosen in Settings → Appearance) or from an
+   explicit data-theme="dark" set by the theme toggle — see
+   lib/theme/use-theme.ts and the no-flash script in app/layout.tsx. */
 :root {
   --background: #faf9f6;
   --foreground: #1a1a1d;
@@ -14,7 +20,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #121214;
     --foreground: #f2f0ea;
     --surface: #1b1b1e;
@@ -26,6 +32,19 @@
     --danger: #e0685f;
     --success: #5cb98a;
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #121214;
+  --foreground: #f2f0ea;
+  --surface: #1b1b1e;
+  --surface-muted: #232326;
+  --border: #302f2f;
+  --accent: #d9a441;
+  --accent-foreground: #1a1a1d;
+  --muted-foreground: #a1a0a3;
+  --danger: #e0685f;
+  --success: #5cb98a;
 }
 
 @theme inline {

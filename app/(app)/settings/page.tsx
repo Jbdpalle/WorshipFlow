@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth/guard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { RestartTourButton } from "@/components/demo/demo-tour-banner";
+import { ThemeSegmentedControl } from "@/components/layout/theme-toggle";
 
 export default async function SettingsPage() {
   const { user, church, membershipRole } = await requireUser();
@@ -30,6 +31,18 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Appearance</CardTitle>
+          <CardDescription>
+            System matches your device&apos;s light/dark setting automatically.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemeSegmentedControl />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

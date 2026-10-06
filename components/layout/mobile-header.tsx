@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import { MOBILE_MORE_LINKS } from "@/components/layout/nav-links";
 import { LogoutButton } from "@/components/layout/logout-button";
+import { ThemeToggleButton } from "@/components/layout/theme-toggle";
 
 export function MobileHeader({ userName, teamName }: { userName: string; teamName: string }) {
   return (
@@ -37,6 +38,7 @@ export function MobileHeader({ userName, teamName }: { userName: string; teamNam
               </Link>
             );
           })}
+          <ThemeToggleButton className="w-full justify-start" showLabel />
           <LogoutButton className="tap-target w-full justify-start px-2" showLabel />
         </div>
       </details>

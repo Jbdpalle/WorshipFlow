@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageSquarePlus } from "lucide-react";
 import { SIDEBAR_LINKS } from "@/components/layout/nav-links";
 import { LogoutButton } from "@/components/layout/logout-button";
+import { ThemeToggleButton } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils/cn";
 
 export function Sidebar({ userName, teamName }: { userName: string; teamName: string }) {
@@ -63,7 +64,10 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
           <div className="truncate font-medium text-foreground">{userName}</div>
           <div className="truncate">{teamName}</div>
         </Link>
-        <LogoutButton />
+        <div className="flex shrink-0 items-center gap-0.5">
+          <ThemeToggleButton />
+          <LogoutButton />
+        </div>
       </div>
     </aside>
   );
