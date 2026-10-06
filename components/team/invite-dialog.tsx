@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Tooltip } from "@/components/ui/tooltip";
 import { createInvite } from "@/lib/actions/invites";
 
 const ROLE_OPTIONS = [
@@ -66,18 +67,21 @@ export function InviteDialog({
             </p>
             <div className="flex items-center gap-2">
               <Input value={link} readOnly className="font-mono text-xs" />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(link);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
+              <Tooltip content={copied ? "Copied!" : "Copy invite link"}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  aria-label="Copy invite link"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(link);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </Tooltip>
             </div>
             <p className="text-xs text-muted-foreground">Expires in 7 days.</p>
             <Button

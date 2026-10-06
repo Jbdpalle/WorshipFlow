@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { LyricsChordsView, type LyricsChordsMode } from "@/components/songs/lyrics-chords-view";
 import { CHROMATIC_KEYS } from "@/lib/songs/constants";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/cn";
 
 type Section = { id: string; label: string; lyricsChords: string | null };
@@ -69,23 +70,27 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
         </Link>
         <div className="flex items-center gap-1.5 rounded-lg bg-surface-muted p-1 pl-2.5">
           <span className="text-xs font-medium text-muted-foreground">Text size</span>
-          <button
-            onClick={() => changeSize(SIZES[Math.max(0, SIZES.indexOf(size) - 1)])}
-            disabled={size === SIZES[0]}
-            className="rounded-md p-1.5 hover:bg-surface disabled:opacity-40"
-            aria-label="Smaller text"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
+          <Tooltip content="Smaller text — handy on a music stand">
+            <button
+              onClick={() => changeSize(SIZES[Math.max(0, SIZES.indexOf(size) - 1)])}
+              disabled={size === SIZES[0]}
+              className="rounded-md p-1.5 hover:bg-surface disabled:opacity-40"
+              aria-label="Smaller text"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+          </Tooltip>
           <span className="w-10 text-center text-xs font-semibold text-foreground">{size.toUpperCase()}</span>
-          <button
-            onClick={() => changeSize(SIZES[Math.min(SIZES.length - 1, SIZES.indexOf(size) + 1)])}
-            disabled={size === SIZES[SIZES.length - 1]}
-            className="rounded-md p-1.5 hover:bg-surface disabled:opacity-40"
-            aria-label="Larger text"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          <Tooltip content="Larger text — handy on a music stand">
+            <button
+              onClick={() => changeSize(SIZES[Math.min(SIZES.length - 1, SIZES.indexOf(size) + 1)])}
+              disabled={size === SIZES[SIZES.length - 1]}
+              className="rounded-md p-1.5 hover:bg-surface disabled:opacity-40"
+              aria-label="Larger text"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -96,17 +101,19 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
           {song.key ? (
             <div className="flex items-center gap-1.5">
               <label className="text-xs text-muted-foreground">Key</label>
-              <Select
-                value={displayKey ?? song.key}
-                onChange={(e) => setDisplayKey(e.target.value)}
-                className="h-7 w-16 text-xs"
-              >
-                {CHROMATIC_KEYS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </Select>
+              <Tooltip content="Transposes this chart for display only — it doesn't change the song's saved key">
+                <Select
+                  value={displayKey ?? song.key}
+                  onChange={(e) => setDisplayKey(e.target.value)}
+                  className="h-7 w-16 text-xs"
+                >
+                  {CHROMATIC_KEYS.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </Select>
+              </Tooltip>
               {displayKey && displayKey !== song.key && (
                 <Badge variant="accent">transposed from {song.key}</Badge>
               )}

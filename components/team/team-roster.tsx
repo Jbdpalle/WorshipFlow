@@ -14,6 +14,7 @@ import { addTeamMember, removeTeamMember, updateTeamMember } from "@/lib/actions
 import { revokeInvite } from "@/lib/actions/invites";
 import { ImportRosterDialog } from "@/components/team/import-roster-dialog";
 import { InviteDialog } from "@/components/team/invite-dialog";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Member = {
   id: string;
@@ -64,30 +65,31 @@ export function TeamRoster({
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{m.name}</p>
                 {isLeader ? (
-                  <select
-                    value={m.role}
-                    aria-label={`Change ${m.name}'s role — picked the wrong instrument? fix it here`}
-                    title="Wrong instrument? Change it here instead of removing and re-adding."
-                    className="-ml-1 rounded-md bg-transparent px-1 text-sm text-muted-foreground hover:bg-surface-muted focus:outline-none"
-                    onChange={async (e) => {
-                      const newRole = e.target.value;
-                      if (newRole === m.role) return;
-                      setError(null);
-                      const result = await updateTeamMember(m.id, { role: newRole });
-                      if (!result.ok) {
-                        setError(result.error);
-                        return;
-                      }
-                      router.refresh();
-                    }}
-                  >
-                    {!ROLES.includes(m.role as (typeof ROLES)[number]) && <option value={m.role}>{m.role}</option>}
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
+                  <Tooltip content="Picked the wrong instrument? Change it here instead of removing and re-adding.">
+                    <select
+                      value={m.role}
+                      aria-label={`Change ${m.name}'s role`}
+                      className="-ml-1 rounded-md bg-transparent px-1 text-sm text-muted-foreground hover:bg-surface-muted focus:outline-none"
+                      onChange={async (e) => {
+                        const newRole = e.target.value;
+                        if (newRole === m.role) return;
+                        setError(null);
+                        const result = await updateTeamMember(m.id, { role: newRole });
+                        if (!result.ok) {
+                          setError(result.error);
+                          return;
+                        }
+                        router.refresh();
+                      }}
+                    >
+                      {!ROLES.includes(m.role as (typeof ROLES)[number]) && <option value={m.role}>{m.role}</option>}
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </Tooltip>
                 ) : (
                   <p className="text-sm text-muted-foreground">{m.role}</p>
                 )}
@@ -95,9 +97,17 @@ export function TeamRoster({
                   <p className="text-xs text-muted-foreground">{m.instrument}</p>
                 )}
                 <div className="mt-1.5 flex items-center gap-2">
-                  <Badge variant={m.userId ? "success" : "outline"} className="text-[10px]">
-                    {m.userId ? "Active account" : "Roster only"}
-                  </Badge>
+                  <Tooltip
+                    content={
+                      m.userId
+                        ? "This person has logged in and linked their own account"
+                        : "Added to the roster, but hasn't logged in or linked an account yet"
+                    }
+                  >
+                    <Badge tabIndex={0} variant={m.userId ? "success" : "outline"} className="text-[10px]">
+                      {m.userId ? "Active account" : "Roster only"}
+                    </Badge>
+                  </Tooltip>
                   {!m.userId && isLeader && (
                     <InviteDialog
                       teamMemberId={m.id}
@@ -109,21 +119,23 @@ export function TeamRoster({
                   )}
                 </div>
               </div>
-              <button
-                onClick={async () => {
-                  setError(null);
-                  const result = await removeTeamMember(m.id);
-                  if (!result.ok) {
-                    setError(result.error);
-                    return;
-                  }
-                  router.refresh();
-                }}
-                className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                aria-label="Remove"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <Tooltip content={`Remove ${m.name} from the team roster`}>
+                <button
+                  onClick={async () => {
+                    setError(null);
+                    const result = await removeTeamMember(m.id);
+                    if (!result.ok) {
+                      setError(result.error);
+                      return;
+                    }
+                    router.refresh();
+                  }}
+                  className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                  aria-label="Remove"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </Tooltip>
             </CardContent>
           </Card>
         ))}
@@ -142,16 +154,18 @@ export function TeamRoster({
                       {invite.role} · expires {new Date(invite.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <button
-                    onClick={async () => {
-                      const result = await revokeInvite(invite.id);
-                      if (result.ok) router.refresh();
-                    }}
-                    className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                    aria-label="Revoke invite"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  <Tooltip content="Cancel this invite before it's accepted">
+                    <button
+                      onClick={async () => {
+                        const result = await revokeInvite(invite.id);
+                        if (result.ok) router.refresh();
+                      }}
+                      className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                      aria-label="Revoke invite"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
                 </CardContent>
               </Card>
             ))}

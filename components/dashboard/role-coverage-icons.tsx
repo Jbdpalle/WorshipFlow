@@ -1,6 +1,14 @@
 import { Mic, Guitar, Keyboard, Drum, type LucideIcon } from "lucide-react";
 import type { RoleCategoryKey } from "@/lib/songs/constants";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/cn";
+
+const ROLE_CATEGORY_LABELS: Record<RoleCategoryKey, string> = {
+  vocals: "Vocals",
+  guitar: "Guitar",
+  keys: "Keys",
+  drums: "Drums",
+};
 
 export const ROLE_CATEGORY_ICONS: Record<RoleCategoryKey, LucideIcon> = {
   vocals: Mic,
@@ -19,17 +27,19 @@ export function CoverageIcons({ covered }: { covered: RoleCategoryKey[] }) {
       {(Object.keys(ROLE_CATEGORY_ICONS) as RoleCategoryKey[]).map((key) => {
         const Icon = ROLE_CATEGORY_ICONS[key];
         const on = coveredSet.has(key);
+        const label = ROLE_CATEGORY_LABELS[key];
         return (
-          <span
-            key={key}
-            className={cn(
-              "flex h-6 w-6 items-center justify-center rounded-full",
-              on ? "bg-accent/20 text-accent" : "bg-surface-muted text-muted-foreground/40",
-            )}
-            title={on ? `${key} covered` : `${key} not assigned`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </span>
+          <Tooltip key={key} content={on ? `${label} is assigned for this song` : `${label} isn't assigned yet`}>
+            <span
+              tabIndex={0}
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded-full",
+                on ? "bg-accent/20 text-accent" : "bg-surface-muted text-muted-foreground/40",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </span>
+          </Tooltip>
         );
       })}
     </div>

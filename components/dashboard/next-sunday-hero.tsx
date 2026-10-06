@@ -5,6 +5,7 @@ import { CalendarHeart, ArrowRight, ListMusic } from "lucide-react";
 import type { DashboardSet } from "@/lib/dashboard/data";
 import { ServiceProgressPath } from "@/components/dashboard/service-progress-path";
 import { CoverageIcons, ROLE_CATEGORY_ICONS } from "@/components/dashboard/role-coverage-icons";
+import { Tooltip } from "@/components/ui/tooltip";
 
 function formatDate(date: Date) {
   return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -159,19 +160,21 @@ export function NextSundayHero({
                       <span className="flex items-center gap-2 text-muted-foreground">
                         <Icon className="h-3.5 w-3.5" /> {row.label}
                       </span>
-                      <span className="flex items-center gap-1">
-                        {Array.from({ length: Math.min(row.total, 6) }).map((_, i) => (
-                          <span
-                            key={i}
-                            className={
-                              i < row.confirmed
-                                ? "h-2.5 w-2.5 rounded-full bg-accent"
-                                : "h-2.5 w-2.5 rounded-full bg-surface-muted"
-                            }
-                            aria-hidden
-                          />
-                        ))}
-                      </span>
+                      <Tooltip content={`${row.confirmed} of ${row.total} ${row.label.toLowerCase()} confirmed for this service`}>
+                        <span tabIndex={0} className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(row.total, 6) }).map((_, i) => (
+                            <span
+                              key={i}
+                              className={
+                                i < row.confirmed
+                                  ? "h-2.5 w-2.5 rounded-full bg-accent"
+                                  : "h-2.5 w-2.5 rounded-full bg-surface-muted"
+                              }
+                              aria-hidden
+                            />
+                          ))}
+                        </span>
+                      </Tooltip>
                     </div>
                   );
                 })}
