@@ -28,6 +28,15 @@ export async function requireUser() {
   const team = membership?.church.teams[0];
   if (!membership || !team) redirect("/login");
 
+  // A demo account past its 14-day window loses access to every (app)
+  // route uniformly — enforced here once, rather than per-page — but
+  // never gets its data deleted (see /demo-expired, which reads the
+  // session directly rather than through this same gate, to avoid a
+  // redirect loop).
+  if (user.isDemo && user.demoExpiresAt && user.demoExpiresAt < new Date()) {
+    redirect("/demo-expired");
+  }
+
   return { user, team, church: membership.church, membershipRole: membership.role };
 }
 

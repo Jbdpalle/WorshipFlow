@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { parseChordChartText } from "@/lib/songs/pdf-import";
 import { runAction, type ActionResultData } from "@/lib/actions/action-result";
+import { checkCanCreateSong } from "@/lib/plans/limits";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10MB — plenty for a chord chart, well under Vercel's body limit
 
@@ -121,7 +122,9 @@ async function importOnePdf(teamId: string, file: File): Promise<OneFileResult> 
 // a file.
 export async function importSongFromText(text: string): Promise<ActionResultData<{ id: string }>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
+    const limit = await checkCanCreateSong(team.id, user.isDemo);
+    if (!limit.ok) return limit;
 
     if (!text.trim()) return { ok: false, error: "Paste some lyrics or chords first." };
 
@@ -156,7 +159,9 @@ export async function importSongFromText(text: string): Promise<ActionResultData
 // type, too large) doesn't stop the rest of the batch from importing.
 export async function importSongsFromPdfs(formData: FormData): Promise<ActionResultData<PdfImportSummary>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
+    const limit = await checkCanCreateSong(team.id, user.isDemo);
+    if (!limit.ok) return limit;
 
     const files = formData.getAll("file").filter((f): f is File => f instanceof File);
     if (files.length === 0) return { ok: false, error: "No PDF file was provided." };

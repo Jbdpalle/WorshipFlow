@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
 import { runAction, type ActionResult } from "@/lib/actions/action-result";
+import { checkCanAddTeamMember } from "@/lib/plans/limits";
 
 export async function addTeamMember(input: {
   name: string;
@@ -13,7 +14,9 @@ export async function addTeamMember(input: {
   bio?: string;
 }): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
+    const limit = await checkCanAddTeamMember(team.id, team.plan, user.isDemo);
+    if (!limit.ok) return limit;
     const member = await prisma.teamMember.create({
       data: {
         teamId: team.id,

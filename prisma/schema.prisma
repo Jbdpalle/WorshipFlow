@@ -26,13 +26,24 @@ enum ChurchRole {
   MEMBER
 }
 
+// PRO lifts the limits in lib/plans/limits.ts; no billing integration yet —
+// upgrading a team to PRO is a manual/future step, not a self-serve checkout.
+enum TeamPlan {
+  FREE
+  PRO
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  isDemo       Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  isDemo        Boolean   @default(false)
+  demoExpiresAt DateTime? // set at creation for demo accounts only; null for everyone else
+  // Guided-tour progress for the demo walkthrough — null/0 means never started.
+  tourStatus    String?   // "active" | "skipped" | "completed"
+  tourStep      Int       @default(0)
+  createdAt     DateTime  @default(now())
 
   ownedChurches     Church[]         @relation("ChurchOwner")
   churchMemberships Membership[]
@@ -112,6 +123,7 @@ model Team {
   churchId  String
   name      String
   ownerId   String
+  plan      TeamPlan @default(FREE) // FREE limits enforced in lib/plans; PRO lifts them, no billing wired yet
   createdAt DateTime @default(now())
 
   church  Church       @relation(fields: [churchId], references: [id], onDelete: Cascade)

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
+import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
 export async function startRehearsal(
   songId: string,
@@ -12,7 +13,7 @@ export async function startRehearsal(
   bpmUsed?: number,
 ): Promise<ActionResultData<{ id: string }>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
     const song = await prisma.song.findUnique({ where: { id: songId } });
     if (!song || song.teamId !== team.id) return { ok: false, error: "Song not found." };
 
@@ -21,6 +22,7 @@ export async function startRehearsal(
     });
     revalidatePath(`/songs/${songId}`);
     trackEvent(team.id, "rehearsal_started", { entityId: rehearsal.id, meta: { songId } });
+    await advanceTourIfNeeded(user.id, team.id, 9);
     return { ok: true, data: { id: rehearsal.id } };
   });
 }
@@ -174,15 +176,20 @@ export async function setLivePosition(
   sectionId: string | null,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team, membershipRole } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) return { ok: false, error: "Only the worship leader can direct rehearsal." };
     const set = await prisma.worshipSet.findUnique({ where: { id: setId } });
     if (!set || set.teamId !== team.id) return { ok: false, error: "Not found." };
+    const isFirstMove = !set.liveSetSongId;
 
     await prisma.worshipSet.update({
       where: { id: setId },
       data: { liveSetSongId: setSongId, liveSectionId: sectionId, liveUpdatedAt: new Date() },
     });
+    if (isFirstMove) {
+      trackEvent(team.id, "director_mode_started", { entityId: setId });
+      await advanceTourIfNeeded(user.id, team.id, 11);
+    }
     return { ok: true };
   });
 }
@@ -226,7 +233,7 @@ export async function getLivePosition(setId: string): Promise<ActionResultData<L
 
 export async function announceToTeam(setId: string, message: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team, membershipRole } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) return { ok: false, error: "Only the worship leader can announce." };
     if (!message.trim()) return { ok: false, error: "Enter an announcement first." };
     const set = await prisma.worshipSet.findUnique({ where: { id: setId } });
@@ -236,7 +243,8 @@ export async function announceToTeam(setId: string, message: string): Promise<Ac
       where: { id: setId },
       data: { liveAnnouncement: message.trim(), liveAnnouncementAt: new Date() },
     });
-    trackEvent(team.id, "director_announce_used", { entityId: setId });
+    trackEvent(team.id, "announce_sent", { entityId: setId });
+    await advanceTourIfNeeded(user.id, team.id, 12);
     return { ok: true };
   });
 }

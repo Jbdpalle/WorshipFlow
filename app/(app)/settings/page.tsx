@@ -1,10 +1,14 @@
 import { requireUser } from "@/lib/auth/guard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { RestartTourButton } from "@/components/demo/demo-tour-banner";
 
 export default async function SettingsPage() {
   const { user, church, membershipRole } = await requireUser();
   const canRenameChurch = membershipRole === "OWNER" || membershipRole === "ADMIN";
+  const daysLeft = user.demoExpiresAt
+    ? Math.max(0, Math.ceil((user.demoExpiresAt.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000)))
+    : null;
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -12,6 +16,20 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">Your name and church, as everyone on the team sees them.</p>
       </div>
+
+      {user.isDemo && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">WorshipFlow Demo</CardTitle>
+            <CardDescription>
+              {daysLeft !== null ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in your demo.` : "This is a demo account."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RestartTourButton tourStatus={user.tourStatus} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

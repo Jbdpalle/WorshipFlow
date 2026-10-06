@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
 import { runAction, type ActionResult } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
+import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
 export async function upsertTransition(input: {
   setId: string;
@@ -15,7 +16,7 @@ export async function upsertTransition(input: {
   direction: string;
 }): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
     const fromSetSong = await prisma.setSong.findUnique({
       where: { id: input.fromSetSongId },
       include: { set: true },
@@ -44,6 +45,7 @@ export async function upsertTransition(input: {
 
     revalidatePath(`/sets/${input.setId}`);
     trackEvent(team.id, "transition_created", { entityId: input.fromSetSongId, meta: { setId: input.setId } });
+    await advanceTourIfNeeded(user.id, team.id, 8);
     return { ok: true };
   });
 }

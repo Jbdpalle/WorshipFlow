@@ -38,7 +38,7 @@ export function TransitionIndicator({
 }: {
   setId: string;
   fromSetSongId: string;
-  toSetSongId: string;
+  toSetSongId: string | null;
   transition: TransitionData;
   fromKey?: string | null;
   toKey?: string | null;
@@ -106,7 +106,11 @@ export function TransitionIndicator({
         value={direction}
         onChange={(e) => setDirection(e.target.value)}
         rows={2}
-        placeholder="Hold the last chord. Keys continue pads into the next song."
+        placeholder={
+          toSetSongId
+            ? "Hold the last chord. Keys continue pads into the next song."
+            : "Hold the last chord and let it ring out."
+        }
         className="text-xs"
       />
       {error && <p className="text-xs text-danger">{error}</p>}

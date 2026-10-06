@@ -4,6 +4,7 @@ import { SongLibraryList } from "@/components/songs/song-library-list";
 import { NewSongDialog } from "@/components/songs/new-song-dialog";
 import { ImportPdfDialog } from "@/components/songs/import-pdf-dialog";
 import { PasteLyricsDialog } from "@/components/songs/paste-lyrics-dialog";
+import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
 // Vercel's default serverless function timeout (10s on Hobby) is shorter
 // than the PDF-parsing timeout import.ts already enforces internally (25s
@@ -14,12 +15,13 @@ import { PasteLyricsDialog } from "@/components/songs/paste-lyrics-dialog";
 export const maxDuration = 60;
 
 export default async function SongLibraryPage() {
-  const { team } = await requireUser();
+  const { user, team } = await requireUser();
   const songs = await prisma.song.findMany({
     where: { teamId: team.id },
     orderBy: { title: "asc" },
     include: { tags: true },
   });
+  await advanceTourIfNeeded(user.id, team.id, 1);
 
   return (
     <div className="space-y-6">

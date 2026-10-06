@@ -52,16 +52,11 @@ export default async function RootPage() {
         </div>
 
         <div className="mt-20 grid gap-6 text-left sm:grid-cols-2 lg:grid-cols-5">
-          {STEPS.map((step, i) => (
+          {STEPS.map((step) => (
             <div key={step.label} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
-                  <step.icon className="h-4 w-4" />
-                </span>
-                <span className="text-xs font-mono text-muted-foreground">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+                <step.icon className="h-4 w-4" />
+              </span>
               <h3 className="font-semibold">{step.label}</h3>
               <p className="text-sm text-muted-foreground">{step.body}</p>
             </div>

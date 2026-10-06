@@ -53,6 +53,7 @@ type ChangeEntry = { id: string; field: string; fromValue: string | null; toValu
 type SetSongData = {
   id: string;
   order: number;
+  assignments: { teamMemberId: string | null; role: string }[];
   song: {
     id: string;
     title: string;
@@ -65,6 +66,25 @@ type SetSongData = {
 };
 
 const POLL_MS = 3500;
+
+// Leader sees every role's every note (including everyone's individual
+// PERSON-scoped ones) — a non-leader sees one row per role: their own
+// PERSON-scoped note if they have one, else the shared one (which now
+// includes the "Rest of the Band"/"Rest of the Vocals" catch-all when they
+// have no note of their own — see selectRoleNoteForViewer), never both
+// stacked for the same role.
+function resolveInstructionsForSection(
+  section: Section | undefined,
+  isLeaderView: boolean,
+  viewerTeamMemberId: string | null,
+): RoleNote[] {
+  if (!section) return [];
+  if (isLeaderView) return section.roleNotes.filter((n) => n.content.trim());
+  const roles = Array.from(new Set(section.roleNotes.map((n) => n.role)));
+  return roles
+    .map((role) => selectRoleNoteForViewer(section.roleNotes, role, viewerTeamMemberId))
+    .filter((n): n is RoleNote => !!n && n.content.trim().length > 0);
+}
 
 export function RehearsalMode({
   setId,
@@ -271,18 +291,22 @@ function SongRehearsalPanel({
   const current = sections[sectionIndex];
   const next = sections[sectionIndex + 1];
 
-  const instructionsByRole = useMemo(() => {
-    if (!current) return [];
-    // Leader sees every role's every note (including everyone's individual
-    // PERSON-scoped ones) — a non-leader sees one row per role: their own
-    // PERSON-scoped note if they have one, else the shared one, never both
-    // stacked for the same role.
-    if (isLeaderView) return current.roleNotes.filter((n) => n.content.trim());
-    const roles = Array.from(new Set(current.roleNotes.map((n) => n.role)));
-    return roles
-      .map((role) => selectRoleNoteForViewer(current.roleNotes, role, viewerTeamMemberId))
-      .filter((n): n is RoleNote => !!n && n.content.trim().length > 0);
-  }, [current, isLeaderView, viewerTeamMemberId]);
+  const instructionsByRole = useMemo(
+    () => resolveInstructionsForSection(current, isLeaderView, viewerTeamMemberId),
+    [current, isLeaderView, viewerTeamMemberId],
+  );
+  const nextInstructionsByRole = useMemo(
+    () => resolveInstructionsForSection(next, isLeaderView, viewerTeamMemberId),
+    [next, isLeaderView, viewerTeamMemberId],
+  );
+
+  // The viewing musician's own part for this song, independent of the
+  // generic "every role" list above — null for the leader (they see
+  // everything already) or if this song has no per-song assignment for them.
+  const myRole = !isLeaderView
+    ? setSong.assignments.find((a) => a.teamMemberId === viewerTeamMemberId)?.role
+    : undefined;
+  const myPartNote = myRole && current ? selectRoleNoteForViewer(current.roleNotes, myRole, viewerTeamMemberId) : undefined;
 
   return (
     <div className="space-y-5">
@@ -329,7 +353,6 @@ function SongRehearsalPanel({
                 {current.dynamics}
               </Badge>
             )}
-            {next && <p className="mt-2 text-sm text-muted-foreground">Next: {next.label}</p>}
             <div className="mt-4 flex justify-center gap-2">
               <Button
                 variant="secondary"
@@ -359,8 +382,19 @@ function SongRehearsalPanel({
             </div>
           )}
 
+          {!isLeaderView && myRole && (
+            <div className="space-y-1 rounded-xl border-2 border-accent bg-accent/10 p-3">
+              <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent">
+                My Part — {myRole}
+              </h3>
+              <p className="text-sm">
+                {myPartNote?.content.trim() ? myPartNote.content : "Nothing specific for you here — play it as written."}
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">Team Instructions</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground">Current Directions</h3>
             {instructionsByRole.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No specific instructions for this section.
@@ -376,6 +410,27 @@ function SongRehearsalPanel({
               ))
             )}
           </div>
+
+          {next && (
+            <div className="space-y-2 rounded-lg border border-dashed border-border p-3 opacity-80">
+              <h3 className="text-sm font-semibold text-muted-foreground">
+                Next: {next.label}
+                {next.repeatCount && next.repeatCount > 1 ? ` ×${next.repeatCount}` : ""}
+              </h3>
+              {nextInstructionsByRole.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No specific instructions yet.</p>
+              ) : (
+                nextInstructionsByRole.map((n) => (
+                  <div key={n.id} className="rounded-lg bg-surface-muted px-3 py-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {n.role}
+                    </span>
+                    <p className="text-xs">{n.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
           {current && (
             <ExperimentPanel
@@ -592,11 +647,25 @@ function ExperimentPanel({
   );
 }
 
+// A leader-to-team immediate direction, not a chat — one line, one tap for
+// the common ones. "Leader Signal" is deliberately vague (a catch-all for
+// "look at me now") since the specific cue varies by church/team.
+const QUICK_ANNOUNCEMENTS = ["Repeat", "Hold", "Stop", "Build", "Drop", "Wait", "Go Next", "Leader Signal"];
+
 function AnnounceControl({ setId }: { setId: string }) {
   const [open, setOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+
+  async function send(text: string) {
+    setSending(text);
+    setSent(null);
+    const result = await announceToTeam(setId, text);
+    setSending(null);
+    if (result.ok) setSent(text);
+  }
 
   if (!open) {
     return (
@@ -607,41 +676,61 @@ function AnnounceControl({ setId }: { setId: string }) {
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <input
-        value={message}
-        onChange={(e) => {
-          setMessage(e.target.value);
-          setSent(false);
-        }}
-        placeholder="e.g. Hold here, we're praying first"
-        className="h-8 w-48 rounded-lg border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:w-64"
-      />
-      <Button
-        type="button"
-        size="sm"
-        className="h-8 px-2 text-xs"
-        disabled={sending || !message.trim()}
-        onClick={async () => {
-          setSending(true);
-          const result = await announceToTeam(setId, message);
-          setSending(false);
-          if (result.ok) {
-            setSent(true);
-            setMessage("");
-          }
-        }}
-      >
-        {sending ? "…" : sent ? "Sent" : "Send"}
-      </Button>
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="text-muted-foreground hover:text-foreground"
-        aria-label="Close announce"
-      >
-        <X className="h-4 w-4" />
-      </button>
+    <div className="flex flex-col items-end gap-1.5">
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        {QUICK_ANNOUNCEMENTS.map((label) => (
+          <button
+            key={label}
+            type="button"
+            disabled={!!sending}
+            onClick={() => send(label)}
+            className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium hover:bg-surface-muted disabled:opacity-50"
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setCustomOpen((v) => !v)}
+          className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-muted"
+        >
+          Custom…
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-muted-foreground hover:text-foreground"
+          aria-label="Close announce"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      {customOpen && (
+        <div className="flex items-center gap-1.5">
+          <input
+            value={message}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              setSent(null);
+            }}
+            placeholder="e.g. Hold here, we're praying first"
+            className="h-8 w-48 rounded-lg border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:w-64"
+          />
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 px-2 text-xs"
+            disabled={!!sending || !message.trim()}
+            onClick={async () => {
+              await send(message);
+              setMessage("");
+            }}
+          >
+            {sending === message ? "…" : sent === message ? "Sent" : "Send"}
+          </Button>
+        </div>
+      )}
+      {sent && !customOpen && <p className="text-xs text-success">Sent &quot;{sent}&quot;</p>}
     </div>
   );
 }

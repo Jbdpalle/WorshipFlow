@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
+import { checkCanCreateSet } from "@/lib/plans/limits";
+import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
 export async function createSet(input: {
   title: string;
@@ -20,7 +22,9 @@ export async function createSet(input: {
   leaderName?: string;
 }): Promise<ActionResultData<{ id: string }>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
+    const limit = await checkCanCreateSet(team.id, team.plan, user.isDemo);
+    if (!limit.ok) return limit;
 
     const set = await prisma.worshipSet.create({
       data: {
@@ -109,7 +113,7 @@ export async function updateSetMeta(
 
 export async function addSongToSet(setId: string, songId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -132,6 +136,7 @@ export async function addSongToSet(setId: string, songId: string): Promise<Actio
     } else {
       trackEvent(team.id, "song_content_manually_added", { entityId: songId, meta: { setId } });
     }
+    await advanceTourIfNeeded(user.id, team.id, 2);
     return { ok: true };
   });
 }

@@ -8,6 +8,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
+import { checkCanInvite } from "@/lib/plans/limits";
 
 const INVITE_DURATION_DAYS = 7;
 
@@ -17,10 +18,12 @@ export async function createInvite(input: {
   teamMemberId?: string;
 }): Promise<ActionResultData<{ id: string; token: string }>> {
   return runAction(async () => {
-    const { team, church, membershipRole } = await requireUser();
+    const { user, team, church, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) {
       return { ok: false, error: "Only the worship leader can invite people." };
     }
+    const limit = await checkCanInvite(team.id, user.isDemo);
+    if (!limit.ok) return limit;
 
     const email = input.email.trim().toLowerCase();
     if (!email) return { ok: false, error: "Enter an email address." };

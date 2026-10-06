@@ -7,6 +7,7 @@ import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
 import { PrepareMeCard } from "@/components/team/prepare-me-card";
 import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 import { trackEvent } from "@/lib/usability/track";
+import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
 // "Prepare Me" calls the Anthropic API, which can take longer than
 // Vercel's default serverless timeout — see the same note on
@@ -21,6 +22,7 @@ export default async function MyPartPage({
   const { user, team } = await requireUser();
   const { member: memberIdParam } = await searchParams;
   trackEvent(team.id, "my_part_opened", { userId: user.id });
+  await advanceTourIfNeeded(user.id, team.id, 10);
 
   const members = await prisma.teamMember.findMany({
     where: { teamId: team.id },

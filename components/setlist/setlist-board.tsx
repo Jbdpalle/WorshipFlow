@@ -122,18 +122,16 @@ export function SetlistBoard({
                   router.refresh();
                 }}
               />
-              {index < items.length - 1 && (
-                <div className="px-2">
-                  <TransitionIndicator
-                    setId={setId}
-                    fromSetSongId={item.id}
-                    toSetSongId={items[index + 1].id}
-                    transition={item.transitionFrom}
-                    fromKey={item.overrideKey ?? item.song.key}
-                    toKey={items[index + 1].overrideKey ?? items[index + 1].song.key}
-                  />
-                </div>
-              )}
+              <div className="px-2">
+                <TransitionIndicator
+                  setId={setId}
+                  fromSetSongId={item.id}
+                  toSetSongId={items[index + 1]?.id ?? null}
+                  transition={item.transitionFrom}
+                  fromKey={item.overrideKey ?? item.song.key}
+                  toKey={items[index + 1] ? (items[index + 1].overrideKey ?? items[index + 1].song.key) : null}
+                />
+              </div>
             </div>
           ))}
         </div>

@@ -14,6 +14,7 @@ import { TeamNotesEditor, PersonalNoteEditor, SongVisionEditor } from "@/compone
 import { RehearsalHistoryList } from "@/components/songs/rehearsal-history";
 import { ChangeLogPanel } from "@/components/songs/change-log";
 import { LastTimeCallout } from "@/components/songs/last-time-callout";
+import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 import { BookOpenText } from "lucide-react";
 
 // "Suggest theme & verse" calls the Anthropic API, which can take longer
@@ -47,6 +48,7 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
   ]);
 
   if (!song || song.teamId !== team.id) notFound();
+  await advanceTourIfNeeded(user.id, team.id, 3);
 
   return (
     <div className="space-y-6">

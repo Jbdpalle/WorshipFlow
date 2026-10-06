@@ -7,6 +7,8 @@ import { requireUser } from "@/lib/auth/guard";
 import { DEFAULT_SONG_STRUCTURE } from "@/lib/songs/constants";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
+import { checkCanCreateSong } from "@/lib/plans/limits";
+import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
 type SongLookup = { ok: true; song: Song } | { ok: false; error: string };
 type SectionLookup = { ok: true; section: SongSection & { songId: string } } | { ok: false; error: string };
@@ -37,7 +39,9 @@ export async function createSong(input: {
   tags?: string[];
 }): Promise<ActionResultData<{ id: string }>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
+    const limit = await checkCanCreateSong(team.id, user.isDemo);
+    if (!limit.ok) return limit;
 
     const song = await prisma.song.create({
       data: {
@@ -79,12 +83,16 @@ export async function updateSong(
   }>,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
     const lookup = await findOwnedSong(songId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.song.update({ where: { id: songId }, data: input });
     revalidatePath(`/songs/${songId}`);
     revalidatePath("/songs");
+    if (input.visionNote !== undefined && input.visionNote.trim()) {
+      if (!lookup.song.visionNote) trackEvent(team.id, "vision_created", { entityId: songId });
+      await advanceTourIfNeeded(user.id, team.id, 4);
+    }
     return { ok: true };
   });
 }
@@ -156,11 +164,15 @@ export async function addSection(songId: string, label: string): Promise<ActionR
 
 export async function renameSection(sectionId: string, label: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.update({ where: { id: sectionId }, data: { label } });
     revalidatePath(`/songs/${lookup.section.songId}`);
+    if (label !== lookup.section.label) {
+      trackEvent(team.id, "section_edited", { entityId: sectionId });
+      await advanceTourIfNeeded(user.id, team.id, 5);
+    }
     return { ok: true };
   });
 }
@@ -210,7 +222,7 @@ export async function setSectionFreeform(sectionId: string, isFreeform: boolean)
 
 export async function updateSectionDynamics(sectionId: string, dynamics: string | null): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.update({
@@ -219,6 +231,7 @@ export async function updateSectionDynamics(sectionId: string, dynamics: string 
     });
     revalidatePath(`/songs/${lookup.section.songId}`);
     revalidatePath("/rehearsal");
+    if (dynamics) await advanceTourIfNeeded(user.id, team.id, 7);
     return { ok: true };
   });
 }
@@ -309,7 +322,7 @@ export async function upsertRoleNote(
   options?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON" },
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { user, team } = await requireUser();
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -322,6 +335,9 @@ export async function upsertRoleNote(
     // the shared (teamMemberId: null) case goes through an explicit
     // find-then-update-or-create instead.
     const teamMemberId = options?.teamMemberId !== undefined ? options.teamMemberId : null;
+    const isNewNote =
+      content.trim() &&
+      !(await prisma.songRoleNote.findFirst({ where: { sectionId, role, teamMemberId }, select: { id: true } }));
     if (!content.trim()) {
       await prisma.songRoleNote.deleteMany({ where: { sectionId, role, teamMemberId } });
     } else if (teamMemberId) {
@@ -353,6 +369,10 @@ export async function upsertRoleNote(
     revalidatePath(`/songs/${songIdForRevalidate}`);
     revalidatePath("/my-part");
     revalidatePath("/rehearsal");
+    if (isNewNote) {
+      trackEvent(team.id, "direction_added", { entityId: sectionId, meta: { role } });
+      await advanceTourIfNeeded(user.id, team.id, 6);
+    }
     return { ok: true };
   });
 }

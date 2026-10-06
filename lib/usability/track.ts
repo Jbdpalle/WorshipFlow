@@ -16,10 +16,19 @@ export type UsabilityEventName =
   | "rehearsal_started"
   | "transition_created"
   | "director_mode_started"
-  | "director_announce_used"
+  | "announce_sent"
   | "feedback_submitted"
   | "set_archived"
-  | "set_deleted";
+  | "set_deleted"
+  | "vision_created"
+  | "section_edited"
+  | "direction_added"
+  | "free_signup_started"
+  | "demo_started"
+  | "demo_skipped"
+  | "demo_step_completed"
+  | "demo_exited"
+  | "demo_completed";
 
 // Fire-and-forget by design: usability tracking must never be able to
 // break or slow down the real action it's attached to. Errors are
