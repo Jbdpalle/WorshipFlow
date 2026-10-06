@@ -5,6 +5,7 @@ import { FollowingSundayCard } from "@/components/dashboard/following-sunday-car
 import { ThisWeekList } from "@/components/dashboard/this-week-list";
 import { NeedsAttentionList } from "@/components/dashboard/needs-attention-list";
 import { MemberStatusCard } from "@/components/dashboard/member-status-card";
+import { InviteNudgeBanner } from "@/components/dashboard/invite-nudge-banner";
 
 function greeting() {
   const hour = new Date().getHours();
@@ -22,6 +23,8 @@ export default async function DashboardPage() {
       <h1 className="text-2xl font-semibold text-foreground">
         {greeting()}, {user.name.split(" ")[0]}
       </h1>
+
+      <InviteNudgeBanner count={data.uninvitedMemberCount} />
 
       <NextSundayHero nextSunday={data.nextSunday} isLeaderView={data.isLeaderView} />
 

@@ -65,6 +65,7 @@ export type DashboardData = {
   needsAttention: NeedsAttentionItem[];
   isLeaderView: boolean;
   memberStatus: MemberStatus | null;
+  uninvitedMemberCount: number;
 };
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -247,6 +248,22 @@ export async function getDashboardData(
 
   const isLeaderView = membershipRole !== "MEMBER";
   let memberStatus: MemberStatus | null = null;
+  let uninvitedMemberCount = 0;
+
+  if (isLeaderView) {
+    // Roster members with no login of their own and no invite already
+    // pending for them — the nudge to actually use the invite flow, since
+    // it otherwise sits unused behind the Team page.
+    const [membersWithoutLogin, pendingInvitedMemberIds] = await Promise.all([
+      prisma.teamMember.findMany({ where: { teamId, userId: null }, select: { id: true } }),
+      prisma.invite.findMany({
+        where: { teamId, acceptedAt: null, expiresAt: { gt: new Date() }, teamMemberId: { not: null } },
+        select: { teamMemberId: true },
+      }),
+    ]);
+    const invitedIds = new Set(pendingInvitedMemberIds.map((i) => i.teamMemberId));
+    uninvitedMemberCount = membersWithoutLogin.filter((m) => !invitedIds.has(m.id)).length;
+  }
 
   if (!isLeaderView) {
     const member = await prisma.teamMember.findFirst({ where: { teamId, userId } });
@@ -283,5 +300,6 @@ export async function getDashboardData(
     needsAttention: needsAttention.slice(0, 3),
     isLeaderView,
     memberStatus,
+    uninvitedMemberCount,
   };
 }

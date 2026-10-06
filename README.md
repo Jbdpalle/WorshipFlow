@@ -29,14 +29,23 @@ because its lyrics focus on...", never "God wants you to sing this").
 - **Song Library & Song Detail** — searchable library; key, BPM, time
   signature, energy, theme category, scripture, tags.
 - **Arrangement Builder** — custom section structure (Intro, Verse, Chorus,
-  Bridge, ...), reorderable, with a role-instruction row per section.
+  Bridge, ...), reorderable, with a role-instruction row per section. A
+  Quick Direction picker (Who → chip vocabulary → optional intensity/note)
+  replaces typing full sentences, plus copy-from-previous-section and
+  section-level intent chips (Build/Drop/Hold/Full).
+- **Chart view** — chords and lyrics per section, adjustable text size,
+  Lyrics/Chords/Both/Nashville Number display modes, and a display-only
+  key transposition that never touches the song's saved key.
 - **Import from PDF** — upload a text-based chord chart (e.g. exported from
   SongBook Pro) and it extracts title, artist, key, and per-section
   chords/lyrics automatically. Everything is editable after import; nothing
   is fetched or scraped from the internet — you provide the file, and it's
   for your team's own internal use.
 - **Role-specific notes** — Worship Leader, Lead/Backing Vocal, Acoustic /
-  Electric Guitar, Bass, Drums, Keys, Piano, Synth, Violin, Other.
+  Electric Guitar, Bass, Drums, Keys, Piano, Synth, Violin, Other — plus
+  custom roles/dynamics labels scoped to a single song, and in-place role
+  reassignment anywhere a person is assigned (fixed the wrong instrument
+  by accident? change it, don't remove and re-add).
 - **Personal notes** — private to each user, distinct from leader direction
   and team notes.
 - **Rehearsal Mode** — mobile-first: current/next section, that section's
@@ -60,14 +69,27 @@ because its lyrics focus on...", never "God wants you to sing this").
 - **Demo experience** — "Try the demo" on the login screen creates an
   instant, fully-seeded account (same example data new signups get) so
   anyone can explore without waiting on an invite.
+- **Church/Membership multi-tenancy** — four roles (`OWNER`, `ADMIN`,
+  `LEADER`, `MEMBER`); Owner/Admin can rename the church, Owner/Admin/Leader
+  get leader-level access (invite people, delete sets, direct rehearsal),
+  Member is view-and-participate only. Per-musician login is real: an
+  invited email gets its own account at the role it was invited with — see
+  **MVP limitations** for the one caveat.
+- **Light/dark Appearance toggle** — explicit System/Light/Dark setting,
+  independent of the OS.
+- **Hover tooltips** — short explanations on icon-only or ambiguous
+  controls, app-wide, with a single on/off switch in Settings.
+- **Nashville Number System** — a Chart display mode, in addition to chord
+  names and lyrics-only.
+- **PWA** — installable, with offline shell caching.
 
 ### Deliberately out of scope for the MVP
 
-Chord charts / Nashville numbers, PDF/audio uploads, key transposition,
-click tracks/MIDI, scheduling & availability, notifications, and AI-generated
-setlists. The architecture (see `lib/songs/theme-engine.ts` and the service
-layer in `lib/actions/`) is structured so these can be added without a
-rewrite — see **Roadmap** below.
+PDF/audio uploads of audio itself (chord-chart *text* PDFs are supported —
+see Import from PDF above), click tracks/MIDI, scheduling & availability,
+notifications, and AI-generated setlists. The architecture (see
+`lib/songs/theme-engine.ts` and the service layer in `lib/actions/`) is
+structured so these can be added without a rewrite — see **Roadmap** below.
 
 ## Tech stack
 
@@ -106,12 +128,16 @@ worshipflow/
 
 ## Database model
 
-`User` → owns one `Team` (tenant boundary) → has many `TeamMember`,
-`Song`, `WorshipSet`. A `WorshipSet` has many `SetSong` (join row carrying
-order, purpose, transition notes, key/BPM overrides) pointing at a `Song`.
-Each `Song` has many `SongSection` (the arrangement), each `SongSection` has
-many `SongRoleNote` (one per role). `Rehearsal` records belong to a `Song`
-(optionally tied to a `SetSong`) and carry `RehearsalNote`s and
+A `User` authenticates; a `Church` is the top-level tenant boundary; a
+`User`'s access to a `Church` is granted by `Membership` (role: `OWNER` /
+`ADMIN` / `LEADER` / `MEMBER`), not by owning a `Team` — so one person can
+belong to more than one church, and a church can hold more than one `Team`.
+`Team` is the working group everything else (songs, sets, rehearsals) is
+scoped to. A `WorshipSet` has many `SetSong` (join row carrying order,
+purpose, transition notes, key/BPM overrides) pointing at a `Song`. Each
+`Song` has many `SongSection` (the arrangement), each `SongSection` has many
+`SongRoleNote` (one per role/person pair). `Rehearsal` records belong to a
+`Song` (optionally tied to a `SetSong`) and carry `RehearsalNote`s and
 `RehearsalCheck`s; `ChangeLog` is the structured "what changed" record,
 separate from free-text rehearsal notes. `PersonalNote` is private per
 `User`+`Song`. `Feedback` is unscoped (admin-only inbox) by design, since
@@ -198,22 +224,31 @@ different team member and see only their instructions.
 
 ## MVP limitations
 
-- Only the account owner (the worship leader who signs up) has a real
-  login; other team members are roster entries the leader manages. "My
-  Part" is viewable per-member via a picker rather than per-member login —
-  extending to per-musician accounts is a schema-compatible follow-up
-  (`TeamMember.userId` already supports linking a member to a `User`).
+- Per-musician login exists and works (invite flow creates a real account
+  at the invited role), but every account created by signing up directly
+  is `OWNER` — inviting people is currently the only way a team ends up
+  with `ADMIN`/`LEADER`/`MEMBER` logins, so most teams haven't exercised
+  that path yet even though the code fully supports it.
 - The theme engine is rule-based keyword matching against your own tagged
   library, not an AI model — by design, per the product principle above.
-- No chord charts, PDF/audio uploads, or key transposition yet.
+- No PDF/audio *uploads of audio itself* (chord-chart text PDFs are
+  supported), no AI-generated setlists.
 - Feedback inbox is a simple admin list, not a triage workflow.
-- Single team per user (no switching between multiple teams yet).
+- A user can belong to more than one church (the schema supports it), but
+  there's no church-switcher UI yet — they always resolve to their oldest
+  ("home") church.
+- `TeamPlan` (`FREE`/`PRO`) exists and `lib/plans/limits.ts` enforces its
+  limits, but there's no self-serve billing/checkout — upgrading a team to
+  `PRO` is a manual step today, not a payment flow.
+- Tooltips (see above) are hover/keyboard-focus based; on touch they need
+  a long-press rather than a plain tap, since a plain tap has to keep
+  doing the control's normal action.
 
 ## Roadmap
 
-**Phase 2**: per-musician login & notifications, availability/scheduling,
-chord charts & lyrics entry, key transposition & capo suggestions, richer
-search, multi-team support.
+**Phase 2**: notifications, availability/scheduling, capo suggestions,
+richer search, a church-switcher UI for multi-church users, self-serve
+billing for `PRO`.
 
 **Phase 3**: AI-assisted setlist generation and scripture/theme
 intelligence (opt-in, leader-in-control by design), transition
