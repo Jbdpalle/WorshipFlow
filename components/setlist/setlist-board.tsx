@@ -293,7 +293,29 @@ function SetSongCard({
                   <div className="flex flex-wrap items-center gap-1.5">
                     {item.assignments.map((a) => (
                       <Badge key={a.id} variant="outline" className="gap-1 pr-1">
-                        {a.role}: {a.teamMember.name}
+                        <select
+                          value={a.role}
+                          aria-label={`Change ${a.teamMember.name}'s role for this song — picked the wrong instrument? fix it here`}
+                          title="Wrong instrument? Change it here instead of removing and re-adding."
+                          className="bg-transparent text-xs font-medium focus:outline-none"
+                          onChange={async (e) => {
+                            const newRole = e.target.value;
+                            if (newRole === a.role) return;
+                            if (showErrorIfAny(await assignMemberToSetSong(item.id, a.teamMember.id, newRole))) {
+                              router.refresh();
+                            }
+                          }}
+                        >
+                          {!ROLES.includes(a.role as (typeof ROLES)[number]) && (
+                            <option value={a.role}>{a.role}</option>
+                          )}
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
+                        : {a.teamMember.name}
                         <button
                           onClick={async () => {
                             if (showErrorIfAny(await removeAssignment(a.id))) router.refresh();

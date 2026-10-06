@@ -37,7 +37,40 @@ export function SetTeam({
         <div className="flex flex-wrap gap-1.5">
           {members.map((m) => (
             <Badge key={m.id} variant="outline" className="gap-1 pr-1">
-              {m.teamMember.name} — {m.role}
+              {m.teamMember.name} —
+              <select
+                value={m.role}
+                aria-label={`Change ${m.teamMember.name}'s role — picked the wrong instrument? fix it here`}
+                title="Wrong instrument? Change it here instead of removing and re-adding."
+                className="bg-transparent text-xs font-medium focus:outline-none"
+                onChange={async (e) => {
+                  const newRole = e.target.value;
+                  if (newRole === m.role) return;
+                  setError(null);
+                  // A role is part of this assignment's identity, not just a
+                  // label — move it by creating the new one first, then
+                  // dropping the old, so a failed create never loses the
+                  // existing assignment.
+                  const created = await assignMemberToSet(setId, m.teamMember.id, newRole);
+                  if (!created.ok) {
+                    setError(created.error);
+                    return;
+                  }
+                  const removed = await removeSetMember(m.id);
+                  if (!removed.ok) {
+                    setError(removed.error);
+                    return;
+                  }
+                  router.refresh();
+                }}
+              >
+                {!ROLES.includes(m.role as (typeof ROLES)[number]) && <option value={m.role}>{m.role}</option>}
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
               <button
                 onClick={async () => {
                   const result = await removeSetMember(m.id);

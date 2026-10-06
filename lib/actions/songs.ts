@@ -376,3 +376,40 @@ export async function upsertRoleNote(
     return { ok: true };
   });
 }
+
+// Re-labels an already-saved direction — e.g. the leader picked "Electric
+// Guitar" by mistake and the part is actually for "Acoustic Guitar". Moves
+// the existing note to the new role instead of making them delete and
+// retype it, since role is just this row's identity, not its content.
+export async function changeRoleNoteRole(
+  noteId: string,
+  newRole: string,
+  songIdForRevalidate: string,
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const note = await prisma.songRoleNote.findUnique({
+      where: { id: noteId },
+      include: { section: { include: { song: true } } },
+    });
+    if (!note || note.section.song.teamId !== team.id) return { ok: false, error: "Not found." };
+    if (note.role === newRole) return { ok: true };
+
+    const collision = await prisma.songRoleNote.findFirst({
+      where: { sectionId: note.sectionId, role: newRole, teamMemberId: note.teamMemberId },
+      select: { id: true },
+    });
+    if (collision) {
+      return {
+        ok: false,
+        error: `${newRole} already has a direction for ${note.teamMemberId ? "this person" : "everyone"} in this section — remove it first.`,
+      };
+    }
+
+    await prisma.songRoleNote.update({ where: { id: noteId }, data: { role: newRole } });
+    revalidatePath(`/songs/${songIdForRevalidate}`);
+    revalidatePath("/my-part");
+    revalidatePath("/rehearsal");
+    return { ok: true };
+  });
+}

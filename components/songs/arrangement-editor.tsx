@@ -49,6 +49,7 @@ import {
   updateSectionLyrics,
   updateSectionRepeatCount,
   upsertRoleNote,
+  changeRoleNoteRole,
   updateSong,
 } from "@/lib/actions/songs";
 
@@ -70,6 +71,13 @@ type Section = {
   roleNotes: RoleNote[];
 };
 type TeamMemberOption = { id: string; name: string; role: string };
+
+// Sentinel values that switch the Select to a free-text input — the typed
+// value is saved as a plain string on just this section/song (SongRoleNote
+// has no fixed-vocabulary constraint), never added to the app-wide ROLES or
+// DYNAMICS_LEVELS lists, so it never shows up in Team or Set role pickers.
+const CUSTOM_ROLE_VALUE = "__custom_role__";
+const CUSTOM_DYNAMICS_VALUE = "__custom_dynamics__";
 
 export function ArrangementEditor({
   songId,
@@ -288,6 +296,10 @@ function FocusedSectionEditor({
   const [roleNotes, setRoleNotes] = useState(section.roleNotes);
   const [addingRole, setAddingRole] = useState(false);
   const [newRole, setNewRole] = useState<string>(ROLES[0]);
+  const [customRole, setCustomRole] = useState("");
+  const dynamicsIsCustomInitially = Boolean(dynamics) && !(DYNAMICS_LEVELS as readonly string[]).includes(dynamics);
+  const [dynamicsIsCustom, setDynamicsIsCustom] = useState(dynamicsIsCustomInitially);
+  const [customDynamics, setCustomDynamics] = useState(dynamicsIsCustomInitially ? dynamics : "");
   const [headerSave, setHeaderSave] = useState<SaveState>("idle");
   const [dynamicsSave, setDynamicsSave] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -392,31 +404,59 @@ function FocusedSectionEditor({
           <SlidersHorizontal className="h-3.5 w-3.5" /> Dynamics
         </h3>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Select
-            value={dynamics}
-            onChange={async (e) => {
-              const next = e.target.value;
-              setDynamics(next);
-              setDynamicsSave("saving");
-              const result = await updateSectionDynamics(section.id, next || null);
-              if (!result.ok) {
-                setError(result.error);
-                setDynamicsSave("error");
-                return;
-              }
-              setDynamicsSave("saved");
-              setTimeout(() => setDynamicsSave("idle"), 1800);
-            }}
-            className="h-8 w-32 text-xs"
-            aria-label="Dynamics level"
-          >
-            <option value="">Not set</option>
-            {DYNAMICS_LEVELS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </Select>
+          {dynamicsIsCustom ? (
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={customDynamics}
+                onChange={(e) => setCustomDynamics(e.target.value)}
+                placeholder="e.g. Driving, Hushed, Explosive"
+                className="h-8 w-40 text-xs"
+                aria-label="Custom dynamics label"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setDynamicsIsCustom(false);
+                  setCustomDynamics("");
+                }}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                Use preset
+              </button>
+            </div>
+          ) : (
+            <Select
+              value={dynamics}
+              onChange={async (e) => {
+                const next = e.target.value;
+                if (next === CUSTOM_DYNAMICS_VALUE) {
+                  setDynamicsIsCustom(true);
+                  return;
+                }
+                setDynamics(next);
+                setDynamicsSave("saving");
+                const result = await updateSectionDynamics(section.id, next || null);
+                if (!result.ok) {
+                  setError(result.error);
+                  setDynamicsSave("error");
+                  return;
+                }
+                setDynamicsSave("saved");
+                setTimeout(() => setDynamicsSave("idle"), 1800);
+              }}
+              className="h-8 w-32 text-xs"
+              aria-label="Dynamics level"
+            >
+              <option value="">Not set</option>
+              {DYNAMICS_LEVELS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+              <option value={CUSTOM_DYNAMICS_VALUE}>Custom…</option>
+            </Select>
+          )}
           {!isFreeform && (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               Repeat
@@ -447,10 +487,12 @@ function FocusedSectionEditor({
             variant="secondary"
             size="sm"
             className="h-8"
+            disabled={dynamicsIsCustom && !customDynamics.trim()}
             onClick={async () => {
               setDynamicsSave("saving");
+              const dynamicsValue = dynamicsIsCustom ? customDynamics.trim() : dynamics;
               const [dynResult, repeatResult] = await Promise.all([
-                updateSectionDynamics(section.id, dynamics || null),
+                updateSectionDynamics(section.id, dynamicsValue || null),
                 isFreeform ? Promise.resolve({ ok: true as const }) : updateSectionRepeatCount(section.id, repeatCount),
               ]);
               if (!dynResult.ok || !repeatResult.ok) {
@@ -458,6 +500,7 @@ function FocusedSectionEditor({
                 setDynamicsSave("error");
                 return;
               }
+              if (dynamicsIsCustom) setDynamics(dynamicsValue);
               setDynamicsSave("saved");
               setTimeout(() => setDynamicsSave("idle"), 1800);
             }}
@@ -482,6 +525,7 @@ function FocusedSectionEditor({
         {roleNotes.map((note) => (
           <RoleNoteRow
             key={note.id}
+            noteId={note.id}
             songId={songId}
             sectionId={section.id}
             role={note.role}
@@ -490,46 +534,76 @@ function FocusedSectionEditor({
             initialVisibility={note.visibility}
             teamMembers={teamMembers}
             onRemoved={() => setRoleNotes((prev) => prev.filter((n) => n.id !== note.id))}
+            onRoleChanged={(newRole) =>
+              setRoleNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, role: newRole } : n)))
+            }
           />
         ))}
 
         {addingRole ? (
-          <div className="flex items-center gap-2">
-            <Select
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
-              className="h-8 w-44 text-sm"
-            >
-              <optgroup label="Individual role">
-                {availableRoles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Group direction">
-                {availableDirectionGroups.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </optgroup>
-            </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            {newRole === CUSTOM_ROLE_VALUE ? (
+              <Input
+                autoFocus
+                value={customRole}
+                onChange={(e) => setCustomRole(e.target.value)}
+                placeholder="e.g. Percussion, Saxophone, Tech Booth"
+                className="h-8 w-56 text-sm"
+              />
+            ) : (
+              <Select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value)}
+                className="h-8 w-44 text-sm"
+              >
+                <optgroup label="Individual role">
+                  {availableRoles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Group direction">
+                  {availableDirectionGroups.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="This song only">
+                  <option value={CUSTOM_ROLE_VALUE}>Custom…</option>
+                </optgroup>
+              </Select>
+            )}
             <Button
               type="button"
               size="sm"
               variant="secondary"
+              disabled={newRole === CUSTOM_ROLE_VALUE && !customRole.trim()}
               onClick={() => {
+                const role = newRole === CUSTOM_ROLE_VALUE ? customRole.trim() : newRole;
+                if (!role) return;
                 setRoleNotes((prev) => [
                   ...prev,
-                  { id: `new-${newRole}-${Date.now()}`, role: newRole, content: "", teamMemberId: null, visibility: "TEAM" },
+                  { id: `new-${role}-${Date.now()}`, role, content: "", teamMemberId: null, visibility: "TEAM" },
                 ]);
                 setAddingRole(false);
+                setNewRole(ROLES[0]);
+                setCustomRole("");
               }}
             >
               Add
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setAddingRole(false)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setAddingRole(false);
+                setNewRole(ROLES[0]);
+                setCustomRole("");
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -647,6 +721,7 @@ function directionPlaceholder(role: string) {
 }
 
 function RoleNoteRow({
+  noteId,
   songId,
   sectionId,
   role,
@@ -655,7 +730,9 @@ function RoleNoteRow({
   initialVisibility,
   teamMembers,
   onRemoved,
+  onRoleChanged,
 }: {
+  noteId: string;
   songId: string;
   sectionId: string;
   role: string;
@@ -664,12 +741,20 @@ function RoleNoteRow({
   initialVisibility: "TEAM" | "ROLE" | "PERSON";
   teamMembers: TeamMemberOption[];
   onRemoved: () => void;
+  onRoleChanged: (newRole: string) => void;
 }) {
   const [content, setContent] = useState(initialContent);
   const [teamMemberId, setTeamMemberId] = useState(initialTeamMemberId ?? "");
   const [visibility, setVisibility] = useState(initialVisibility);
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<SaveState>("idle");
+  const [roleError, setRoleError] = useState<string | null>(null);
+  const [changingRole, setChangingRole] = useState(false);
+  // A freshly-added-but-not-yet-saved row (see the "Add direction" flow
+  // above) has a client-side temp id and nothing in the database yet —
+  // reassigning its role doesn't need a server round trip, just remove and
+  // re-add it with the right role instead.
+  const isPersisted = !noteId.startsWith("new-");
 
   async function save(overrides?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON" }) {
     setStatus("saving");
@@ -681,14 +766,58 @@ function RoleNoteRow({
     if (result.ok) setTimeout(() => setStatus("idle"), 1800);
   }
 
+  async function changeRole(newRole: string) {
+    if (!newRole || newRole === role) return;
+    setRoleError(null);
+    setChangingRole(true);
+    const result = await changeRoleNoteRole(noteId, newRole, songId);
+    setChangingRole(false);
+    if (!result.ok) {
+      setRoleError(result.error);
+      return;
+    }
+    onRoleChanged(newRole);
+  }
+
   const assigneeName = teamMembers.find((m) => m.id === teamMemberId)?.name;
+  const roleChangeOptions: readonly string[] = [...ROLES, ...DIRECTION_GROUPS];
 
   return (
     <div className="rounded-lg bg-surface-muted p-2">
       <div className="flex items-start gap-2">
-        <span className="mt-1.5 w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {role}
-        </span>
+        {isPersisted ? (
+          <Select
+            value={roleChangeOptions.includes(role) ? role : CUSTOM_ROLE_VALUE}
+            onChange={(e) => {
+              if (e.target.value === CUSTOM_ROLE_VALUE) return;
+              changeRole(e.target.value);
+            }}
+            disabled={changingRole}
+            className="mt-0.5 h-7 w-28 shrink-0 text-[11px] font-semibold uppercase tracking-wide"
+            aria-label={`Change role from ${role}`}
+            title="Wrong instrument/role? Change it here — the direction text stays the same."
+          >
+            {!roleChangeOptions.includes(role) && <option value={CUSTOM_ROLE_VALUE}>{role}</option>}
+            <optgroup label="Individual role">
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Group direction">
+              {DIRECTION_GROUPS.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        ) : (
+          <span className="mt-1.5 w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {role}
+          </span>
+        )}
         <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -726,6 +855,7 @@ function RoleNoteRow({
         </button>
       </div>
       <SaveStatus state={status} className="ml-[7.5rem] mt-1" />
+      {roleError && <p className="ml-[7.5rem] mt-1 text-xs text-danger">{roleError}</p>}
       {expanded && (
         <div className="mt-2 flex flex-wrap items-center gap-2 pl-[7.5rem] text-xs">
           <span className="text-muted-foreground">For:</span>

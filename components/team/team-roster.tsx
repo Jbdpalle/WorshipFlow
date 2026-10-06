@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
 import { ROLES } from "@/lib/songs/constants";
-import { addTeamMember, removeTeamMember } from "@/lib/actions/team";
+import { addTeamMember, removeTeamMember, updateTeamMember } from "@/lib/actions/team";
 import { revokeInvite } from "@/lib/actions/invites";
 import { ImportRosterDialog } from "@/components/team/import-roster-dialog";
 import { InviteDialog } from "@/components/team/invite-dialog";
@@ -63,7 +63,34 @@ export function TeamRoster({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{m.name}</p>
-                <p className="text-sm text-muted-foreground">{m.role}</p>
+                {isLeader ? (
+                  <select
+                    value={m.role}
+                    aria-label={`Change ${m.name}'s role — picked the wrong instrument? fix it here`}
+                    title="Wrong instrument? Change it here instead of removing and re-adding."
+                    className="-ml-1 rounded-md bg-transparent px-1 text-sm text-muted-foreground hover:bg-surface-muted focus:outline-none"
+                    onChange={async (e) => {
+                      const newRole = e.target.value;
+                      if (newRole === m.role) return;
+                      setError(null);
+                      const result = await updateTeamMember(m.id, { role: newRole });
+                      if (!result.ok) {
+                        setError(result.error);
+                        return;
+                      }
+                      router.refresh();
+                    }}
+                  >
+                    {!ROLES.includes(m.role as (typeof ROLES)[number]) && <option value={m.role}>{m.role}</option>}
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{m.role}</p>
+                )}
                 {m.instrument && m.instrument !== m.role && (
                   <p className="text-xs text-muted-foreground">{m.instrument}</p>
                 )}
