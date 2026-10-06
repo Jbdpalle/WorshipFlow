@@ -26,16 +26,16 @@ import {
   Copy,
   Settings2,
   Wind,
-  Check,
-  Loader2,
   Compass,
   SlidersHorizontal,
+  Save,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { SaveStatus, type SaveState } from "@/components/ui/save-status";
 import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -70,29 +70,6 @@ type Section = {
   roleNotes: RoleNote[];
 };
 type TeamMemberOption = { id: string; name: string; role: string };
-
-type SaveState = "idle" | "saving" | "saved" | "error";
-
-// A tiny shared "Saved" indicator — every field in the focused editor saves
-// independently on blur/change, so this just reflects the most recent save.
-function SaveStatus({ state }: { state: SaveState }) {
-  if (state === "idle") return null;
-  if (state === "saving") {
-    return (
-      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Loader2 className="h-3 w-3 animate-spin" /> Saving…
-      </span>
-    );
-  }
-  if (state === "error") {
-    return <span className="text-xs text-danger">Couldn&apos;t save — try again</span>;
-  }
-  return (
-    <span className="flex items-center gap-1 text-xs text-success">
-      <Check className="h-3 w-3" /> Saved
-    </span>
-  );
-}
 
 export function ArrangementEditor({
   songId,
@@ -312,6 +289,7 @@ function FocusedSectionEditor({
   const [addingRole, setAddingRole] = useState(false);
   const [newRole, setNewRole] = useState<string>(ROLES[0]);
   const [headerSave, setHeaderSave] = useState<SaveState>("idle");
+  const [dynamicsSave, setDynamicsSave] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const availableRoles = ROLES;
@@ -341,6 +319,14 @@ function FocusedSectionEditor({
             className="h-9 max-w-[14rem] text-lg font-semibold"
             aria-label="Section name"
           />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => flash(setHeaderSave, () => renameSection(section.id, label))}
+          >
+            <Save className="h-3.5 w-3.5" /> Save
+          </Button>
           <span className="text-xs text-muted-foreground">
             Section {sectionNumber} of {sectionCount}
           </span>
@@ -411,8 +397,15 @@ function FocusedSectionEditor({
             onChange={async (e) => {
               const next = e.target.value;
               setDynamics(next);
+              setDynamicsSave("saving");
               const result = await updateSectionDynamics(section.id, next || null);
-              if (!result.ok) setError(result.error);
+              if (!result.ok) {
+                setError(result.error);
+                setDynamicsSave("error");
+                return;
+              }
+              setDynamicsSave("saved");
+              setTimeout(() => setDynamicsSave("idle"), 1800);
             }}
             className="h-8 w-32 text-xs"
             aria-label="Dynamics level"
@@ -433,8 +426,15 @@ function FocusedSectionEditor({
                 value={repeatCount}
                 onChange={(e) => setRepeatCount(Number(e.target.value) || 1)}
                 onBlur={async () => {
+                  setDynamicsSave("saving");
                   const result = await updateSectionRepeatCount(section.id, repeatCount);
-                  if (!result.ok) setError(result.error);
+                  if (!result.ok) {
+                    setError(result.error);
+                    setDynamicsSave("error");
+                    return;
+                  }
+                  setDynamicsSave("saved");
+                  setTimeout(() => setDynamicsSave("idle"), 1800);
                 }}
                 className="h-8 w-14 text-center"
                 aria-label="Repeat count"
@@ -442,6 +442,29 @@ function FocusedSectionEditor({
               ×
             </label>
           )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8"
+            onClick={async () => {
+              setDynamicsSave("saving");
+              const [dynResult, repeatResult] = await Promise.all([
+                updateSectionDynamics(section.id, dynamics || null),
+                isFreeform ? Promise.resolve({ ok: true as const }) : updateSectionRepeatCount(section.id, repeatCount),
+              ]);
+              if (!dynResult.ok || !repeatResult.ok) {
+                setError(!dynResult.ok ? dynResult.error : (repeatResult as { ok: false; error: string }).error);
+                setDynamicsSave("error");
+                return;
+              }
+              setDynamicsSave("saved");
+              setTimeout(() => setDynamicsSave("idle"), 1800);
+            }}
+          >
+            <Save className="h-3.5 w-3.5" /> Save
+          </Button>
+          <SaveStatus state={dynamicsSave} />
         </div>
       </div>
 
@@ -527,6 +550,13 @@ function SongVisionGroup({ songId, initialVision }: { songId: string; initialVis
   const [value, setValue] = useState(initialVision);
   const [status, setStatus] = useState<SaveState>("idle");
 
+  async function save() {
+    setStatus("saving");
+    const result = await updateSong(songId, { visionNote: value });
+    setStatus(result.ok ? "saved" : "error");
+    if (result.ok) setTimeout(() => setStatus("idle"), 1800);
+  }
+
   return (
     <div className="rounded-lg bg-surface-muted p-3">
       <div className="flex items-center justify-between gap-2">
@@ -541,16 +571,14 @@ function SongVisionGroup({ songId, initialVision }: { songId: string; initialVis
       <Textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        onBlur={async () => {
-          setStatus("saving");
-          const result = await updateSong(songId, { visionNote: value });
-          setStatus(result.ok ? "saved" : "error");
-          if (result.ok) setTimeout(() => setStatus("idle"), 1800);
-        }}
+        onBlur={save}
         rows={2}
         className="mt-2 bg-surface"
         placeholder="Start intimate. Keep Verse 1 open. Build through the bridge and leave room for spontaneous worship."
       />
+      <Button type="button" variant="secondary" size="sm" className="mt-2" onClick={save}>
+        <Save className="h-3.5 w-3.5" /> Save
+      </Button>
     </div>
   );
 }
@@ -565,6 +593,13 @@ function LyricsChordsBlock({
   const [content, setContent] = useState(initialContent);
   const [expanded, setExpanded] = useState(initialContent.trim().length > 0);
   const [status, setStatus] = useState<SaveState>("idle");
+
+  async function save() {
+    setStatus("saving");
+    const result = await updateSectionLyrics(sectionId, content);
+    setStatus(result.ok ? "saved" : "error");
+    if (result.ok) setTimeout(() => setStatus("idle"), 1800);
+  }
 
   if (!expanded) {
     return (
@@ -589,16 +624,14 @@ function LyricsChordsBlock({
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        onBlur={async () => {
-          setStatus("saving");
-          const result = await updateSectionLyrics(sectionId, content);
-          setStatus(result.ok ? "saved" : "error");
-          if (result.ok) setTimeout(() => setStatus("idle"), 1800);
-        }}
+        onBlur={save}
         rows={Math.min(12, Math.max(3, content.split("\n").length))}
         className="font-mono text-xs leading-relaxed whitespace-pre"
         placeholder={"G           D\nAmazing grace, how sweet the sound"}
       />
+      <Button type="button" variant="secondary" size="sm" onClick={save}>
+        <Save className="h-3.5 w-3.5" /> Save
+      </Button>
     </div>
   );
 }
@@ -636,12 +669,16 @@ function RoleNoteRow({
   const [teamMemberId, setTeamMemberId] = useState(initialTeamMemberId ?? "");
   const [visibility, setVisibility] = useState(initialVisibility);
   const [expanded, setExpanded] = useState(false);
+  const [status, setStatus] = useState<SaveState>("idle");
 
   async function save(overrides?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON" }) {
-    await upsertRoleNote(sectionId, role, content, songId, {
+    setStatus("saving");
+    const result = await upsertRoleNote(sectionId, role, content, songId, {
       teamMemberId: overrides?.teamMemberId !== undefined ? overrides.teamMemberId : teamMemberId || null,
       visibility: overrides?.visibility ?? visibility,
     });
+    setStatus(result.ok ? "saved" : "error");
+    if (result.ok) setTimeout(() => setStatus("idle"), 1800);
   }
 
   const assigneeName = teamMembers.find((m) => m.id === teamMemberId)?.name;
@@ -662,6 +699,15 @@ function RoleNoteRow({
         />
         <button
           type="button"
+          onClick={() => save()}
+          className="mt-1.5 shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label={`Save ${role} instruction`}
+          title="Save"
+        >
+          <Save className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
           onClick={() => setExpanded((e) => !e)}
           className="mt-1.5 shrink-0 text-muted-foreground hover:text-foreground"
           aria-label="Assignee and visibility"
@@ -679,6 +725,7 @@ function RoleNoteRow({
           <X className="h-4 w-4" />
         </button>
       </div>
+      <SaveStatus state={status} className="ml-[7.5rem] mt-1" />
       {expanded && (
         <div className="mt-2 flex flex-wrap items-center gap-2 pl-[7.5rem] text-xs">
           <span className="text-muted-foreground">For:</span>

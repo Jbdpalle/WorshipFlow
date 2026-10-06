@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { SaveStatus, type SaveState } from "@/components/ui/save-status";
 import { ENERGY_LEVELS } from "@/lib/songs/constants";
 import { updateSong } from "@/lib/actions/songs";
 
@@ -30,16 +33,45 @@ export function SongHeaderEditor({ songId, song }: { songId: string; song: SongF
     biblicalConnection: song.biblicalConnection ?? "",
   });
 
+  const [status, setStatus] = useState<SaveState>("idle");
+
   function set<K extends keyof typeof fields>(key: K, value: string) {
     setFields((f) => ({ ...f, [key]: value }));
   }
 
   async function save(patch: Record<string, unknown>) {
-    await updateSong(songId, patch);
+    setStatus("saving");
+    const result = await updateSong(songId, patch);
+    setStatus(result.ok ? "saved" : "error");
+    if (result.ok) setTimeout(() => setStatus("idle"), 1800);
+  }
+
+  function saveAll() {
+    save({
+      title: fields.title,
+      artist: fields.artist,
+      key: fields.key,
+      bpm: fields.bpm ? Number(fields.bpm) : null,
+      timeSignature: fields.timeSignature,
+      energy: fields.energy,
+      themeCategory: fields.themeCategory,
+      biblicalConnection: fields.biblicalConnection,
+    });
   }
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Fields save as you tab away — use Save if you&apos;re not sure it caught your last edit.
+        </p>
+        <div className="flex items-center gap-2">
+          <SaveStatus state={status} />
+          <Button type="button" variant="secondary" size="sm" onClick={saveAll}>
+            <Save className="h-3.5 w-3.5" /> Save
+          </Button>
+        </div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Title">
           <Input

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { updateSetMeta } from "@/lib/actions/sets";
 
 type SongOption = { songId: string; title: string };
@@ -124,11 +126,21 @@ export function SetMetaEditor({
           onBlur={() => save({ keywords })}
         />
       </div>
-      {error ? (
-        <p className="sm:col-span-2 text-xs text-danger">{error}</p>
-      ) : (
-        <p className="sm:col-span-2 text-xs text-muted-foreground">{saved ? "Saved" : "Saving…"}</p>
-      )}
+      <div className="flex items-center justify-between gap-2 sm:col-span-2">
+        {error ? (
+          <p className="text-xs text-danger">{error}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">{saved ? "Saved" : "Saving…"}</p>
+        )}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => save({ theme, leaderName, keywords, anchorSongId: anchorSongId || null })}
+        >
+          <Save className="h-3.5 w-3.5" /> Save
+        </Button>
+      </div>
     </div>
   );
 }
