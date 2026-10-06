@@ -28,7 +28,9 @@ export default async function SongLibraryPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Song Library</h1>
-          <p className="text-sm text-muted-foreground">{songs.length} songs</p>
+          <p className="text-sm text-muted-foreground">
+            {songs.length} {songs.length === 1 ? "song" : "songs"}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <ImportPdfDialog />

@@ -21,7 +21,7 @@ type SongInfo = {
   sections: Section[];
 };
 
-const SIZES = ["sm", "md", "lg"] as const;
+const SIZES = ["sm", "md", "lg", "xl"] as const;
 type Size = (typeof SIZES)[number];
 
 const MODES: { value: LyricsChordsMode; label: string }[] = [
@@ -67,18 +67,21 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
         </Link>
-        <div className="flex items-center gap-1 rounded-lg bg-surface-muted p-1">
+        <div className="flex items-center gap-1.5 rounded-lg bg-surface-muted p-1 pl-2.5">
+          <span className="text-xs font-medium text-muted-foreground">Text size</span>
           <button
             onClick={() => changeSize(SIZES[Math.max(0, SIZES.indexOf(size) - 1)])}
-            className="rounded-md p-1.5 hover:bg-surface"
+            disabled={size === SIZES[0]}
+            className="rounded-md p-1.5 hover:bg-surface disabled:opacity-40"
             aria-label="Smaller text"
           >
             <Minus className="h-4 w-4" />
           </button>
-          <span className="w-10 text-center text-xs text-muted-foreground">{size.toUpperCase()}</span>
+          <span className="w-10 text-center text-xs font-semibold text-foreground">{size.toUpperCase()}</span>
           <button
             onClick={() => changeSize(SIZES[Math.min(SIZES.length - 1, SIZES.indexOf(size) + 1)])}
-            className="rounded-md p-1.5 hover:bg-surface"
+            disabled={size === SIZES[SIZES.length - 1]}
+            className="rounded-md p-1.5 hover:bg-surface disabled:opacity-40"
             aria-label="Larger text"
           >
             <Plus className="h-4 w-4" />

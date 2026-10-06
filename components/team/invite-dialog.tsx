@@ -47,7 +47,7 @@ export function InviteDialog({
       {trigger ? (
         <span onClick={() => setOpen(true)}>{trigger}</span>
       ) : (
-        <Button variant="secondary" onClick={() => setOpen(true)}>
+        <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" onClick={() => setOpen(true)}>
           <UserPlus className="h-4 w-4" /> Invite
         </Button>
       )}

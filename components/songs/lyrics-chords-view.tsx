@@ -13,7 +13,7 @@ export function LyricsChordsView({
   transposeToKey,
 }: {
   content: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   mode?: LyricsChordsMode;
   songKey?: string | null;
   // A different key to display chords in than the song's own key — e.g. a
@@ -39,7 +39,7 @@ export function LyricsChordsView({
       : shift
         ? lines.map((l) => transposeLine(l, shift, transposeToKey!))
         : lines;
-  const sizeClass = { sm: "text-sm", md: "text-base", lg: "text-xl" }[size];
+  const sizeClass = { sm: "text-sm", md: "text-base", lg: "text-xl", xl: "text-2xl" }[size];
 
   return (
     <div className={cn("font-mono leading-relaxed whitespace-pre-wrap", sizeClass)}>

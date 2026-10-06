@@ -29,10 +29,9 @@ export default async function MyPartPage({
     orderBy: { name: "asc" },
   });
 
-  const activeMember =
-    members.find((m) => m.id === memberIdParam) ??
-    members.find((m) => m.userId === user.id) ??
-    members[0];
+  const ownMember = members.find((m) => m.userId === user.id);
+  const activeMember = members.find((m) => m.id === memberIdParam) ?? ownMember ?? members[0];
+  const isOwnView = !!activeMember && activeMember.id === ownMember?.id;
 
   const assignments = activeMember
     ? await prisma.songAssignment.findMany({
@@ -82,7 +81,7 @@ export default async function MyPartPage({
             Only what {activeMember?.name ?? "this person"} needs to know — nothing else.
           </p>
         </div>
-        <MyPartMemberPicker members={members} activeId={activeMember?.id} />
+        <MyPartMemberPicker members={members} activeId={activeMember?.id} isOwnView={isOwnView} />
       </div>
 
       {activeMember && nextSet && prepareAssignments.length > 0 && (
@@ -98,8 +97,19 @@ export default async function MyPartPage({
 
       {assignments.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            No songs assigned yet. Assignments happen from the Setlist Builder.
+          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+            <p className="text-muted-foreground">
+              {isOwnView
+                ? "No songs assigned to you yet."
+                : `No songs assigned to ${activeMember?.name ?? "this person"} yet.`}
+            </p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              A worship leader assigns musicians to songs from a service&apos;s Setlist — once
+              you&apos;re assigned a role there, it shows up here automatically.
+            </p>
+            <Link href="/sets" className="mt-1 text-sm font-medium text-accent hover:underline">
+              View Services →
+            </Link>
           </CardContent>
         </Card>
       ) : (

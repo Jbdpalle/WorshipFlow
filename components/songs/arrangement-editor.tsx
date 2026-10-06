@@ -17,7 +17,20 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, Trash2, X, FileText, Copy, Settings2, Wind } from "lucide-react";
+import {
+  GripVertical,
+  Plus,
+  Trash2,
+  X,
+  FileText,
+  Copy,
+  Settings2,
+  Wind,
+  Check,
+  Loader2,
+  Compass,
+  SlidersHorizontal,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +49,7 @@ import {
   updateSectionLyrics,
   updateSectionRepeatCount,
   upsertRoleNote,
+  updateSong,
 } from "@/lib/actions/songs";
 
 type RoleNote = {
@@ -57,17 +71,43 @@ type Section = {
 };
 type TeamMemberOption = { id: string; name: string; role: string };
 
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+// A tiny shared "Saved" indicator — every field in the focused editor saves
+// independently on blur/change, so this just reflects the most recent save.
+function SaveStatus({ state }: { state: SaveState }) {
+  if (state === "idle") return null;
+  if (state === "saving") {
+    return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+      </span>
+    );
+  }
+  if (state === "error") {
+    return <span className="text-xs text-danger">Couldn&apos;t save — try again</span>;
+  }
+  return (
+    <span className="flex items-center gap-1 text-xs text-success">
+      <Check className="h-3 w-3" /> Saved
+    </span>
+  );
+}
+
 export function ArrangementEditor({
   songId,
   initialSections,
+  initialVisionNote,
   teamMembers,
 }: {
   songId: string;
   initialSections: Section[];
+  initialVisionNote: string;
   teamMembers: TeamMemberOption[];
 }) {
   const [sections, setSections] = useState(initialSections);
   const [syncedSections, setSyncedSections] = useState(initialSections);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSections[0]?.id ?? null);
   const [newSectionLabel, setNewSectionLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -79,6 +119,9 @@ export function ArrangementEditor({
   if (initialSections !== syncedSections) {
     setSyncedSections(initialSections);
     setSections(initialSections);
+    if (!initialSections.some((s) => s.id === selectedId)) {
+      setSelectedId(initialSections[0]?.id ?? null);
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -93,73 +136,174 @@ export function ArrangementEditor({
     });
   }
 
+  const selectedIndex = sections.findIndex((s) => s.id === selectedId);
+  const selected = sections[selectedIndex];
+
   return (
     <div className="space-y-4">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3">
-            {sections.map((section) => (
-              <SectionCard
-                key={section.id}
-                section={section}
-                songId={songId}
-                teamMembers={teamMembers}
-                onDeleted={() => {
-                  setSections((prev) => prev.filter((s) => s.id !== section.id));
-                  router.refresh();
-                }}
-                onDuplicated={() => router.refresh()}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      <div className="grid gap-4 lg:grid-cols-[14rem_1fr] lg:items-start">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible lg:pb-0">
+              {sections.map((section, i) => (
+                <SectionOutlineRow
+                  key={section.id}
+                  section={section}
+                  index={i}
+                  active={section.id === selectedId}
+                  onSelect={() => setSelectedId(section.id)}
+                />
+              ))}
+              <div className="flex shrink-0 gap-2 lg:shrink lg:flex-col">
+                <Input
+                  value={newSectionLabel}
+                  onChange={(e) => setNewSectionLabel(e.target.value)}
+                  placeholder="New section…"
+                  className="h-9 w-32 text-xs lg:w-full"
+                  onKeyDown={async (e) => {
+                    if (e.key !== "Enter" || !newSectionLabel.trim()) return;
+                    const result = await addSection(songId, newSectionLabel.trim());
+                    if (!result.ok) {
+                      setError(result.error);
+                      return;
+                    }
+                    setNewSectionLabel("");
+                    router.refresh();
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={async () => {
+                    if (!newSectionLabel.trim()) return;
+                    setError(null);
+                    const result = await addSection(songId, newSectionLabel.trim());
+                    if (!result.ok) {
+                      setError(result.error);
+                      return;
+                    }
+                    setNewSectionLabel("");
+                    router.refresh();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="lg:hidden">Add</span>
+                </Button>
+              </div>
+            </div>
+          </SortableContext>
+        </DndContext>
 
-      <div className="flex gap-2">
-        <Input
-          value={newSectionLabel}
-          onChange={(e) => setNewSectionLabel(e.target.value)}
-          placeholder="Add section (e.g. Intro, Free Worship, Praise Break)"
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={async () => {
-            if (!newSectionLabel.trim()) return;
-            setError(null);
-            const result = await addSection(songId, newSectionLabel.trim());
-            if (!result.ok) {
-              setError(result.error);
-              return;
-            }
-            setNewSectionLabel("");
-            router.refresh();
-          }}
-        >
-          <Plus className="h-4 w-4" /> Add
-        </Button>
+        {selected ? (
+          <FocusedSectionEditor
+            key={selected.id}
+            songId={songId}
+            section={selected}
+            sectionNumber={selectedIndex + 1}
+            sectionCount={sections.length}
+            initialVisionNote={initialVisionNote}
+            teamMembers={teamMembers}
+            onDeleted={() => {
+              setSections((prev) => prev.filter((s) => s.id !== selected.id));
+              router.refresh();
+            }}
+            onDuplicated={() => router.refresh()}
+          />
+        ) : (
+          <Card className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
+            <p>No sections yet — add Intro, Verse 1, Chorus, or whatever this song starts with.</p>
+          </Card>
+        )}
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
 }
 
-function SectionCard({
+function SectionOutlineRow({
   section,
-  songId,
-  teamMembers,
-  onDeleted,
-  onDuplicated,
+  index,
+  active,
+  onSelect,
 }: {
   section: Section;
-  songId: string;
-  teamMembers: TeamMemberOption[];
-  onDeleted: () => void;
-  onDuplicated: () => void;
+  index: number;
+  active: boolean;
+  onSelect: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-testid="section-outline-item"
+      className={cn(
+        "flex w-40 shrink-0 items-center gap-1.5 rounded-lg border px-2 py-2 lg:w-full",
+        active
+          ? "border-accent bg-accent/10"
+          : "border-border bg-surface hover:bg-surface-muted",
+      )}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing"
+        aria-label={`Drag to reorder ${section.label}`}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+        aria-current={active ? "true" : undefined}
+      >
+        <span
+          className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+            active ? "bg-accent text-accent-foreground" : "bg-surface-muted text-muted-foreground",
+          )}
+        >
+          {index + 1}
+        </span>
+        <span className={cn("truncate text-sm", active ? "font-semibold text-foreground" : "text-foreground")}>
+          {section.label}
+          {section.isFreeform && <Wind className="ml-1 inline h-3 w-3 text-accent" aria-label="Freeform" />}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function FocusedSectionEditor({
+  songId,
+  section,
+  sectionNumber,
+  sectionCount,
+  initialVisionNote,
+  teamMembers,
+  onDeleted,
+  onDuplicated,
+}: {
+  songId: string;
+  section: Section;
+  sectionNumber: number;
+  sectionCount: number;
+  initialVisionNote: string;
+  teamMembers: TeamMemberOption[];
+  onDeleted: () => void;
+  onDuplicated: () => void;
+}) {
   const [label, setLabel] = useState(section.label);
   const [repeatCount, setRepeatCount] = useState(section.repeatCount ?? 1);
   const [dynamics, setDynamics] = useState(section.dynamics ?? "");
@@ -167,210 +311,246 @@ function SectionCard({
   const [roleNotes, setRoleNotes] = useState(section.roleNotes);
   const [addingRole, setAddingRole] = useState(false);
   const [newRole, setNewRole] = useState<string>(ROLES[0]);
+  const [headerSave, setHeaderSave] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-  };
-
-  // A role can now hold more than one note (one shared, plus one per
-  // specific person — see the SongRoleNote schema comment), so every role
-  // stays pickable here; adding one that already has a shared note just
-  // means assigning the new one to a specific person via its own Settings2
-  // panel, rather than colliding with the shared one.
   const availableRoles = ROLES;
   const availableDirectionGroups = DIRECTION_GROUPS;
 
+  async function flash(setStatus: (s: SaveState) => void, run: () => Promise<{ ok: boolean; error?: string }>) {
+    setStatus("saving");
+    const result = await run();
+    if (!result.ok) {
+      setStatus("error");
+      setError(result.error ?? "Couldn't save.");
+      return;
+    }
+    setStatus("saved");
+    setTimeout(() => setStatus("idle"), 1800);
+  }
+
   return (
-    <div ref={setNodeRef} style={style}>
-      <Card className="p-4">
-        <div className="flex items-start gap-3">
-          <button
-            {...attributes}
-            {...listeners}
-            className="mt-1.5 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
-            aria-label="Drag to reorder section"
-          >
-            <GripVertical className="h-5 w-5" />
-          </button>
-          <div className="flex-1 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Input
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  onBlur={async () => {
-                    const result = await renameSection(section.id, label);
-                    if (!result.ok) setError(result.error);
-                  }}
-                  className="h-8 max-w-[11rem] font-semibold"
-                />
-                {!isFreeform && (
-                  <>
-                    <span className="text-xs text-muted-foreground">×</span>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={repeatCount}
-                      onChange={(e) => setRepeatCount(Number(e.target.value) || 1)}
-                      onBlur={async () => {
-                        const result = await updateSectionRepeatCount(section.id, repeatCount);
-                        if (!result.ok) setError(result.error);
-                      }}
-                      className="h-8 w-14 text-center"
-                      aria-label="Repeat count"
-                    />
-                  </>
-                )}
-                <Select
-                  value={dynamics}
-                  onChange={async (e) => {
-                    const next = e.target.value;
-                    setDynamics(next);
-                    const result = await updateSectionDynamics(section.id, next || null);
-                    if (!result.ok) setError(result.error);
-                  }}
-                  className="h-8 w-28 text-xs"
-                  aria-label="Dynamics"
-                >
-                  <option value="">Dynamics</option>
-                  {DYNAMICS_LEVELS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={async () => {
-                    setError(null);
-                    const next = !isFreeform;
-                    setIsFreeform(next);
-                    const result = await setSectionFreeform(section.id, next);
-                    if (!result.ok) {
-                      setError(result.error);
-                      setIsFreeform(!next);
-                    }
-                  }}
-                  className={cn(
-                    "rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted",
-                    isFreeform && "bg-accent/15 text-accent hover:bg-accent/20",
-                  )}
-                  aria-label="Toggle spontaneous / freeform section"
-                  title="Spontaneous / freeform section (e.g. Free Worship) — fewer required fields"
-                >
-                  <Wind className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={async () => {
-                    setError(null);
-                    const result = await duplicateSection(section.id);
-                    if (!result.ok) {
-                      setError(result.error);
-                      return;
-                    }
-                    onDuplicated();
-                  }}
-                  className="rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted"
-                  aria-label="Duplicate section"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={async () => {
-                    setError(null);
-                    const result = await deleteSection(section.id);
-                    if (!result.ok) {
-                      setError(result.error);
-                      return;
-                    }
-                    onDeleted();
-                  }}
-                  className="rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                  aria-label="Delete section"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <LyricsChordsBlock
-              sectionId={section.id}
-              initialContent={section.lyricsChords ?? ""}
-            />
-
-            <div className="space-y-2">
-              {roleNotes.map((note) => (
-                <RoleNoteRow
-                  key={note.id}
-                  songId={songId}
-                  sectionId={section.id}
-                  role={note.role}
-                  initialContent={note.content}
-                  initialTeamMemberId={note.teamMemberId}
-                  initialVisibility={note.visibility}
-                  teamMembers={teamMembers}
-                  onRemoved={() =>
-                    setRoleNotes((prev) => prev.filter((n) => n.id !== note.id))
-                  }
-                />
-              ))}
-            </div>
-
-            {addingRole ? (
-              <div className="flex items-center gap-2">
-                <Select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value)}
-                  className="h-8 w-44 text-sm"
-                >
-                  <optgroup label="Individual role">
-                    {availableRoles.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Group direction">
-                    {availableDirectionGroups.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
-                  </optgroup>
-                </Select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setRoleNotes((prev) => [
-                      ...prev,
-                      { id: `new-${newRole}-${Date.now()}`, role: newRole, content: "", teamMemberId: null, visibility: "TEAM" },
-                    ]);
-                    setAddingRole(false);
-                  }}
-                >
-                  Add
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setAddingRole(false)}>
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              availableRoles.length > 0 && (
-                <Button type="button" size="sm" variant="ghost" onClick={() => setAddingRole(true)}>
-                  <Plus className="h-3.5 w-3.5" /> Add direction
-                </Button>
-              )
-            )}
-            {error && <p className="text-sm text-danger">{error}</p>}
-          </div>
+    <Card className="space-y-5 p-4 sm:p-5">
+      {/* Section name and order */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onBlur={() => flash(setHeaderSave, () => renameSection(section.id, label))}
+            className="h-9 max-w-[14rem] text-lg font-semibold"
+            aria-label="Section name"
+          />
+          <span className="text-xs text-muted-foreground">
+            Section {sectionNumber} of {sectionCount}
+          </span>
+          <SaveStatus state={headerSave} />
         </div>
-      </Card>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={async () => {
+              setError(null);
+              const next = !isFreeform;
+              setIsFreeform(next);
+              const result = await setSectionFreeform(section.id, next);
+              if (!result.ok) {
+                setError(result.error);
+                setIsFreeform(!next);
+              }
+            }}
+            className={cn(
+              "rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted",
+              isFreeform && "bg-accent/15 text-accent hover:bg-accent/20",
+            )}
+            aria-label="Toggle spontaneous / freeform section"
+            title="Spontaneous / freeform section (e.g. Free Worship) — fewer required fields"
+          >
+            <Wind className="h-4 w-4" />
+          </button>
+          <button
+            onClick={async () => {
+              setError(null);
+              const result = await duplicateSection(section.id);
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
+              onDuplicated();
+            }}
+            className="rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted"
+            aria-label="Duplicate section"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+          <button
+            onClick={async () => {
+              setError(null);
+              const result = await deleteSection(section.id);
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
+              onDeleted();
+            }}
+            className="rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+            aria-label="Delete section"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Dynamics and repeat count */}
+      <div className="rounded-lg bg-surface-muted p-3">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <SlidersHorizontal className="h-3.5 w-3.5" /> Dynamics
+        </h3>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Select
+            value={dynamics}
+            onChange={async (e) => {
+              const next = e.target.value;
+              setDynamics(next);
+              const result = await updateSectionDynamics(section.id, next || null);
+              if (!result.ok) setError(result.error);
+            }}
+            className="h-8 w-32 text-xs"
+            aria-label="Dynamics level"
+          >
+            <option value="">Not set</option>
+            {DYNAMICS_LEVELS.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </Select>
+          {!isFreeform && (
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Repeat
+              <Input
+                type="number"
+                min={1}
+                value={repeatCount}
+                onChange={(e) => setRepeatCount(Number(e.target.value) || 1)}
+                onBlur={async () => {
+                  const result = await updateSectionRepeatCount(section.id, repeatCount);
+                  if (!result.ok) setError(result.error);
+                }}
+                className="h-8 w-14 text-center"
+                aria-label="Repeat count"
+              />
+              ×
+            </label>
+          )}
+        </div>
+      </div>
+
+      {/* Song vision / arrangement intent */}
+      <SongVisionGroup songId={songId} initialVision={initialVisionNote} />
+
+      {/* Lyrics and chords */}
+      <LyricsChordsBlock sectionId={section.id} initialContent={section.lyricsChords ?? ""} />
+
+      {/* Role-specific and group directions */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Role Directions
+        </h3>
+        {roleNotes.map((note) => (
+          <RoleNoteRow
+            key={note.id}
+            songId={songId}
+            sectionId={section.id}
+            role={note.role}
+            initialContent={note.content}
+            initialTeamMemberId={note.teamMemberId}
+            initialVisibility={note.visibility}
+            teamMembers={teamMembers}
+            onRemoved={() => setRoleNotes((prev) => prev.filter((n) => n.id !== note.id))}
+          />
+        ))}
+
+        {addingRole ? (
+          <div className="flex items-center gap-2">
+            <Select
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+              className="h-8 w-44 text-sm"
+            >
+              <optgroup label="Individual role">
+                {availableRoles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Group direction">
+                {availableDirectionGroups.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </optgroup>
+            </Select>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setRoleNotes((prev) => [
+                  ...prev,
+                  { id: `new-${newRole}-${Date.now()}`, role: newRole, content: "", teamMemberId: null, visibility: "TEAM" },
+                ]);
+                setAddingRole(false);
+              }}
+            >
+              Add
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAddingRole(false)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          availableRoles.length > 0 && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAddingRole(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add direction
+            </Button>
+          )
+        )}
+      </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </Card>
+  );
+}
+
+function SongVisionGroup({ songId, initialVision }: { songId: string; initialVision: string }) {
+  const [value, setValue] = useState(initialVision);
+  const [status, setStatus] = useState<SaveState>("idle");
+
+  return (
+    <div className="rounded-lg bg-surface-muted p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Compass className="h-3.5 w-3.5" /> Song Vision
+        </h3>
+        <SaveStatus state={status} />
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Where this song is going as a whole — applies across every section, not just this one.
+      </p>
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={async () => {
+          setStatus("saving");
+          const result = await updateSong(songId, { visionNote: value });
+          setStatus(result.ok ? "saved" : "error");
+          if (result.ok) setTimeout(() => setStatus("idle"), 1800);
+        }}
+        rows={2}
+        className="mt-2 bg-surface"
+        placeholder="Start intimate. Keep Verse 1 open. Build through the bridge and leave room for spontaneous worship."
+      />
     </div>
   );
 }
@@ -384,6 +564,7 @@ function LyricsChordsBlock({
 }) {
   const [content, setContent] = useState(initialContent);
   const [expanded, setExpanded] = useState(initialContent.trim().length > 0);
+  const [status, setStatus] = useState<SaveState>("idle");
 
   if (!expanded) {
     return (
@@ -395,9 +576,12 @@ function LyricsChordsBlock({
 
   return (
     <div className="space-y-1">
-      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <FileText className="h-3.5 w-3.5" /> Lyrics &amp; chords
-      </label>
+      <div className="flex items-center justify-between gap-2">
+        <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <FileText className="h-3.5 w-3.5" /> Lyrics &amp; Chords
+        </label>
+        <SaveStatus state={status} />
+      </div>
       <p className="text-xs text-muted-foreground">
         Put chords on their own line above the words they go with — the Chart page can then show
         lyrics-only (for singers), chords-only, or both, from this one field.
@@ -405,7 +589,12 @@ function LyricsChordsBlock({
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        onBlur={() => updateSectionLyrics(sectionId, content)}
+        onBlur={async () => {
+          setStatus("saving");
+          const result = await updateSectionLyrics(sectionId, content);
+          setStatus(result.ok ? "saved" : "error");
+          if (result.ok) setTimeout(() => setStatus("idle"), 1800);
+        }}
         rows={Math.min(12, Math.max(3, content.split("\n").length))}
         className="font-mono text-xs leading-relaxed whitespace-pre"
         placeholder={"G           D\nAmazing grace, how sweet the sound"}
@@ -468,7 +657,7 @@ function RoleNoteRow({
           onChange={(e) => setContent(e.target.value)}
           onBlur={() => save()}
           rows={1}
-          className="min-h-0 py-1.5 text-sm"
+          className="min-h-0 bg-surface py-1.5 text-sm"
           placeholder={directionPlaceholder(role)}
         />
         <button

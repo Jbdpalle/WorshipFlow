@@ -35,6 +35,21 @@ export const ROLES = [
 
 export type Role = (typeof ROLES)[number];
 
+// A coarser grouping of ROLES into the four instrument families the
+// Dashboard's compact setlist and team-coverage summaries show — display
+// grouping only, not a schema change (SongAssignment/TeamMember still store
+// the specific ROLES value).
+export const ROLE_CATEGORIES = [
+  { key: "vocals", label: "Vocals", roles: ["Worship Leader", "Lead Vocal", "Backing Vocal"] },
+  { key: "guitar", label: "Guitar", roles: ["Acoustic Guitar", "Electric Guitar", "Bass"] },
+  { key: "keys", label: "Keys", roles: ["Keys", "Piano", "Synth"] },
+  { key: "drums", label: "Drums", roles: ["Drums"] },
+] as const;
+export type RoleCategoryKey = (typeof ROLE_CATEGORIES)[number]["key"];
+export function categoryForRole(role: string): RoleCategoryKey | null {
+  return ROLE_CATEGORIES.find((c) => (c.roles as readonly string[]).includes(role))?.key ?? null;
+}
+
 // Catch-all directions for the arrangement editor's "Add direction" — not
 // real instrument/vocal roles, so they never appear in Team/Set role
 // pickers, only in the per-section role-note editor and its readers. Lets a

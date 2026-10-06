@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SetlistBoard } from "@/components/setlist/setlist-board";
+import { ServiceOrderStrip } from "@/components/setlist/service-order-strip";
 import { ThemeSuggestions } from "@/components/setlist/theme-suggestions";
 import { AddFromLibraryDialog } from "@/components/setlist/add-from-library-dialog";
 import { SetNotes } from "@/components/setlist/set-notes";
@@ -13,7 +14,8 @@ import { SetMetaEditor } from "@/components/setlist/set-meta-editor";
 import { SetTeam } from "@/components/setlist/set-team";
 import { SetReadiness } from "@/components/setlist/set-readiness";
 import { SetActions } from "@/components/setlist/set-actions";
-import { getSetReadiness, getSongFlowStatus } from "@/lib/songs/readiness";
+import { ServiceProgressPath } from "@/components/dashboard/service-progress-path";
+import { getSetReadiness, getSongFlowStatus, getServiceStages } from "@/lib/songs/readiness";
 import { CalendarDays, PlayCircle } from "lucide-react";
 
 export default async function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,7 +30,12 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
       songs: {
         orderBy: { order: "asc" },
         include: {
-          song: { include: { sections: { include: { roleNotes: true } } } },
+          song: {
+            include: {
+              sections: { include: { roleNotes: true } },
+              rehearsals: { select: { id: true }, take: 1 },
+            },
+          },
           assignments: { include: { teamMember: true } },
           transitionFrom: { select: { id: true, type: true, direction: true } },
         },
@@ -49,6 +56,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
 
   const alreadyInSetIds = new Set(set.songs.map((s) => s.songId));
   const readiness = getSetReadiness(set);
+  const stages = getServiceStages(set);
   const songsWithFlowStatus = set.songs.map((s) => ({
     ...s,
     songFlowStatus: getSongFlowStatus(s.song),
@@ -94,11 +102,17 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <ServiceProgressPath stages={stages} />
+      </div>
+
+      <ServiceOrderStrip songs={songsWithFlowStatus} />
+
       <SetReadiness items={readiness} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <Card>
+          <Card id="team">
             <CardHeader>
               <CardTitle className="text-base">Worship Team</CardTitle>
             </CardHeader>

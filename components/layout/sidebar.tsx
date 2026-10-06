@@ -12,14 +12,17 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-surface md:flex">
-      <Link href="/dashboard" className="flex items-center gap-2 px-4 py-4 font-semibold">
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-2 border-b border-border px-4 py-4 font-semibold"
+      >
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
           W
         </span>
         WorshipFlow
       </Link>
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav aria-label="Primary" className="flex-1 space-y-1 px-3 py-4">
         {SIDEBAR_LINKS.map((link) => {
           const Icon = link.icon;
           const active = pathname?.startsWith(link.href);
@@ -27,11 +30,12 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
             <Link
               key={link.href}
               href={link.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
                 active
-                  ? "bg-accent/15 text-accent"
-                  : "text-muted-foreground hover:bg-surface-muted hover:text-foreground",
+                  ? "bg-accent/15 font-semibold text-accent"
+                  : "font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -41,11 +45,12 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
         })}
         <Link
           href="/feedback"
+          aria-current={pathname?.startsWith("/feedback") ? "page" : undefined}
           className={cn(
-            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+            "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
             pathname?.startsWith("/feedback")
-              ? "bg-accent/15 text-accent"
-              : "text-muted-foreground hover:bg-surface-muted hover:text-foreground",
+              ? "bg-accent/15 font-semibold text-accent"
+              : "font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground",
           )}
         >
           <MessageSquarePlus className="h-4 w-4" />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, UserRound, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -66,20 +67,20 @@ export function TeamRoster({
                 {m.instrument && m.instrument !== m.role && (
                   <p className="text-xs text-muted-foreground">{m.instrument}</p>
                 )}
-                {!m.userId && (
-                  <div className="mt-1 flex items-center gap-2">
-                    <p className="text-xs text-muted-foreground">Roster only — no login</p>
-                    {isLeader && (
-                      <InviteDialog
-                        teamMemberId={m.id}
-                        teamMemberName={m.name}
-                        trigger={
-                          <button className="text-xs font-medium text-accent hover:underline">Invite</button>
-                        }
-                      />
-                    )}
-                  </div>
-                )}
+                <div className="mt-1.5 flex items-center gap-2">
+                  <Badge variant={m.userId ? "success" : "outline"} className="text-[10px]">
+                    {m.userId ? "Active account" : "Roster only"}
+                  </Badge>
+                  {!m.userId && isLeader && (
+                    <InviteDialog
+                      teamMemberId={m.id}
+                      teamMemberName={m.name}
+                      trigger={
+                        <button className="text-xs font-medium text-accent hover:underline">Invite</button>
+                      }
+                    />
+                  )}
+                </div>
               </div>
               <button
                 onClick={async () => {

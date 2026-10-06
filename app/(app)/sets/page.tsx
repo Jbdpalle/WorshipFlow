@@ -80,12 +80,26 @@ export default async function SetsPage({
 
       {sets.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            {showArchived
-              ? "No archived sets."
-              : allSets.length === 0
-                ? "No worship sets yet. Create your first one to get started."
-                : "No events of this type yet."}
+          <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+            <ListMusic className="h-8 w-8 text-muted-foreground" aria-hidden />
+            {showArchived ? (
+              <p className="text-muted-foreground">No archived sets.</p>
+            ) : allSets.length === 0 ? (
+              <>
+                <h2 className="font-semibold text-foreground">No worship sets yet</h2>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Create a service and you&apos;ll be able to build its setlist, add song flow
+                  details, assign the team, and rehearse — all from that one service.
+                </p>
+                <Link href="/sets/new" className="mt-2">
+                  <Button>
+                    <Plus className="h-4 w-4" /> New Event
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <p className="text-muted-foreground">No events of this type yet.</p>
+            )}
           </CardContent>
         </Card>
       ) : (

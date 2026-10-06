@@ -2,7 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Save, Timer, FlaskConical, Radio, Wind, Megaphone, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Save,
+  Timer,
+  FlaskConical,
+  Radio,
+  Wind,
+  Megaphone,
+  X,
+  Pause,
+  BarChart3,
+  PlayCircle,
+  MoreHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -157,9 +171,9 @@ export function RehearsalMode({
   return (
     <div className="space-y-5">
       {isLeaderView ? (
-        <div className="flex items-center justify-between gap-2">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-accent">
-            <Radio className="h-3.5 w-3.5" /> Directing live — the team follows your Prev/Next
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-accent px-4 py-2.5 text-accent-foreground">
+          <p className="flex items-center gap-1.5 text-sm font-semibold">
+            <Radio className="h-4 w-4 animate-pulse" /> Directing live
           </p>
           <AnnounceControl setId={setId} />
         </div>
@@ -171,12 +185,12 @@ export function RehearsalMode({
             </p>
           )}
           {announcement && (
-            <div className="flex items-start gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm">
-              <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-              <p className="flex-1">{announcement}</p>
+            <div className="flex items-center gap-3 rounded-xl bg-accent px-4 py-3 text-accent-foreground shadow-sm">
+              <Megaphone className="h-5 w-5 shrink-0" />
+              <p className="flex-1 text-base font-semibold">{announcement}</p>
               <button
                 onClick={() => setAnnouncement(null)}
-                className="shrink-0 text-muted-foreground hover:text-foreground"
+                className="shrink-0 rounded-md p-1 hover:bg-black/10"
                 aria-label="Dismiss announcement"
               >
                 <X className="h-4 w-4" />
@@ -362,14 +376,16 @@ function SongRehearsalPanel({
               >
                 <ChevronLeft className="h-4 w-4" /> Prev
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={sectionIndex >= sections.length - 1}
-                onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
-              >
-                Next <ChevronRight className="h-4 w-4" />
-              </Button>
+              {!isLeaderView && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={sectionIndex >= sections.length - 1}
+                  onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -413,10 +429,21 @@ function SongRehearsalPanel({
 
           {next && (
             <div className="space-y-2 rounded-lg border border-dashed border-border p-3 opacity-80">
-              <h3 className="text-sm font-semibold text-muted-foreground">
-                Next: {next.label}
-                {next.repeatCount && next.repeatCount > 1 ? ` ×${next.repeatCount}` : ""}
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Next Section
               </h3>
+              <p className="text-sm font-semibold text-foreground">
+                {next.label}
+                {next.repeatCount && next.repeatCount > 1 ? ` ×${next.repeatCount}` : ""}
+              </p>
+              {next.lyricsChords?.trim() && (
+                <div className="rounded-lg bg-surface-muted p-2">
+                  <LyricsChordsView content={next.lyricsChords} size="sm" />
+                </div>
+              )}
+              <h4 className="pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Role Directions (Next)
+              </h4>
               {nextInstructionsByRole.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No specific instructions yet.</p>
               ) : (
@@ -429,6 +456,33 @@ function SongRehearsalPanel({
                   </div>
                 ))
               )}
+            </div>
+          )}
+
+          {isLeaderView && (
+            <div className="sticky bottom-20 z-10 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface p-2 shadow-lg md:bottom-3">
+              <LeaderCueButton
+                icon={Pause}
+                label="Hold"
+                sublabel="Stay on this section"
+                variant="secondary"
+                onClick={() => announceToTeam(setId, "Hold")}
+              />
+              <LeaderCueButton
+                icon={BarChart3}
+                label="Build"
+                sublabel="Increase intensity"
+                variant="outline"
+                onClick={() => announceToTeam(setId, "Build")}
+              />
+              <LeaderCueButton
+                icon={PlayCircle}
+                label="Go Next"
+                sublabel={next ? `Jump to ${next.label}` : "End of set"}
+                variant="primary"
+                disabled={sectionIndex >= sections.length - 1}
+                onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
+              />
             </div>
           )}
 
@@ -512,6 +566,46 @@ function SongRehearsalPanel({
         {error && <p className="text-xs text-danger">{error}</p>}
       </div>
     </div>
+  );
+}
+
+// The leader's three large directing controls — Hold/Build send a real
+// announcement the team's poll picks up (see POLL_MS above); Go Next is the
+// same real section-advance as the Prev/Next pair, just promoted to a big
+// primary button since it's the leader's most common action mid-rehearsal.
+function LeaderCueButton({
+  icon: Icon,
+  label,
+  sublabel,
+  variant,
+  disabled,
+  onClick,
+}: {
+  icon: typeof Pause;
+  label: string;
+  sublabel: string;
+  variant: "primary" | "secondary" | "outline";
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      disabled={disabled || busy}
+      className="h-auto flex-col gap-0.5 py-2.5"
+      onClick={async () => {
+        setBusy(true);
+        await onClick();
+        setBusy(false);
+      }}
+    >
+      <span className="flex items-center gap-1.5 text-sm font-semibold">
+        <Icon className="h-4 w-4" /> {label}
+      </span>
+      <span className="text-[11px] font-normal opacity-80">{sublabel}</span>
+    </Button>
   );
 }
 
@@ -648,9 +742,11 @@ function ExperimentPanel({
 }
 
 // A leader-to-team immediate direction, not a chat — one line, one tap for
-// the common ones. "Leader Signal" is deliberately vague (a catch-all for
-// "look at me now") since the specific cue varies by church/team.
-const QUICK_ANNOUNCEMENTS = ["Repeat", "Hold", "Stop", "Build", "Drop", "Wait", "Go Next", "Leader Signal"];
+// the common ones. Hold/Build/Go Next are now the large dedicated buttons
+// below the current section, so this popover covers the rest. "Leader
+// Signal" is deliberately vague (a catch-all for "look at me now") since the
+// specific cue varies by church/team.
+const QUICK_ANNOUNCEMENTS = ["Repeat", "Stop", "Drop", "Wait", "Leader Signal"];
 
 function AnnounceControl({ setId }: { setId: string }) {
   const [open, setOpen] = useState(false);
@@ -669,9 +765,13 @@ function AnnounceControl({ setId }: { setId: string }) {
 
   if (!open) {
     return (
-      <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
-        <Megaphone className="h-3.5 w-3.5" /> Announce
-      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-accent-foreground/90 hover:bg-black/10"
+      >
+        <MoreHorizontal className="h-4 w-4" /> More cues
+      </button>
     );
   }
 

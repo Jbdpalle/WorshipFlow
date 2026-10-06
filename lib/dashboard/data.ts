@@ -1,10 +1,30 @@
 import { prisma } from "@/lib/db/prisma";
+import { getServiceStages, type ProgressStage } from "@/lib/songs/readiness";
+import { ROLE_CATEGORIES, categoryForRole, type RoleCategoryKey } from "@/lib/songs/constants";
 
 export type NeedsAttentionItem = {
   id: string;
   message: string;
   actionLabel: string;
   href: string;
+};
+
+export type SetlistPreviewSong = {
+  id: string;
+  songId: string;
+  title: string;
+  order: number;
+  key: string | null;
+  bpm: number | null;
+  coveredCategories: RoleCategoryKey[];
+  transitionToNext: string | null;
+};
+
+export type TeamCoverageRow = {
+  key: RoleCategoryKey;
+  label: string;
+  confirmed: number;
+  total: number;
 };
 
 export type DashboardSet = {
@@ -15,6 +35,10 @@ export type DashboardSet = {
   serviceDate: Date | null;
   songCount: number;
   teamMemberCount: number;
+  notes: string | null;
+  stages: ProgressStage[];
+  setlistPreview: SetlistPreviewSong[];
+  teamCoverage: TeamCoverageRow[];
 };
 
 export type ThisWeekItem = {
@@ -58,11 +82,15 @@ export async function getDashboardData(
     orderBy: { serviceDate: "asc" },
     take: 2,
     include: {
+      teamMembers: { select: { id: true } },
       songs: {
+        orderBy: { order: "asc" },
         include: {
-          assignments: true,
+          assignments: { include: { teamMember: { select: { id: true, role: true } } } },
+          transitionFrom: { select: { type: true } },
           song: {
             include: {
+              sections: { select: { roleNotes: { select: { content: true } } } },
               rehearsals: { orderBy: { occurredAt: "desc" }, take: 1 },
               changeLogs: { orderBy: { createdAt: "desc" }, take: 5 },
             },
@@ -74,6 +102,28 @@ export async function getDashboardData(
 
   const [nextSet, followingSet] = sundaySets;
 
+  // Full roster, grouped by the same four instrument families as the
+  // per-song coverage icons, so Team Coverage can show "confirmed of total"
+  // per family instead of a raw headcount.
+  const roster = await prisma.teamMember.findMany({ where: { teamId }, select: { id: true, role: true } });
+  const rosterByCategory = new Map<string, number>();
+  for (const m of roster) {
+    const cat = categoryForRole(m.role);
+    if (cat) rosterByCategory.set(cat, (rosterByCategory.get(cat) ?? 0) + 1);
+  }
+
+  const TRANSITION_LABELS: Record<string, string> = {
+    DIRECT: "Direct",
+    INSTRUMENTAL: "Instrumental",
+    PAD: "Pad",
+    SPOKEN: "Spoken",
+    PRAYER: "Prayer",
+    FREE_WORSHIP: "Free Worship",
+    COUNT_IN: "Count-in",
+    PAUSE: "Pause",
+    CUSTOM: "Custom",
+  };
+
   function toDashboardSet(
     set: (typeof sundaySets)[number] | undefined,
   ): DashboardSet | null {
@@ -81,6 +131,37 @@ export async function getDashboardData(
     const teamMemberIds = new Set(
       set.songs.flatMap((s) => s.assignments.map((a) => a.teamMemberId)),
     );
+
+    const confirmedByCategory = new Map<string, Set<string>>();
+    for (const s of set.songs) {
+      for (const a of s.assignments) {
+        const cat = categoryForRole(a.teamMember.role);
+        if (!cat) continue;
+        if (!confirmedByCategory.has(cat)) confirmedByCategory.set(cat, new Set());
+        confirmedByCategory.get(cat)!.add(a.teamMember.id);
+      }
+    }
+
+    const teamCoverage: TeamCoverageRow[] = ROLE_CATEGORIES.map((c) => ({
+      key: c.key,
+      label: c.label,
+      confirmed: confirmedByCategory.get(c.key)?.size ?? 0,
+      total: rosterByCategory.get(c.key) ?? 0,
+    })).filter((row) => row.total > 0);
+
+    const setlistPreview: SetlistPreviewSong[] = set.songs.map((s) => ({
+      id: s.id,
+      songId: s.song.id,
+      title: s.song.title,
+      order: s.order,
+      key: s.overrideKey ?? s.song.key,
+      bpm: s.song.bpm,
+      coveredCategories: Array.from(
+        new Set(s.assignments.map((a) => categoryForRole(a.teamMember.role)).filter((c): c is RoleCategoryKey => !!c)),
+      ),
+      transitionToNext: s.transitionFrom ? (TRANSITION_LABELS[s.transitionFrom.type] ?? s.transitionFrom.type) : null,
+    }));
+
     return {
       id: set.id,
       title: set.title,
@@ -89,6 +170,10 @@ export async function getDashboardData(
       serviceDate: set.serviceDate,
       songCount: set.songs.length,
       teamMemberCount: teamMemberIds.size,
+      notes: set.notes,
+      stages: getServiceStages(set),
+      setlistPreview,
+      teamCoverage,
     };
   }
 

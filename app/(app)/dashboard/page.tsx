@@ -18,30 +18,25 @@ export default async function DashboardPage() {
   const data = await getDashboardData(team.id, user.id, membershipRole);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <h1 className="text-2xl font-semibold text-foreground">
         {greeting()}, {user.name.split(" ")[0]}
       </h1>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="order-1 lg:col-span-2">
-          <NextSundayHero nextSunday={data.nextSunday} />
-        </div>
+      <NextSundayHero nextSunday={data.nextSunday} isLeaderView={data.isLeaderView} />
 
-        <div className="order-2">
-          <FollowingSundayCard followingSunday={data.followingSunday} />
-        </div>
+      {!data.isLeaderView && <MemberStatusCard status={data.memberStatus} />}
 
-        <div className="order-4 lg:order-3">
-          <ThisWeekList items={data.thisWeek} />
-        </div>
-
-        <div className="order-3 lg:order-4 lg:col-span-2">
-          {data.isLeaderView ? (
-            <NeedsAttentionList items={data.needsAttention} />
-          ) : (
-            <MemberStatusCard status={data.memberStatus} />
-          )}
+      <div className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Calendar &amp; attention
+        </h2>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
+            <FollowingSundayCard followingSunday={data.followingSunday} />
+            <ThisWeekList items={data.thisWeek} />
+          </div>
+          {data.isLeaderView && <NeedsAttentionList items={data.needsAttention} />}
         </div>
       </div>
     </div>
