@@ -1,6 +1,8 @@
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { TeamRoster } from "@/components/team/team-roster";
+import { ChurchAccessList } from "@/components/team/church-access-list";
+import { listChurchAccess } from "@/lib/actions/team";
 
 // Image-based roster import calls the Anthropic API, which can take longer
 // than Vercel's default serverless timeout — see the same note on
@@ -10,7 +12,7 @@ export const maxDuration = 60;
 export default async function TeamPage() {
   const { team, membershipRole } = await requireUser();
   const isLeader = isLeaderRole(membershipRole);
-  const [members, pendingInvites] = await Promise.all([
+  const [members, pendingInvites, churchAccess] = await Promise.all([
     prisma.teamMember.findMany({
       where: { teamId: team.id },
       orderBy: { name: "asc" },
@@ -19,6 +21,7 @@ export default async function TeamPage() {
       where: { teamId: team.id, acceptedAt: null },
       orderBy: { createdAt: "desc" },
     }),
+    isLeader ? listChurchAccess() : Promise.resolve([]),
   ]);
 
   return (
@@ -28,6 +31,7 @@ export default async function TeamPage() {
         <p className="text-sm text-muted-foreground">{team.name} — {members.length} members</p>
       </div>
       <TeamRoster members={members} pendingInvites={pendingInvites} isLeader={isLeader} />
+      {isLeader && <ChurchAccessList rows={churchAccess} />}
     </div>
   );
 }
