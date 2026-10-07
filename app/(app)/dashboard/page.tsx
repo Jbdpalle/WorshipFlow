@@ -43,6 +43,7 @@ export default async function DashboardPage() {
           <div className="space-y-4">
             <FollowingSundayCard followingSunday={data.followingSunday} isLeaderView={data.isLeaderView} />
             <ThisWeekList items={data.thisWeek} />
+            {data.isLeaderView && <NeedsAttentionList items={data.needsAttention} />}
           </div>
           <div className="space-y-4">
             <WorshipCalendar
@@ -51,7 +52,6 @@ export default async function DashboardPage() {
               initialEntries={calendarEntries}
               isLeaderView={data.isLeaderView}
             />
-            {data.isLeaderView && <NeedsAttentionList items={data.needsAttention} />}
           </div>
         </div>
       </div>
