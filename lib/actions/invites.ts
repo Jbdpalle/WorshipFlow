@@ -220,6 +220,24 @@ export async function acceptInviteExistingUser(token: string, password: string):
       });
     }
 
+    // Mirror acceptInviteNewUser's fallback: if this invite wasn't targeted
+    // at an existing roster row, this person has no TeamMember row in this
+    // team at all yet (an existing account has no reason to have one here
+    // already) — without it they're invisible to every roster-driven
+    // picker (set leader, per-song role assignment, My Part) even though
+    // they can now log in and see the Dashboard/Sets fine.
+    if (!invite.teamMemberId) {
+      const existingTeamMember = await prisma.teamMember.findFirst({
+        where: { teamId: invite.teamId, userId: user.id },
+        select: { id: true },
+      });
+      if (!existingTeamMember) {
+        await prisma.teamMember.create({
+          data: { teamId: invite.teamId, userId: user.id, name: user.name, role: "Other" },
+        });
+      }
+    }
+
     await finalizeAcceptance(invite.id, user.id, invite.teamMemberId, invite.teamId, invite.churchId);
     return { ok: true };
   });
