@@ -1,4 +1,4 @@
-import { requireUser, isLeaderRole } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole, isAdminRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { TeamRoster } from "@/components/team/team-roster";
 import { ChurchAccessList } from "@/components/team/church-access-list";
@@ -12,6 +12,7 @@ export const maxDuration = 60;
 export default async function TeamPage() {
   const { team, membershipRole } = await requireUser();
   const isLeader = isLeaderRole(membershipRole);
+  const isAdmin = isAdminRole(membershipRole);
   const [members, pendingInvites, churchAccess] = await Promise.all([
     prisma.teamMember.findMany({
       where: { teamId: team.id },
@@ -30,8 +31,8 @@ export default async function TeamPage() {
         <h1 className="text-2xl font-semibold">Team</h1>
         <p className="text-sm text-muted-foreground">{team.name} — {members.length} members</p>
       </div>
-      <TeamRoster members={members} pendingInvites={pendingInvites} isLeader={isLeader} />
-      {isLeader && <ChurchAccessList rows={churchAccess} />}
+      <TeamRoster members={members} pendingInvites={pendingInvites} isLeader={isLeader} isAdmin={isAdmin} />
+      {isLeader && <ChurchAccessList rows={churchAccess} isAdmin={isAdmin} />}
     </div>
   );
 }

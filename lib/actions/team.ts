@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser, isLeaderRole } from "@/lib/auth/guard";
+import type { ChurchRole } from "@prisma/client";
+import { requireUser, isLeaderRole, isAdminRole } from "@/lib/auth/guard";
 import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
 import { runAction, type ActionResult } from "@/lib/actions/action-result";
 import { checkCanAddTeamMember } from "@/lib/plans/limits";
@@ -14,7 +15,10 @@ export async function addTeamMember(input: {
   bio?: string;
 }): Promise<ActionResult> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can add a team member." };
+    }
     const limit = await checkCanAddTeamMember(team.id, team.plan, user.isDemo);
     if (!limit.ok) return limit;
     const member = await prisma.teamMember.create({
@@ -37,7 +41,10 @@ export async function updateTeamMember(
   input: Partial<{ name: string; role: string; instrument: string; bio: string }>,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can edit a team member." };
+    }
     const member = await prisma.teamMember.findUnique({ where: { id: memberId } });
     if (!member || member.teamId !== team.id) return { ok: false, error: "Not found." };
     await prisma.teamMember.update({ where: { id: memberId }, data: input });
@@ -50,8 +57,8 @@ export async function updateTeamMember(
 export async function removeTeamMember(memberId: string): Promise<ActionResult> {
   return runAction(async () => {
     const { team, church, membershipRole } = await requireUser();
-    if (!isLeaderRole(membershipRole)) {
-      return { ok: false, error: "Only the worship leader can remove a team member." };
+    if (!isAdminRole(membershipRole)) {
+      return { ok: false, error: "Only an admin or the church owner can remove a team member." };
     }
     const member = await prisma.teamMember.findUnique({ where: { id: memberId } });
     if (!member || member.teamId !== team.id) return { ok: false, error: "Not found." };
@@ -65,6 +72,31 @@ export async function removeTeamMember(memberId: string): Promise<ActionResult> 
         await tx.membership.deleteMany({ where: { userId: member.userId, churchId: church.id } });
       }
     });
+    revalidatePath("/team");
+    return { ok: true };
+  });
+}
+
+// Admin/Owner can re-grant someone's role (Member/Leader/Admin) after the
+// fact — previously a role was only ever set once, at invite time. Never
+// grants OWNER (there's exactly one, the church's creator — no transfer
+// feature here) and never changes the OWNER's own row, so this can't be
+// used to strip or duplicate ownership.
+export async function setMembershipRole(membershipId: string, newRole: ChurchRole): Promise<ActionResult> {
+  return runAction(async () => {
+    const { church, membershipRole } = await requireUser();
+    if (!isAdminRole(membershipRole)) {
+      return { ok: false, error: "Only an admin or the church owner can change someone's role." };
+    }
+    if (newRole === "OWNER") {
+      return { ok: false, error: "Ownership can't be changed here." };
+    }
+    const membership = await prisma.membership.findUnique({ where: { id: membershipId } });
+    if (!membership || membership.churchId !== church.id) return { ok: false, error: "Not found." };
+    if (membership.role === "OWNER") {
+      return { ok: false, error: "The church owner's role can't be changed here." };
+    }
+    await prisma.membership.update({ where: { id: membershipId }, data: { role: newRole } });
     revalidatePath("/team");
     return { ok: true };
   });
@@ -103,8 +135,8 @@ export async function listChurchAccess(): Promise<ChurchAccessRow[]> {
 export async function revokeChurchAccess(membershipId: string): Promise<ActionResult> {
   return runAction(async () => {
     const { user, church, membershipRole } = await requireUser();
-    if (!isLeaderRole(membershipRole)) {
-      return { ok: false, error: "Only the worship leader can revoke access." };
+    if (!isAdminRole(membershipRole)) {
+      return { ok: false, error: "Only an admin or the church owner can revoke access." };
     }
     const membership = await prisma.membership.findUnique({ where: { id: membershipId } });
     if (!membership || membership.churchId !== church.id) return { ok: false, error: "Not found." };

@@ -57,3 +57,10 @@ export async function getOptionalUser() {
 export function isLeaderRole(role: string): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "LEADER";
 }
+
+// Narrower than isLeaderRole: Admin-and-above actions (removing people,
+// changing someone's role, bulk roster import) — a plain Leader can invite
+// and add to the roster, but not delete or re-grant access.
+export function isAdminRole(role: string): boolean {
+  return role === "OWNER" || role === "ADMIN";
+}

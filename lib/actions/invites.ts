@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ChurchRole } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser, isLeaderRole } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole, isAdminRole } from "@/lib/auth/guard";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
@@ -40,12 +40,22 @@ export async function createInvite(input: {
       where: { teamId: team.id, email, acceptedAt: null },
     });
 
+    // Resolve what the invite's role will actually end up as (the update
+    // branch below falls back to the existing pending invite's role when
+    // none is given), then gate on THAT — a plain Leader can only grant
+    // Member/Leader, so this also catches re-inviting onto a pending
+    // invite that already had Admin on it.
+    const finalRole = input.role ?? existingPending?.role ?? "MEMBER";
+    if (finalRole === "ADMIN" && !isAdminRole(membershipRole)) {
+      return { ok: false, error: "Only an admin or the church owner can invite someone as an admin." };
+    }
+
     const expiresAt = new Date(Date.now() + INVITE_DURATION_DAYS * 24 * 60 * 60 * 1000);
     const invite = existingPending
       ? await prisma.invite.update({
           where: { id: existingPending.id },
           data: {
-            role: input.role ?? existingPending.role,
+            role: finalRole,
             teamMemberId: input.teamMemberId ?? existingPending.teamMemberId,
             expiresAt,
           },
@@ -56,7 +66,7 @@ export async function createInvite(input: {
             teamId: team.id,
             teamMemberId: input.teamMemberId || null,
             email,
-            role: input.role ?? "MEMBER",
+            role: finalRole,
             expiresAt,
           },
         });

@@ -31,10 +31,12 @@ export function TeamRoster({
   members,
   pendingInvites,
   isLeader,
+  isAdmin,
 }: {
   members: Member[];
   pendingInvites: PendingInvite[];
   isLeader: boolean;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -47,11 +49,13 @@ export function TeamRoster({
       <div className="flex flex-wrap items-center justify-between gap-2">
         {error ? <p className="text-sm text-danger">{error}</p> : <span />}
         <div className="flex flex-wrap gap-2">
-          <ImportRosterDialog />
-          {isLeader && <InviteDialog />}
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" /> Add Team Member
-          </Button>
+          {isLeader && <ImportRosterDialog />}
+          {isLeader && <InviteDialog canGrantAdmin={isAdmin} />}
+          {isLeader && (
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" /> Add Team Member
+            </Button>
+          )}
         </div>
       </div>
 
@@ -112,6 +116,7 @@ export function TeamRoster({
                     <InviteDialog
                       teamMemberId={m.id}
                       teamMemberName={m.name}
+                      canGrantAdmin={isAdmin}
                       trigger={
                         <button className="text-xs font-medium text-accent hover:underline">Invite</button>
                       }
@@ -119,29 +124,31 @@ export function TeamRoster({
                   )}
                 </div>
               </div>
-              <Tooltip content={`Remove ${m.name} from the team roster`}>
-                <button
-                  onClick={async () => {
-                    setError(null);
-                    const result = await removeTeamMember(m.id);
-                    if (!result.ok) {
-                      setError(result.error);
-                      return;
-                    }
-                    router.refresh();
-                  }}
-                  className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                  aria-label="Remove"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </Tooltip>
+              {isAdmin && (
+                <Tooltip content={`Remove ${m.name} from the team roster`}>
+                  <button
+                    onClick={async () => {
+                      setError(null);
+                      const result = await removeTeamMember(m.id);
+                      if (!result.ok) {
+                        setError(result.error);
+                        return;
+                      }
+                      router.refresh();
+                    }}
+                    className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                    aria-label="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </Tooltip>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {pendingInvites.length > 0 && (
+      {isLeader && pendingInvites.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground">Pending invites</h2>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

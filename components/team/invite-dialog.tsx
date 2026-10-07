@@ -21,11 +21,17 @@ export function InviteDialog({
   teamMemberId,
   teamMemberName,
   trigger,
+  canGrantAdmin = false,
 }: {
   teamMemberId?: string;
   teamMemberName?: string;
   trigger?: React.ReactNode;
+  // A plain Leader can only grant Member/Leader — Admin is Admin/Owner-only
+  // to hand out. Server-enforced too (createInvite); this just keeps the
+  // dropdown from offering an option that would be rejected anyway.
+  canGrantAdmin?: boolean;
 }) {
+  const roleOptions = canGrantAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => r.value !== "ADMIN");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -128,7 +134,7 @@ export function InviteDialog({
             <div className="space-y-1">
               <Label htmlFor="invite-role">Role</Label>
               <Select id="invite-role" value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
-                {ROLE_OPTIONS.map((r) => (
+                {roleOptions.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>

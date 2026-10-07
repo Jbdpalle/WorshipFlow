@@ -5,10 +5,11 @@ import { RestartTourButton } from "@/components/demo/demo-tour-banner";
 import { ThemeSegmentedControl } from "@/components/layout/theme-toggle";
 import { TooltipToggle } from "@/components/layout/tooltip-toggle";
 import { PlanToggle } from "@/components/settings/plan-toggle";
+import { DangerZone } from "@/components/settings/danger-zone";
 
 export default async function SettingsPage() {
   const { user, team, church, membershipRole } = await requireUser();
-  const canRenameChurch = membershipRole === "OWNER" || membershipRole === "ADMIN";
+  const isOwner = membershipRole === "OWNER";
   const daysLeft = user.demoExpiresAt
     ? Math.max(0, Math.ceil((user.demoExpiresAt.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000)))
     : null;
@@ -63,13 +64,11 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Church / team name</CardTitle>
           <CardDescription>
-            {canRenameChurch
-              ? "Shown in the sidebar and on the dashboard."
-              : "Only a church owner or admin can change this."}
+            {isOwner ? "Shown in the sidebar and on the dashboard." : "Only the church owner can change this."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SettingsForm field="church" initialValue={church.name} disabled={!canRenameChurch} />
+          <SettingsForm field="church" initialValue={church.name} disabled={!isOwner} />
         </CardContent>
       </Card>
 
@@ -79,9 +78,21 @@ export default async function SettingsPage() {
           <CardDescription>No billing is wired up yet — this is a manual switch for testing.</CardDescription>
         </CardHeader>
         <CardContent>
-          <PlanToggle plan={team.plan} canChange={canRenameChurch} />
+          <PlanToggle plan={team.plan} canChange={isOwner} />
         </CardContent>
       </Card>
+
+      {isOwner && (
+        <Card className="border-danger/30">
+          <CardHeader>
+            <CardTitle className="text-base text-danger">Danger zone</CardTitle>
+            <CardDescription>Permanently delete {church.name} and everything in it.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DangerZone churchName={church.name} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

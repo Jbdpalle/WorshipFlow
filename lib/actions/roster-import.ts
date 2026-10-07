@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import {
   parseRosterWorkbookBuffer,
   parseRosterCsvBuffer,
@@ -143,7 +143,10 @@ export async function importRosterFromSpreadsheet(
   formData: FormData,
 ): Promise<ActionResultData<RosterImportSummary>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can import a roster." };
+    }
 
     const file = formData.get("file");
     if (!(file instanceof File)) return { ok: false, error: "No file was provided." };
@@ -177,7 +180,10 @@ export async function importRosterFromImage(
   formData: FormData,
 ): Promise<ActionResultData<RosterImportSummary>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can import a roster." };
+    }
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return {

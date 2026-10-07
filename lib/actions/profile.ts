@@ -29,8 +29,8 @@ export async function updateChurchName(name: string): Promise<ActionResult> {
     const { team, church, membershipRole } = await requireUser();
     const trimmed = name.trim();
     if (!trimmed) return { ok: false, error: "Church name can't be empty." };
-    if (membershipRole !== "OWNER" && membershipRole !== "ADMIN") {
-      return { ok: false, error: "Only a church owner or admin can rename it." };
+    if (membershipRole !== "OWNER") {
+      return { ok: false, error: "Only the church owner can rename it." };
     }
 
     await prisma.$transaction([
