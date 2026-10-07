@@ -9,6 +9,7 @@ export type SongMetadataRow = {
   key: string | null;
   bpm: number | null;
   timeSignature: string | null;
+  worshipType: string | null;
 };
 
 const TITLE_HEADER_RE = /^title$|song/i;
@@ -19,6 +20,7 @@ const CONNECTION_HEADER_RE = /connection|note/i;
 const KEY_HEADER_RE = /^key$/i;
 const BPM_HEADER_RE = /bpm|tempo/i;
 const TIME_SIG_HEADER_RE = /time\s*sig/i;
+const WORSHIP_TYPE_HEADER_RE = /praise.*worship|worship.*type/i;
 
 function cellText(value: ExcelJS.CellValue): string {
   if (value == null) return "";
@@ -50,6 +52,7 @@ function detectColumns(headerRow: ExcelJS.Row) {
     else if (!cols.key && KEY_HEADER_RE.test(text)) cols.key = colNumber;
     else if (!cols.bpm && BPM_HEADER_RE.test(text)) cols.bpm = colNumber;
     else if (!cols.timeSignature && TIME_SIG_HEADER_RE.test(text)) cols.timeSignature = colNumber;
+    else if (!cols.worshipType && WORSHIP_TYPE_HEADER_RE.test(text)) cols.worshipType = colNumber;
   });
   if (!cols.title) cols.title = 1;
   return cols;
@@ -81,6 +84,7 @@ function extractRows(sheet: ExcelJS.Worksheet): SongMetadataRow[] {
       key: cols.key ? cellText(row.getCell(cols.key).value) || null : null,
       bpm,
       timeSignature: cols.timeSignature ? cellText(row.getCell(cols.timeSignature).value) || null : null,
+      worshipType: cols.worshipType ? cellText(row.getCell(cols.worshipType).value) || null : null,
     });
   }
 

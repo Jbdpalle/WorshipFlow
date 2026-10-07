@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
-import { THEME_CATEGORIES } from "@/lib/songs/constants";
+import { THEME_CATEGORIES, WORSHIP_TYPES } from "@/lib/songs/constants";
 import {
   parseSongMetadataWorkbookBuffer,
   parseSongMetadataCsvBuffer,
@@ -13,6 +13,7 @@ import { runAction, type ActionResultData } from "@/lib/actions/action-result";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const VALID_THEME_LABELS = new Set(THEME_CATEGORIES.map((c) => c.label));
+const VALID_WORSHIP_TYPES = new Set<string>(WORSHIP_TYPES);
 
 export type SongMetadataImportSummary = {
   songsMatched: number;
@@ -94,6 +95,11 @@ async function applyRowsUnsafe(teamId: string, rows: SongMetadataRow[]): Promise
     }
     if (row.timeSignature && !song.timeSignature) {
       fieldUpdates.timeSignature = row.timeSignature;
+    }
+    if (row.worshipType && VALID_WORSHIP_TYPES.has(row.worshipType) && !song.worshipType) {
+      fieldUpdates.worshipType = row.worshipType;
+    } else if (row.worshipType && song.worshipType) {
+      summary.fieldsSkippedAlreadySet++;
     }
     if (Object.keys(fieldUpdates).length > 0 || (row.bpm && !song.bpm)) {
       await prisma.song.update({

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { Song, SongSection } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
-import { DEFAULT_SONG_STRUCTURE, THEME_CATEGORIES } from "@/lib/songs/constants";
+import { DEFAULT_SONG_STRUCTURE, THEME_CATEGORIES, WORSHIP_TYPES } from "@/lib/songs/constants";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
 import { checkCanCreateSong } from "@/lib/plans/limits";
@@ -77,6 +77,7 @@ export async function updateSong(
     durationSeconds: number | null;
     energy: string;
     themeCategory: string;
+    worshipType: string;
     biblicalConnection: string;
     lyricsSummary: string;
     notes: string;
@@ -94,6 +95,13 @@ export async function updateSong(
     }
     if (input.spotifyUrl !== undefined && input.spotifyUrl.trim() && !isHttpUrl(input.spotifyUrl)) {
       return { ok: false, error: "That doesn't look like a valid link — it should start with https://" };
+    }
+    if (
+      input.worshipType !== undefined &&
+      input.worshipType &&
+      !(WORSHIP_TYPES as readonly string[]).includes(input.worshipType)
+    ) {
+      return { ok: false, error: "Not a recognized Praise/Worship type." };
     }
     await prisma.song.update({ where: { id: songId }, data: input });
     revalidatePath(`/songs/${songId}`);

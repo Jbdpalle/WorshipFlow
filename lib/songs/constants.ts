@@ -81,6 +81,20 @@ export const DEFAULT_SONG_STRUCTURE = [
 export const ENERGY_LEVELS = ["low", "medium", "high"] as const;
 export type EnergyLevel = (typeof ENERGY_LEVELS)[number];
 
+// A worship-specific classification distinct from ENERGY_LEVELS above —
+// where it fits in a typical service flow, not just how energetic it
+// sounds. Editorial, set by the leader (or the metadata import), never
+// inferred automatically.
+export const WORSHIP_TYPES = [
+  "High Praise",
+  "Med Praise",
+  "Praise/Worship",
+  "Worship",
+  "Medium Worship",
+  "Slow Worship",
+] as const;
+export type WorshipType = (typeof WORSHIP_TYPES)[number];
+
 // Per-section dynamics — a simple label, not a mixing console.
 export const DYNAMICS_LEVELS = ["Intimate", "Light", "Building", "Strong", "Full"] as const;
 export type DynamicsLevel = (typeof DYNAMICS_LEVELS)[number];

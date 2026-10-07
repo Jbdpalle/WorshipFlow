@@ -199,6 +199,7 @@ model Song {
   durationSeconds   Int?
   energy            String?  // low | medium | high
   themeCategory     String?  // e.g. "God's Love", "Cross / Sacrifice"
+  worshipType       String?  // High Praise | Med Praise | Praise/Worship | Worship | Medium Worship | Slow Worship — see lib/songs/constants.ts WORSHIP_TYPES
   biblicalConnection String?
   lyricsSummary     String?  // no full copyrighted lyrics stored
   notes             String?

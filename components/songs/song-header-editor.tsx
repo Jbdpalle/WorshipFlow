@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SaveStatus, type SaveState } from "@/components/ui/save-status";
 import { MediaLinkField } from "@/components/ui/media-link-field";
 import { ThemeCategoryPicker } from "@/components/songs/theme-category-picker";
-import { ENERGY_LEVELS } from "@/lib/songs/constants";
+import { ENERGY_LEVELS, WORSHIP_TYPES } from "@/lib/songs/constants";
 import { updateSong } from "@/lib/actions/songs";
 
 type SongFields = {
@@ -19,6 +19,7 @@ type SongFields = {
   bpm: number | null;
   timeSignature: string | null;
   energy: string | null;
+  worshipType: string | null;
   biblicalConnection: string | null;
   youtubeUrl: string | null;
   spotifyUrl: string | null;
@@ -40,6 +41,7 @@ export function SongHeaderEditor({
     bpm: song.bpm?.toString() ?? "",
     timeSignature: song.timeSignature ?? "4/4",
     energy: song.energy ?? "medium",
+    worshipType: song.worshipType ?? "",
     biblicalConnection: song.biblicalConnection ?? "",
     youtubeUrl: song.youtubeUrl ?? "",
     spotifyUrl: song.spotifyUrl ?? "",
@@ -66,6 +68,7 @@ export function SongHeaderEditor({
       bpm: fields.bpm ? Number(fields.bpm) : null,
       timeSignature: fields.timeSignature,
       energy: fields.energy,
+      worshipType: fields.worshipType,
       biblicalConnection: fields.biblicalConnection,
       youtubeUrl: fields.youtubeUrl,
       spotifyUrl: fields.spotifyUrl,
@@ -151,6 +154,22 @@ export function SongHeaderEditor({
             onBlur={() => save({ biblicalConnection: fields.biblicalConnection })}
             placeholder="1 John 4:19"
           />
+        </Field>
+        <Field label="Praise / Worship type">
+          <Select
+            value={fields.worshipType}
+            onChange={(e) => {
+              set("worshipType", e.target.value);
+              save({ worshipType: e.target.value });
+            }}
+          >
+            <option value="">Not set</option>
+            {WORSHIP_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
         </Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
