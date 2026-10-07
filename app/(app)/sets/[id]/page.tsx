@@ -150,6 +150,8 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
                 initialKeywords={set.keywords ?? ""}
                 initialAnchorSongId={set.anchorSongId ?? ""}
                 initialServiceDate={set.serviceDate ? new Date(set.serviceDate).toISOString().slice(0, 10) : ""}
+                initialYoutubePlaylistUrl={set.youtubePlaylistUrl ?? ""}
+                initialSpotifyPlaylistUrl={set.spotifyPlaylistUrl ?? ""}
                 songOptions={set.songs.map((s) => ({ songId: s.song.id, title: s.song.title }))}
               />
             </CardContent>

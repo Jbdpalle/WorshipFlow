@@ -9,6 +9,7 @@ import { runAction, type ActionResult, type ActionResultData } from "@/lib/actio
 import { trackEvent } from "@/lib/usability/track";
 import { checkCanCreateSong } from "@/lib/plans/limits";
 import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
+import { isHttpUrl } from "@/lib/utils/url";
 
 type SongLookup = { ok: true; song: Song } | { ok: false; error: string };
 type SectionLookup = { ok: true; section: SongSection & { songId: string } } | { ok: false; error: string };
@@ -80,12 +81,20 @@ export async function updateSong(
     lyricsSummary: string;
     notes: string;
     visionNote: string;
+    youtubeUrl: string;
+    spotifyUrl: string;
   }>,
 ): Promise<ActionResult> {
   return runAction(async () => {
     const { user, team } = await requireUser();
     const lookup = await findOwnedSong(songId, team.id);
     if (!lookup.ok) return lookup;
+    if (input.youtubeUrl !== undefined && input.youtubeUrl.trim() && !isHttpUrl(input.youtubeUrl)) {
+      return { ok: false, error: "That doesn't look like a valid link — it should start with https://" };
+    }
+    if (input.spotifyUrl !== undefined && input.spotifyUrl.trim() && !isHttpUrl(input.spotifyUrl)) {
+      return { ok: false, error: "That doesn't look like a valid link — it should start with https://" };
+    }
     await prisma.song.update({ where: { id: songId }, data: input });
     revalidatePath(`/songs/${songId}`);
     revalidatePath("/songs");

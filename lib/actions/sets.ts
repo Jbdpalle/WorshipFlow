@@ -8,6 +8,7 @@ import { runAction, type ActionResult, type ActionResultData } from "@/lib/actio
 import { trackEvent } from "@/lib/usability/track";
 import { checkCanCreateSet } from "@/lib/plans/limits";
 import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
+import { isHttpUrl } from "@/lib/utils/url";
 
 export async function createSet(input: {
   title: string;
@@ -83,6 +84,8 @@ export async function updateSetMeta(
     keywords?: string | null;
     anchorSongId?: string | null;
     serviceDate?: string | null;
+    youtubePlaylistUrl?: string | null;
+    spotifyPlaylistUrl?: string | null;
   },
 ): Promise<ActionResult> {
   return runAction(async () => {
@@ -97,6 +100,13 @@ export async function updateSetMeta(
       if (!song) return { ok: false, error: "That song isn't in this set." };
     }
 
+    if (input.youtubePlaylistUrl && !isHttpUrl(input.youtubePlaylistUrl)) {
+      return { ok: false, error: "That doesn't look like a valid link — it should start with https://" };
+    }
+    if (input.spotifyPlaylistUrl && !isHttpUrl(input.spotifyPlaylistUrl)) {
+      return { ok: false, error: "That doesn't look like a valid link — it should start with https://" };
+    }
+
     await prisma.worshipSet.update({
       where: { id: setId },
       data: {
@@ -106,6 +116,12 @@ export async function updateSetMeta(
         ...(input.anchorSongId !== undefined ? { anchorSongId: input.anchorSongId || null } : {}),
         ...(input.serviceDate !== undefined
           ? { serviceDate: input.serviceDate ? new Date(input.serviceDate) : null }
+          : {}),
+        ...(input.youtubePlaylistUrl !== undefined
+          ? { youtubePlaylistUrl: input.youtubePlaylistUrl?.trim() || null }
+          : {}),
+        ...(input.spotifyPlaylistUrl !== undefined
+          ? { spotifyPlaylistUrl: input.spotifyPlaylistUrl?.trim() || null }
           : {}),
       },
     });

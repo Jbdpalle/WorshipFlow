@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, PlayCircle, Music2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,8 @@ type LibrarySong = {
   bpm: number | null;
   themeCategory: string | null;
   tags: { id: string; label: string }[];
+  youtubeUrl: string | null;
+  spotifyUrl: string | null;
 };
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -141,7 +143,41 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
             <Link key={song.id} href={`/songs/${song.id}`}>
               <Card className="h-full transition-shadow hover:shadow-md">
                 <CardContent className="space-y-2 pt-4">
-                  <h3 className="font-semibold">{song.title}</h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold">{song.title}</h3>
+                    {(song.youtubeUrl || song.spotifyUrl) && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        {song.youtubeUrl && (
+                          <button
+                            type="button"
+                            aria-label="Open YouTube reference"
+                            className="rounded-md p-1 text-muted-foreground hover:bg-surface-muted hover:text-foreground"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.open(song.youtubeUrl!, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            <PlayCircle className="h-4 w-4" />
+                          </button>
+                        )}
+                        {song.spotifyUrl && (
+                          <button
+                            type="button"
+                            aria-label="Open Spotify reference"
+                            className="rounded-md p-1 text-muted-foreground hover:bg-surface-muted hover:text-foreground"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.open(song.spotifyUrl!, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            <Music2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {song.artist && <p className="text-xs text-muted-foreground">{song.artist}</p>}
                   <div className="flex flex-wrap gap-1.5">
                     {song.key && <Badge variant="outline">Key {song.key}</Badge>}

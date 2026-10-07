@@ -203,6 +203,8 @@ model Song {
   lyricsSummary     String?  // no full copyrighted lyrics stored
   notes             String?
   visionNote        String?  // "Where are we taking this song?" — free-form leadership direction, distinct from `notes`
+  youtubeUrl        String?  // reference recording — "listen to this version" for the team
+  spotifyUrl        String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -325,6 +327,8 @@ model WorshipSet {
   serviceType String?
   leaderName  String?
   notes       String? // whole-set notes — "Leader's Note" in the Set Direction UI
+  youtubePlaylistUrl String? // whole-set listening playlist, separate from each song's own reference link
+  spotifyPlaylistUrl String?
   anchorSongId String? // optional: the one song this service is built around
   archivedAt  DateTime? // set when archived — hidden from the default /sets list, not deleted
 

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Save } from "lucide-react";
+import { Save, PlayCircle, Music2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SaveStatus, type SaveState } from "@/components/ui/save-status";
+import { MediaLinkField } from "@/components/ui/media-link-field";
 import { ENERGY_LEVELS } from "@/lib/songs/constants";
 import { updateSong } from "@/lib/actions/songs";
 
@@ -19,6 +20,8 @@ type SongFields = {
   energy: string | null;
   themeCategory: string | null;
   biblicalConnection: string | null;
+  youtubeUrl: string | null;
+  spotifyUrl: string | null;
 };
 
 export function SongHeaderEditor({ songId, song }: { songId: string; song: SongFields }) {
@@ -31,6 +34,8 @@ export function SongHeaderEditor({ songId, song }: { songId: string; song: SongF
     energy: song.energy ?? "medium",
     themeCategory: song.themeCategory ?? "",
     biblicalConnection: song.biblicalConnection ?? "",
+    youtubeUrl: song.youtubeUrl ?? "",
+    spotifyUrl: song.spotifyUrl ?? "",
   });
 
   const [status, setStatus] = useState<SaveState>("idle");
@@ -56,6 +61,8 @@ export function SongHeaderEditor({ songId, song }: { songId: string; song: SongF
       energy: fields.energy,
       themeCategory: fields.themeCategory,
       biblicalConnection: fields.biblicalConnection,
+      youtubeUrl: fields.youtubeUrl,
+      spotifyUrl: fields.spotifyUrl,
     });
   }
 
@@ -147,6 +154,29 @@ export function SongHeaderEditor({ songId, song }: { songId: string; song: SongF
           />
         </Field>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MediaLinkField
+          id="song-youtube-url"
+          label="YouTube link"
+          icon={<PlayCircle className="h-3.5 w-3.5" />}
+          value={fields.youtubeUrl}
+          onChange={(v) => set("youtubeUrl", v)}
+          onBlur={() => save({ youtubeUrl: fields.youtubeUrl })}
+          placeholder="https://youtube.com/watch?v=..."
+        />
+        <MediaLinkField
+          id="song-spotify-url"
+          label="Spotify link"
+          icon={<Music2 className="h-3.5 w-3.5" />}
+          value={fields.spotifyUrl}
+          onChange={(v) => set("spotifyUrl", v)}
+          onBlur={() => save({ spotifyUrl: fields.spotifyUrl })}
+          placeholder="https://open.spotify.com/track/..."
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Share the exact version you want the team to listen to — this plays no audio itself, it just links out.
+      </p>
     </div>
   );
 }

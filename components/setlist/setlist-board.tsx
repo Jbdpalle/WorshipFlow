@@ -18,7 +18,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Trash2, Music2, BookOpenText, Star, ChevronDown, CheckCircle2, AlertCircle, Circle } from "lucide-react";
+import { GripVertical, X, Trash2, Music2, BookOpenText, Star, ChevronDown, CheckCircle2, AlertCircle, Circle, PlayCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
@@ -48,6 +48,8 @@ export type SetSongData = {
     key: string | null;
     bpm: number | null;
     energy: string | null;
+    youtubeUrl: string | null;
+    spotifyUrl: string | null;
   };
   songFlowStatus: SongFlowStatus;
   assignments: { id: string; role: string; teamMember: { id: string; name: string } }[];
@@ -252,6 +254,32 @@ function SetSongCard({
                   </div>
                 )}
                 {item.song.bpm && <Badge variant="outline">{item.song.bpm} BPM</Badge>}
+                {item.song.youtubeUrl && (
+                  <a
+                    href={item.song.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
+                    aria-label="Listen on YouTube"
+                  >
+                    <Tooltip content="Listen to the reference version on YouTube">
+                      <PlayCircle className="h-4 w-4" />
+                    </Tooltip>
+                  </a>
+                )}
+                {item.song.spotifyUrl && (
+                  <a
+                    href={item.song.spotifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
+                    aria-label="Listen on Spotify"
+                  >
+                    <Tooltip content="Listen to the reference version on Spotify">
+                      <Music2 className="h-4 w-4" />
+                    </Tooltip>
+                  </a>
+                )}
                 <Link
                   href={`/songs/${item.song.id}/chart?setSongId=${item.id}`}
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
