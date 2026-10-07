@@ -1,9 +1,24 @@
 import { prisma } from "@/lib/db/prisma";
 import type { TeamPlan } from "@prisma/client";
 
+// BETA ENTITLEMENT — the product is in testing/beta, with no commercial
+// pricing live yet. Every non-demo team is treated as having PRO-level
+// limits for now, regardless of its actual Team.plan value, so beta
+// testing (multi-month rosters, full team sizes, etc.) is never blocked by
+// future pricing tiers. This is the one place that decides that — nothing
+// else should special-case "beta" or hardcode "unlimited" on its own.
+// Flip this to false (deliberately, when pricing actually launches) to
+// start enforcing FREE_LIMITS/the team's real plan again. Only
+// leader@worshipflow.app and jbdpalle@gmail.com can change a team's
+// Team.plan value at all while this is true — see lib/auth/super-admin.ts
+// and lib/actions/plan.ts.
+const BETA_ALL_TEAMS_UNRESTRICTED = true;
+
 // Numeric ceilings for the Free plan — every non-demo team defaults to
-// FREE (see Team.plan). PRO lifts these entirely; there's no billing flow
-// yet, so a team only reaches PRO by a manual/future upgrade step.
+// FREE (see Team.plan). PRO (and, once defined, INDIVIDUAL/GROUP) lift
+// these; there's no billing flow yet, so a team only reaches a paid plan
+// by a manual/future upgrade step. Not currently enforced — see
+// BETA_ALL_TEAMS_UNRESTRICTED above.
 export const FREE_LIMITS = {
   maxActiveSets: 3,
   maxTeamMembers: 6,
@@ -36,7 +51,7 @@ export async function checkCanCreateSet(
     }
     return { ok: true };
   }
-  if (plan === "PRO") return { ok: true };
+  if (plan === "PRO" || BETA_ALL_TEAMS_UNRESTRICTED) return { ok: true };
   if (count >= FREE_LIMITS.maxActiveSets) {
     return {
       ok: false,
@@ -66,7 +81,7 @@ export async function checkCanAddTeamMember(
   // Roster-only entries (no login) aren't the limited resource for a demo
   // — invites are (see checkCanInvite) — so demo accounts aren't capped here.
   if (isDemo) return { ok: true };
-  if (plan === "PRO") return { ok: true };
+  if (plan === "PRO" || BETA_ALL_TEAMS_UNRESTRICTED) return { ok: true };
   const count = await prisma.teamMember.count({ where: { teamId } });
   if (count >= FREE_LIMITS.maxTeamMembers) {
     return {

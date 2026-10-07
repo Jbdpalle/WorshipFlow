@@ -26,10 +26,17 @@ enum ChurchRole {
   MEMBER
 }
 
-// PRO lifts the limits in lib/plans/limits.ts; no billing integration yet —
-// upgrading a team to PRO is a manual/future step, not a self-serve checkout.
+// PRO lifts the limits in lib/plans/limits.ts; no billing integration yet.
+// INDIVIDUAL and GROUP are reserved for future pricing tiers — not yet
+// defined, not yet enforced anywhere, placeholders only until pricing
+// launches. During the testing/beta phase, lib/plans/limits.ts doesn't
+// enforce Free-plan limits regardless of this field's value, and only the
+// two accounts in lib/auth/super-admin.ts can change a team's plan at all
+// (see lib/actions/plan.ts) — there is no self-serve checkout.
 enum TeamPlan {
   FREE
+  INDIVIDUAL
+  GROUP
   PRO
 }
 

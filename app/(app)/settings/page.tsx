@@ -4,11 +4,10 @@ import { SettingsForm } from "@/components/settings/settings-form";
 import { RestartTourButton } from "@/components/demo/demo-tour-banner";
 import { ThemeSegmentedControl } from "@/components/layout/theme-toggle";
 import { TooltipToggle } from "@/components/layout/tooltip-toggle";
-import { PlanToggle } from "@/components/settings/plan-toggle";
 import { DangerZone } from "@/components/settings/danger-zone";
 
 export default async function SettingsPage() {
-  const { user, team, church, membershipRole } = await requireUser();
+  const { user, church, membershipRole } = await requireUser();
   const isOwner = membershipRole === "OWNER";
   const daysLeft = user.demoExpiresAt
     ? Math.max(0, Math.ceil((user.demoExpiresAt.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000)))
@@ -69,16 +68,6 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <SettingsForm field="church" initialValue={church.name} disabled={!isOwner} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Plan</CardTitle>
-          <CardDescription>No billing is wired up yet — this is a manual switch for testing.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PlanToggle plan={team.plan} canChange={isOwner} />
         </CardContent>
       </Card>
 
