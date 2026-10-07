@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ServiceRosterList } from "@/components/dashboard/service-roster-list";
 import { getCalendarMonth } from "@/lib/actions/calendar";
 import { createSet } from "@/lib/actions/sets";
+import { eventTypeLabel } from "@/lib/songs/constants";
 import type { CalendarDateEntry } from "@/lib/dashboard/data";
 import { cn } from "@/lib/utils/cn";
 
@@ -103,7 +105,7 @@ export function WorshipCalendar({
   }
 
   return (
-    <Card>
+    <Card id="worship-calendar">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarDays className="h-4 w-4 text-accent" /> Worship Calendar
@@ -166,7 +168,7 @@ export function WorshipCalendar({
                 )}
                 aria-label={
                   entry
-                    ? `${d.toLocaleDateString(undefined, { month: "long", day: "numeric" })}: ${entry.hasRoster ? "service with team assigned" : "service scheduled, no team yet"}`
+                    ? `${d.toLocaleDateString(undefined, { month: "long", day: "numeric" })}: ${eventTypeLabel(entry.eventType)}${entry.hasRoster ? " with team assigned" : ", no team yet"}`
                     : d.toLocaleDateString(undefined, { month: "long", day: "numeric" })
                 }
                 aria-pressed={isSelected}
@@ -192,13 +194,18 @@ export function WorshipCalendar({
 
         {selectedDate && (
           <div className="rounded-lg border border-border bg-surface-muted p-3">
-            <p className="text-sm font-semibold text-foreground">
-              {new Date(selectedDate).toLocaleDateString(undefined, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">
+                {new Date(selectedDate).toLocaleDateString(undefined, {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+              {selectedEntry && selectedEntry.eventType !== "SERVICE" && (
+                <Badge variant="outline">{eventTypeLabel(selectedEntry.eventType)}</Badge>
+              )}
+            </div>
             {error && <p className="mt-1 text-xs text-danger">{error}</p>}
 
             {selectedEntry ? (

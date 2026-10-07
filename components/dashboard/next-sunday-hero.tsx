@@ -71,8 +71,8 @@ export function NextSundayHero({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-stretch">
+        <Card className="flex h-full flex-col lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="flex items-center gap-2 text-base">
               <ListMusic className="h-4 w-4 text-accent" /> Service Setlist
@@ -81,7 +81,7 @@ export function NextSundayHero({
               Edit Setlist
             </Link>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="flex-1 p-0">
             {nextSunday.setlistPreview.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-muted-foreground">
                 No songs added to the setlist yet.{" "}

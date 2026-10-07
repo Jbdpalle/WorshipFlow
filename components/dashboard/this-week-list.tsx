@@ -27,7 +27,7 @@ export function ThisWeekList({ items }: { items: ThisWeekItem[] }) {
         </ul>
       )}
 
-      <Link href="/sets" className="mt-3 inline-block text-xs font-medium text-accent hover:underline">
+      <Link href="/dashboard#worship-calendar" className="mt-3 inline-block text-xs font-medium text-accent hover:underline">
         View Calendar →
       </Link>
     </section>

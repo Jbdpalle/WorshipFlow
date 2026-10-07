@@ -352,14 +352,16 @@ export type CalendarDateEntry = {
   date: string; // YYYY-MM-DD, local
   setId: string;
   title: string;
+  eventType: string;
   hasRoster: boolean;
   roster: ServiceRosterRow[];
 };
 
 // One query per visible month, scoped to the team — no N+1. `month` is
-// 0-indexed (JS Date convention: 0 = January). Only SERVICE-type events
-// are shown; this is a worship-team service calendar, not a general
-// church calendar for every event type.
+// 0-indexed (JS Date convention: 0 = January). Every event type shows here
+// (Sunday Service, Rehearsal/Practice, Special Event, etc.) — a team's
+// rehearsal matters just as much as its Sunday service, and the Dashboard's
+// own "This Week" list already mixes types, so the calendar should too.
 export async function getCalendarMonthData(
   teamId: string,
   year: number,
@@ -369,7 +371,7 @@ export async function getCalendarMonthData(
   const end = new Date(year, month + 1, 1);
 
   const sets = await prisma.worshipSet.findMany({
-    where: { teamId, eventType: "SERVICE", serviceDate: { gte: start, lt: end }, archivedAt: null },
+    where: { teamId, serviceDate: { gte: start, lt: end }, archivedAt: null },
     orderBy: { serviceDate: "asc" },
     include: {
       teamMembers: { include: { teamMember: { select: { id: true, name: true, role: true } } } },
@@ -382,6 +384,7 @@ export async function getCalendarMonthData(
       date: `${s.serviceDate.getFullYear()}-${String(s.serviceDate.getMonth() + 1).padStart(2, "0")}-${String(s.serviceDate.getDate()).padStart(2, "0")}`,
       setId: s.id,
       title: s.title,
+      eventType: s.eventType,
       hasRoster: s.teamMembers.length > 0,
       roster: sortByRoleOrder(s.teamMembers.map((tm) => ({ role: tm.role, name: tm.teamMember.name }))),
     }));
