@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarHeart, ArrowRight, ListMusic } from "lucide-react";
+import { CalendarHeart, ArrowRight } from "lucide-react";
 import type { DashboardSet } from "@/lib/dashboard/data";
 import { ServiceProgressPath } from "@/components/dashboard/service-progress-path";
-import { CoverageIcons, ROLE_CATEGORY_ICONS } from "@/components/dashboard/role-coverage-icons";
+import { ROLE_CATEGORY_ICONS } from "@/components/dashboard/role-coverage-icons";
 import { ServiceRosterList } from "@/components/dashboard/service-roster-list";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -71,150 +71,97 @@ export function NextSundayHero({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-stretch">
-        <Card className="flex h-full flex-col lg:col-span-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {nextIncomplete ? (
+          <section className="rounded-xl border border-accent/30 bg-accent/10 p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-accent">Next Step</h2>
+            <p className="mt-1.5 font-semibold text-foreground">{nextStepHeadline(nextIncomplete.key)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{nextStepDescription(nextIncomplete.key)}</p>
+            <Link href={nextIncomplete.href} className="mt-3 inline-block">
+              <Button size="sm">
+                Go to {nextIncomplete.label} <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </section>
+        ) : (
+          <section className="rounded-xl border border-success/30 bg-success/10 p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-success">Next Step</h2>
+            <p className="mt-1.5 font-semibold text-foreground">You&apos;re ready</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Setlist, Song Flow, Team, and Rehearsal are all set for Sunday.
+            </p>
+          </section>
+        )}
+
+        <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ListMusic className="h-4 w-4 text-accent" /> Service Setlist
-            </CardTitle>
-            <Link href={`/sets/${nextSunday.id}`} className="text-xs font-medium text-accent hover:underline">
-              Edit Setlist
+            <CardTitle className="text-base">Who&apos;s Serving</CardTitle>
+            <Link href={`/sets/${nextSunday.id}#team`} className="text-xs font-medium text-accent hover:underline">
+              {isLeaderView ? "Edit Roster" : "View"}
             </Link>
           </CardHeader>
-          <CardContent className="flex-1 p-0">
-            {nextSunday.setlistPreview.length === 0 ? (
-              <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-                No songs added to the setlist yet.{" "}
-                <Link href={`/sets/${nextSunday.id}`} className="font-medium text-accent hover:underline">
-                  Add songs
-                </Link>
-              </p>
-            ) : (
-              <ul>
-                {nextSunday.setlistPreview.map((s, i) => (
-                  <li key={s.id}>
-                    <Link
-                      href={`/songs/${s.songId}`}
-                      className="flex items-center gap-3 px-5 py-3 text-sm hover:bg-surface-muted"
-                    >
-                      <span className="w-5 shrink-0 text-xs font-mono text-muted-foreground">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate font-medium text-foreground">{s.title}</span>
-                      {s.key && (
-                        <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-xs font-mono font-semibold text-muted-foreground">
-                          {s.key}
-                        </span>
-                      )}
-                      <CoverageIcons covered={s.coveredCategories} />
-                    </Link>
-                    {i < nextSunday.setlistPreview.length - 1 && (
-                      <div className="flex items-center gap-2 px-5">
-                        <span className="h-3 w-px bg-border" aria-hidden />
-                        {s.transitionToNext && (
-                          <span className="text-[11px] text-muted-foreground">{s.transitionToNext} transition</span>
-                        )}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <CardContent>
+            <ServiceRosterList
+              roster={nextSunday.serviceRoster}
+              setId={nextSunday.id}
+              canManage={isLeaderView}
+            />
           </CardContent>
         </Card>
 
-        <div className="space-y-4">
-          {nextIncomplete ? (
-            <section className="rounded-xl border border-accent/30 bg-accent/10 p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-accent">Next Step</h2>
-              <p className="mt-1.5 font-semibold text-foreground">{nextStepHeadline(nextIncomplete.key)}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{nextStepDescription(nextIncomplete.key)}</p>
-              <Link href={nextIncomplete.href} className="mt-3 inline-block">
-                <Button size="sm">
-                  Go to {nextIncomplete.label} <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </section>
-          ) : (
-            <section className="rounded-xl border border-success/30 bg-success/10 p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-success">Next Step</h2>
-              <p className="mt-1.5 font-semibold text-foreground">You&apos;re ready</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Setlist, Song Flow, Team, and Rehearsal are all set for Sunday.
-              </p>
-            </section>
-          )}
-
+        {nextSunday.teamCoverage.length > 0 && (
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Who&apos;s Serving</CardTitle>
-              <Link href={`/sets/${nextSunday.id}#team`} className="text-xs font-medium text-accent hover:underline">
-                {isLeaderView ? "Edit Roster" : "View"}
+              <CardTitle className="text-base">Team Coverage</CardTitle>
+              <Link href="/team" className="text-xs font-medium text-accent hover:underline">
+                View Team
               </Link>
             </CardHeader>
-            <CardContent>
-              <ServiceRosterList
-                roster={nextSunday.serviceRoster}
-                setId={nextSunday.id}
-                canManage={isLeaderView}
-              />
-            </CardContent>
-          </Card>
-
-          {nextSunday.teamCoverage.length > 0 && (
-            <Card>
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">Team Coverage</CardTitle>
-                <Link href="/team" className="text-xs font-medium text-accent hover:underline">
-                  View Team
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-2.5">
-                {nextSunday.teamCoverage.map((row) => {
-                  const Icon = ROLE_CATEGORY_ICONS[row.key];
-                  return (
-                    <div key={row.key} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Icon className="h-3.5 w-3.5" /> {row.label}
+            <CardContent className="space-y-2.5">
+              {nextSunday.teamCoverage.map((row) => {
+                const Icon = ROLE_CATEGORY_ICONS[row.key];
+                return (
+                  <div key={row.key} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Icon className="h-3.5 w-3.5" /> {row.label}
+                    </span>
+                    <Tooltip content={`${row.confirmed} of ${row.total} ${row.label.toLowerCase()} confirmed for this service`}>
+                      <span tabIndex={0} className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(row.total, 6) }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={
+                              i < row.confirmed
+                                ? "h-2.5 w-2.5 rounded-full bg-accent"
+                                : "h-2.5 w-2.5 rounded-full bg-surface-muted"
+                            }
+                            aria-hidden
+                          />
+                        ))}
                       </span>
-                      <Tooltip content={`${row.confirmed} of ${row.total} ${row.label.toLowerCase()} confirmed for this service`}>
-                        <span tabIndex={0} className="flex items-center gap-1">
-                          {Array.from({ length: Math.min(row.total, 6) }).map((_, i) => (
-                            <span
-                              key={i}
-                              className={
-                                i < row.confirmed
-                                  ? "h-2.5 w-2.5 rounded-full bg-accent"
-                                  : "h-2.5 w-2.5 rounded-full bg-surface-muted"
-                              }
-                              aria-hidden
-                            />
-                          ))}
-                        </span>
-                      </Tooltip>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Service Notes</CardTitle>
-              <Link href={`/sets/${nextSunday.id}`} className="text-xs font-medium text-accent hover:underline">
-                Edit
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {nextSunday.notes?.trim() ? (
-                <p className="whitespace-pre-line text-sm text-muted-foreground">{nextSunday.notes}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">No notes yet for this service.</p>
-              )}
+                    </Tooltip>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
-        </div>
+        )}
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Service Notes</CardTitle>
+            <Link href={`/sets/${nextSunday.id}`} className="text-xs font-medium text-accent hover:underline">
+              Edit
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {nextSunday.notes?.trim() ? (
+              <p className="whitespace-pre-line text-sm text-muted-foreground">{nextSunday.notes}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No notes yet for this service.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </section>
   );

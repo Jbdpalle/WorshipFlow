@@ -17,17 +17,6 @@ export type NeedsAttentionItem = {
   href: string;
 };
 
-export type SetlistPreviewSong = {
-  id: string;
-  songId: string;
-  title: string;
-  order: number;
-  key: string | null;
-  bpm: number | null;
-  coveredCategories: RoleCategoryKey[];
-  transitionToNext: string | null;
-};
-
 export type TeamCoverageRow = {
   key: RoleCategoryKey;
   label: string;
@@ -53,7 +42,6 @@ export type DashboardSet = {
   teamMemberCount: number;
   notes: string | null;
   stages: ProgressStage[];
-  setlistPreview: SetlistPreviewSong[];
   teamCoverage: TeamCoverageRow[];
   // Who's serving this service and in what role — the whole-service
   // roster (SetTeamMember), not a per-song override. This is the same
@@ -108,7 +96,6 @@ export async function getDashboardData(
         orderBy: { order: "asc" },
         include: {
           assignments: { include: { teamMember: { select: { id: true, role: true } } } },
-          transitionFrom: { select: { type: true } },
           song: {
             include: {
               sections: { select: { roleNotes: { select: { content: true } } } },
@@ -132,18 +119,6 @@ export async function getDashboardData(
     const cat = categoryForRole(m.role);
     if (cat) rosterByCategory.set(cat, (rosterByCategory.get(cat) ?? 0) + 1);
   }
-
-  const TRANSITION_LABELS: Record<string, string> = {
-    DIRECT: "Direct",
-    INSTRUMENTAL: "Instrumental",
-    PAD: "Pad",
-    SPOKEN: "Spoken",
-    PRAYER: "Prayer",
-    FREE_WORSHIP: "Free Worship",
-    COUNT_IN: "Count-in",
-    PAUSE: "Pause",
-    CUSTOM: "Custom",
-  };
 
   function toDashboardSet(
     set: (typeof sundaySets)[number] | undefined,
@@ -177,19 +152,6 @@ export async function getDashboardData(
       total: rosterByCategory.get(c.key) ?? 0,
     })).filter((row) => row.total > 0);
 
-    const setlistPreview: SetlistPreviewSong[] = set.songs.map((s) => ({
-      id: s.id,
-      songId: s.song.id,
-      title: s.song.title,
-      order: s.order,
-      key: s.overrideKey ?? s.song.key,
-      bpm: s.song.bpm,
-      coveredCategories: Array.from(
-        new Set(s.assignments.map((a) => categoryForRole(a.teamMember.role)).filter((c): c is RoleCategoryKey => !!c)),
-      ),
-      transitionToNext: s.transitionFrom ? (TRANSITION_LABELS[s.transitionFrom.type] ?? s.transitionFrom.type) : null,
-    }));
-
     return {
       id: set.id,
       title: set.title,
@@ -201,7 +163,6 @@ export async function getDashboardData(
       teamMemberCount: teamMemberIds.size,
       notes: set.notes,
       stages: getServiceStages(set),
-      setlistPreview,
       teamCoverage,
       serviceRoster,
     };
