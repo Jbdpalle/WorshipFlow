@@ -9,6 +9,7 @@ import { MyRosterCard } from "@/components/team/my-roster-card";
 import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 import { resolveMemberSongRoles } from "@/lib/songs/assignment-resolver";
 import { getMyRosterData } from "@/lib/dashboard/data";
+import { groupMembersByName } from "@/lib/songs/member-name";
 import { trackEvent } from "@/lib/usability/track";
 import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
@@ -36,14 +37,23 @@ export default async function MyPartPage({
   const activeMember = members.find((m) => m.id === memberIdParam) ?? ownMember ?? members[0];
   const isOwnView = !!activeMember && activeMember.id === ownMember?.id;
 
-  const myRoster = activeMember ? await getMyRosterData(activeMember.id) : { upcoming: [], recent: [] };
+  // Two TeamMember rows can share one real person's name (see
+  // lib/songs/member-name.ts) — e.g. a roster import that didn't exactly
+  // match an existing row. The picker already shows each name once; this
+  // merges every id behind that name so switching to the "other" duplicate
+  // never silently hides a real assignment.
+  const memberIds = activeMember
+    ? groupMembersByName(members).find((g) => g.ids.includes(activeMember.id))?.ids ?? [activeMember.id]
+    : [];
+
+  const myRoster = memberIds.length ? await getMyRosterData(memberIds) : { upcoming: [], recent: [] };
 
   // A person's part can come from either an explicit per-song override
   // (SongAssignment) or the default role(s) they hold for the whole
   // service (SetTeamMember, set via the "Worship Team" card) — see
   // resolveMemberSongRoles. Checking only the former was the root cause of
   // My Part showing nothing for anyone assigned the normal, whole-set way.
-  const resolvedRoles = activeMember ? await resolveMemberSongRoles(prisma, activeMember.id) : [];
+  const resolvedRoles = memberIds.length ? await resolveMemberSongRoles(prisma, memberIds) : [];
 
   const setSongRows = resolvedRoles.length
     ? await prisma.setSong.findMany({
@@ -61,11 +71,19 @@ export default async function MyPartPage({
     : [];
   const setSongById = new Map(setSongRows.map((ss) => [ss.id, ss]));
 
-  const assignments = resolvedRoles
-    .flatMap((r) => {
-      const setSong = setSongById.get(r.setSongId);
-      return setSong ? [{ id: `${r.setSongId}:${r.role}`, role: r.role, setSong }] : [];
-    })
+  // Merging resolvedRoles across sibling duplicate-name ids (above) can
+  // produce the same (setSong, role) pair twice — e.g. both duplicate rows
+  // got assigned the same role for the same service — so dedupe by id
+  // rather than assume resolveMemberSongRoles already returns unique pairs.
+  const assignmentsById = new Map<string, { id: string; role: string; setSong: NonNullable<ReturnType<typeof setSongById.get>> }>();
+  for (const r of resolvedRoles) {
+    const setSong = setSongById.get(r.setSongId);
+    if (!setSong) continue;
+    const id = `${r.setSongId}:${r.role}`;
+    if (!assignmentsById.has(id)) assignmentsById.set(id, { id, role: r.role, setSong });
+  }
+
+  const assignments = [...assignmentsById.values()]
     .sort((a, b) => {
       const aTime = a.setSong.set.serviceDate ? new Date(a.setSong.set.serviceDate).getTime() : 0;
       const bTime = b.setSong.set.serviceDate ? new Date(b.setSong.set.serviceDate).getTime() : 0;

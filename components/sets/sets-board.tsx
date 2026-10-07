@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { eventTypeLabel } from "@/lib/songs/constants";
+import { groupMembersByName, normalizeMemberName } from "@/lib/songs/member-name";
 import type { SetsPageEntry } from "@/lib/dashboard/data";
 import { cn } from "@/lib/utils/cn";
 
@@ -122,7 +123,10 @@ function entryLabel(entry: SetsPageEntry) {
 }
 
 function ByLeaderView({ entries }: { entries: SetsPageEntry[] }) {
-  const byLeader = new Map<string, SetsPageEntry[]>();
+  // Keyed by normalized name so a leader entered with different
+  // casing/whitespace across two roster rows still groups under one
+  // heading — same rule as ByMemberView below.
+  const byLeader = new Map<string, { displayName: string; list: SetsPageEntry[] }>();
   const unassigned: SetsPageEntry[] = [];
   for (const entry of sortByDateAsc(entries)) {
     const leader = entry.roster.find((r) => r.role === "Worship Leader")?.name;
@@ -130,9 +134,10 @@ function ByLeaderView({ entries }: { entries: SetsPageEntry[] }) {
       unassigned.push(entry);
       continue;
     }
-    const list = byLeader.get(leader) ?? [];
-    list.push(entry);
-    byLeader.set(leader, list);
+    const key = normalizeMemberName(leader);
+    const group = byLeader.get(key) ?? { displayName: leader, list: [] };
+    group.list.push(entry);
+    byLeader.set(key, group);
   }
 
   if (byLeader.size === 0 && unassigned.length === 0) {
@@ -141,13 +146,13 @@ function ByLeaderView({ entries }: { entries: SetsPageEntry[] }) {
 
   return (
     <div className="space-y-4">
-      {[...byLeader.entries()].map(([leader, list]) => (
-        <section key={leader}>
+      {[...byLeader.entries()].map(([key, group]) => (
+        <section key={key}>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Worship Leader: {leader}
+            Worship Leader: {group.displayName}
           </h3>
           <ul className="mt-2 space-y-1.5">
-            {list.map((e) => (
+            {group.list.map((e) => (
               <li key={e.id} className="text-sm">
                 <Link href={`/sets/${e.id}`} className="hover:text-accent">
                   {entryLabel(e)}
@@ -176,20 +181,31 @@ function ByLeaderView({ entries }: { entries: SetsPageEntry[] }) {
 }
 
 function ByMemberView({ entries, members }: { entries: SetsPageEntry[]; members: TeamMemberOption[] }) {
-  const [memberId, setMemberId] = useState(members[0]?.id ?? "");
+  // See the matching comment in components/roster/roster-board.tsx —
+  // two TeamMember rows can share one real person's name; group by name
+  // so they show up once, with assignments merged across every id in
+  // the group.
+  const groups = groupMembersByName(members);
+  const [selectedName, setSelectedName] = useState(groups[0]?.name ?? "");
+  const group = groups.find((g) => g.name === selectedName);
+  const groupIds = new Set(group?.ids ?? []);
+
   const sorted = sortByDateAsc(entries);
   const rows = sorted
-    .map((e) => ({ entry: e, row: e.setTeamMembers.find((m) => m.teamMember.id === memberId) }))
-    .filter((r): r is { entry: SetsPageEntry; row: NonNullable<typeof r.row> } => !!r.row);
+    .map((e) => {
+      const roles = e.setTeamMembers.filter((m) => groupIds.has(m.teamMember.id)).map((m) => m.role);
+      return { entry: e, roles: [...new Set(roles)] };
+    })
+    .filter((r) => r.roles.length > 0);
 
-  if (members.length === 0) return <p className="text-sm text-muted-foreground">No team members yet.</p>;
+  if (groups.length === 0) return <p className="text-sm text-muted-foreground">No team members yet.</p>;
 
   return (
     <div className="space-y-3">
-      <Select value={memberId} onChange={(e) => setMemberId(e.target.value)} className="max-w-xs">
-        {members.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name}
+      <Select value={selectedName} onChange={(e) => setSelectedName(e.target.value)} className="max-w-xs">
+        {groups.map((g) => (
+          <option key={g.name} value={g.name}>
+            {g.name}
           </option>
         ))}
       </Select>
@@ -197,12 +213,18 @@ function ByMemberView({ entries, members }: { entries: SetsPageEntry[]; members:
         <p className="text-sm text-muted-foreground">No sets scheduled for this person.</p>
       ) : (
         <ul className="space-y-1.5">
-          {rows.map(({ entry, row }) => (
+          {rows.map(({ entry, roles }) => (
             <li key={entry.id} className="flex items-baseline justify-between gap-2 text-sm">
               <Link href={`/sets/${entry.id}`} className="hover:text-accent">
                 {entryLabel(entry)}
               </Link>
-              <Badge variant="accent">{row.role}</Badge>
+              <span className="flex shrink-0 gap-1">
+                {roles.map((role) => (
+                  <Badge key={role} variant="accent">
+                    {role}
+                  </Badge>
+                ))}
+              </span>
             </li>
           ))}
         </ul>

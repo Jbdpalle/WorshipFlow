@@ -28,17 +28,23 @@ export type ResolvedSongRole = {
 // per-song override, the whole-set roster, or both. A song covered by an
 // override never also emits its set-level default(s), so a song never
 // shows the same person twice for conflicting reasons.
+//
+// Accepts one id or several: two TeamMember rows can turn out to share one
+// real person's name (see lib/songs/member-name.ts), and querying only the
+// single id the picker happens to be showing would silently hide whatever
+// was assigned to its sibling row.
 export async function resolveMemberSongRoles(
   db: Db,
-  teamMemberId: string,
+  teamMemberId: string | string[],
 ): Promise<ResolvedSongRole[]> {
+  const teamMemberIdFilter = Array.isArray(teamMemberId) ? { in: teamMemberId } : teamMemberId;
   const [overrides, setRoles] = await Promise.all([
     db.songAssignment.findMany({
-      where: { teamMemberId },
+      where: { teamMemberId: teamMemberIdFilter },
       select: { setSongId: true, role: true },
     }),
     db.setTeamMember.findMany({
-      where: { teamMemberId },
+      where: { teamMemberId: teamMemberIdFilter },
       select: { setId: true, role: true },
     }),
   ]);

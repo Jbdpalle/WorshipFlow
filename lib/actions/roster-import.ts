@@ -10,6 +10,7 @@ import {
   type RosterRow,
 } from "@/lib/songs/roster-import";
 import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
+import { normalizeMemberName } from "@/lib/songs/member-name";
 import { runAction, type ActionResultData } from "@/lib/actions/action-result";
 import { checkCanCreateSet } from "@/lib/plans/limits";
 
@@ -64,10 +65,6 @@ function formatServiceTitle(date: Date) {
   return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 }
 
-function normalizeName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
 type MatchResult =
   | { kind: "exact" | "prefix"; member: TeamMember }
   | { kind: "ambiguous"; candidates: TeamMember[] }
@@ -80,12 +77,12 @@ type MatchResult =
 // since a wrong auto-match silently points someone's assignment at the
 // wrong person, which is worse than asking a human to resolve it once.
 function matchMember(csvName: string, members: TeamMember[]): MatchResult {
-  const normalized = normalizeName(csvName);
-  const exact = members.find((m) => normalizeName(m.name) === normalized);
+  const normalized = normalizeMemberName(csvName);
+  const exact = members.find((m) => normalizeMemberName(m.name) === normalized);
   if (exact) return { kind: "exact", member: exact };
 
   const prefixCandidates = members.filter((m) => {
-    const memberNormalized = normalizeName(m.name);
+    const memberNormalized = normalizeMemberName(m.name);
     return (
       memberNormalized.startsWith(`${normalized} `) || normalized.startsWith(`${memberNormalized} `)
     );

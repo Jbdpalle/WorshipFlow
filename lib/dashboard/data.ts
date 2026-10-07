@@ -464,12 +464,18 @@ const MY_ROSTER_RECENT_LIMIT = 2;
 // SetSong), grouped and split into upcoming/recent in memory. Recent is
 // capped to the last two past services as a presentation limit only —
 // older SetTeamMember rows are never deleted, just not shown here.
-export async function getMyRosterData(teamMemberId: string): Promise<MyRosterData> {
+//
+// Accepts one id or several: two TeamMember rows can turn out to share one
+// real person's name (see lib/songs/member-name.ts), and querying only the
+// single id the picker happens to be showing would silently hide whatever
+// was assigned to its sibling row.
+export async function getMyRosterData(teamMemberId: string | string[]): Promise<MyRosterData> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const teamMemberIdFilter = Array.isArray(teamMemberId) ? { in: teamMemberId } : teamMemberId;
   const rows = await prisma.setTeamMember.findMany({
-    where: { teamMemberId, set: { archivedAt: null, serviceDate: { not: null } } },
+    where: { teamMemberId: teamMemberIdFilter, set: { archivedAt: null, serviceDate: { not: null } } },
     include: { set: { select: { id: true, title: true, eventType: true, serviceDate: true } } },
   });
 

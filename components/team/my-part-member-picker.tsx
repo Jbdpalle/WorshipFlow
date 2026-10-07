@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { groupMembersByName } from "@/lib/songs/member-name";
 
 export function MyPartMemberPicker({
   members,
@@ -15,6 +16,12 @@ export function MyPartMemberPicker({
   isOwnView: boolean;
 }) {
   const router = useRouter();
+  // Two TeamMember rows can share one real person's name (see
+  // lib/songs/member-name.ts) — list each name once, routing to whichever
+  // id in the group the page resolves to (app/(app)/my-part/page.tsx
+  // merges every id sharing that name, so it doesn't matter which one is
+  // picked here).
+  const groups = groupMembersByName(members);
 
   // A worship leader can look at any musician's part to check what they'll
   // see — clearly label that as a preview, never as "my part", so it's
@@ -30,14 +37,14 @@ export function MyPartMemberPicker({
         </Badge>
       )}
       <Select
-        value={activeId}
+        value={groups.find((g) => g.ids.includes(activeId ?? ""))?.ids[0] ?? activeId}
         onChange={(e) => router.push(`/my-part?member=${e.target.value}`)}
         className="w-56"
         aria-label={isOwnView ? "Viewing your own part" : "Preview another musician's part"}
       >
-        {members.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name}
+        {groups.map((g) => (
+          <option key={g.ids[0]} value={g.ids[0]}>
+            {g.name}
           </option>
         ))}
       </Select>
