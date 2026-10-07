@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
 import { PrepareMeCard } from "@/components/team/prepare-me-card";
+import { MyRosterCard } from "@/components/team/my-roster-card";
 import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 import { resolveMemberSongRoles } from "@/lib/songs/assignment-resolver";
+import { getMyRosterData } from "@/lib/dashboard/data";
 import { trackEvent } from "@/lib/usability/track";
 import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
@@ -33,6 +35,8 @@ export default async function MyPartPage({
   const ownMember = members.find((m) => m.userId === user.id);
   const activeMember = members.find((m) => m.id === memberIdParam) ?? ownMember ?? members[0];
   const isOwnView = !!activeMember && activeMember.id === ownMember?.id;
+
+  const myRoster = activeMember ? await getMyRosterData(activeMember.id) : { upcoming: [], recent: [] };
 
   // A person's part can come from either an explicit per-song override
   // (SongAssignment) or the default role(s) they hold for the whole
@@ -99,6 +103,8 @@ export default async function MyPartPage({
         </div>
         <MyPartMemberPicker members={members} activeId={activeMember?.id} isOwnView={isOwnView} />
       </div>
+
+      {activeMember && <MyRosterCard data={myRoster} memberName={activeMember.name} />}
 
       {activeMember && nextSet && prepareAssignments.length > 0 && (
         <PrepareMeCard

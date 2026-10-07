@@ -2,11 +2,12 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, ListMusic, CalendarDays, MapPin } from "lucide-react";
-import { EVENT_TYPES, eventTypeLabel } from "@/lib/songs/constants";
+import { Plus, ListMusic } from "lucide-react";
+import { EVENT_TYPES } from "@/lib/songs/constants";
 import { cn } from "@/lib/utils/cn";
+import { getSetsPageData } from "@/lib/dashboard/data";
+import { SetsBoard } from "@/components/sets/sets-board";
 
 export default async function SetsPage({
   searchParams,
@@ -16,13 +17,16 @@ export default async function SetsPage({
   const { type, archived } = await searchParams;
   const { team } = await requireUser();
   const showArchived = archived === "1";
-  const allSets = await prisma.worshipSet.findMany({
-    where: { teamId: team.id, archivedAt: showArchived ? { not: null } : null },
-    orderBy: [{ serviceDate: "desc" }, { createdAt: "desc" }],
-    include: { songs: true },
-  });
+  const [allSets, members, archivedCount] = await Promise.all([
+    getSetsPageData(team.id, showArchived),
+    prisma.teamMember.findMany({
+      where: { teamId: team.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, role: true },
+    }),
+    prisma.worshipSet.count({ where: { teamId: team.id, archivedAt: { not: null } } }),
+  ]);
   const sets = type ? allSets.filter((s) => s.eventType === type) : allSets;
-  const archivedCount = await prisma.worshipSet.count({ where: { teamId: team.id, archivedAt: { not: null } } });
 
   return (
     <div className="space-y-6">
@@ -103,39 +107,7 @@ export default async function SetsPage({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sets.map((set) => (
-            <Link key={set.id} href={`/sets/${set.id}`}>
-              <Card className="h-full transition-shadow hover:shadow-md">
-                <CardContent className="space-y-3 pt-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold">{set.title}</h3>
-                    {set.theme && <Badge variant="accent">{set.theme}</Badge>}
-                  </div>
-                  <Badge variant="outline">{eventTypeLabel(set.eventType)}</Badge>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      {set.serviceDate
-                        ? new Date(set.serviceDate).toLocaleDateString()
-                        : "No date"}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ListMusic className="h-3.5 w-3.5" />
-                      {set.songs.length} songs
-                    </span>
-                    {set.location && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {set.location}
-                      </span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <SetsBoard entries={sets} members={members} />
       )}
     </div>
   );

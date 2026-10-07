@@ -397,3 +397,108 @@ export async function getCalendarMonthData(
       roster: sortByRoleOrder(s.teamMembers.map((tm) => ({ role: tm.role, name: tm.teamMember.name }))),
     }));
 }
+
+export type SetsPageEntry = {
+  id: string;
+  title: string;
+  theme: string | null;
+  eventType: string;
+  serviceDate: Date | null;
+  location: string | null;
+  songCount: number;
+  roster: ServiceRosterRow[];
+  setTeamMembers: RosterSetTeamMemberRow[];
+};
+
+// One query powers the Sets list regardless of how it's being viewed
+// (by date, by Worship Leader, by team member) — those are groupings of
+// this same result, computed client-side, never separate queries. Also
+// the fix for a real, reported bug: callers used to sort serviceDate
+// "desc", which (with nulls sorting last on desc in Postgres) put the
+// farthest-future date first instead of the nearest one.
+export async function getSetsPageData(teamId: string, archived: boolean): Promise<SetsPageEntry[]> {
+  const sets = await prisma.worshipSet.findMany({
+    where: { teamId, archivedAt: archived ? { not: null } : null },
+    orderBy: [{ serviceDate: "asc" }, { createdAt: "desc" }],
+    include: {
+      songs: { select: { id: true } },
+      teamMembers: { include: { teamMember: { select: { id: true, name: true, role: true } } } },
+    },
+  });
+
+  return sets.map((s) => ({
+    id: s.id,
+    title: s.title,
+    theme: s.theme,
+    eventType: s.eventType,
+    serviceDate: s.serviceDate,
+    location: s.location,
+    songCount: s.songs.length,
+    roster: sortByRoleOrder(s.teamMembers.map((tm) => ({ role: tm.role, name: tm.teamMember.name }))),
+    setTeamMembers: s.teamMembers.map((tm) => ({
+      id: tm.id,
+      role: tm.role,
+      teamMember: { id: tm.teamMember.id, name: tm.teamMember.name },
+    })),
+  }));
+}
+
+export type MyRosterRow = {
+  setId: string;
+  title: string;
+  eventType: string;
+  serviceDate: Date;
+  roles: string[];
+};
+
+export type MyRosterData = {
+  upcoming: MyRosterRow[];
+  recent: MyRosterRow[]; // most recent past service first, capped
+};
+
+const MY_ROSTER_RECENT_LIMIT = 2;
+
+// "When am I serving?" — distinct from My Part's "what am I playing in each
+// song": this reads SetTeamMember directly, so it answers correctly even
+// for a service that has no songs added yet. One query (no join through
+// SetSong), grouped and split into upcoming/recent in memory. Recent is
+// capped to the last two past services as a presentation limit only —
+// older SetTeamMember rows are never deleted, just not shown here.
+export async function getMyRosterData(teamMemberId: string): Promise<MyRosterData> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const rows = await prisma.setTeamMember.findMany({
+    where: { teamMemberId, set: { archivedAt: null, serviceDate: { not: null } } },
+    include: { set: { select: { id: true, title: true, eventType: true, serviceDate: true } } },
+  });
+
+  const bySet = new Map<string, MyRosterRow>();
+  for (const row of rows) {
+    const set = row.set;
+    if (!set.serviceDate) continue;
+    const existing = bySet.get(set.id);
+    if (existing) {
+      existing.roles.push(row.role);
+    } else {
+      bySet.set(set.id, {
+        setId: set.id,
+        title: set.title,
+        eventType: set.eventType,
+        serviceDate: set.serviceDate,
+        roles: [row.role],
+      });
+    }
+  }
+
+  const all = [...bySet.values()];
+  const upcoming = all
+    .filter((r) => r.serviceDate >= today)
+    .sort((a, b) => a.serviceDate.getTime() - b.serviceDate.getTime());
+  const recent = all
+    .filter((r) => r.serviceDate < today)
+    .sort((a, b) => b.serviceDate.getTime() - a.serviceDate.getTime())
+    .slice(0, MY_ROSTER_RECENT_LIMIT);
+
+  return { upcoming, recent };
+}
