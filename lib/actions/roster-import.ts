@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { TeamMember, TeamPlan } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import {
@@ -10,14 +11,32 @@ import {
 } from "@/lib/songs/roster-import";
 import { ensurePrimaryTeamMemberRole } from "@/lib/songs/team-member-roles";
 import { runAction, type ActionResultData } from "@/lib/actions/action-result";
+import { checkCanCreateSet } from "@/lib/plans/limits";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+export type DateRosterResult = {
+  dateText: string; // as formatted for display, e.g. "Sunday, October 11"
+  serviceId: string;
+  serviceCreated: boolean;
+  roster: { name: string; role: string }[];
+};
+
+export type NeedsReviewEntry = {
+  name: string;
+  dateText: string | null;
+  reason: "ambiguous" | "service-limit-reached";
+  detail: string;
+};
 
 export type RosterImportSummary = {
   membersCreated: number;
   membersUpdated: number;
+  servicesCreated: number;
   assignmentsCreated: number;
   matchedSets: { id: string; title: string }[];
+  dateResults: DateRosterResult[];
+  needsReview: NeedsReviewEntry[];
   rowsSkipped: number;
 };
 
@@ -41,37 +60,80 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function formatServiceTitle(date: Date) {
+  return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+type MatchResult =
+  | { kind: "exact" | "prefix"; member: TeamMember }
+  | { kind: "ambiguous"; candidates: TeamMember[] }
+  | { kind: "none" };
+
+// Exact match (case/whitespace-insensitive) first. Failing that, a
+// first-name-style prefix match ("Joel" against an existing "Joel Palle")
+// — but ONLY when exactly one existing member could plausibly be meant.
+// Multiple candidates are reported for review rather than guessed at,
+// since a wrong auto-match silently points someone's assignment at the
+// wrong person, which is worse than asking a human to resolve it once.
+function matchMember(csvName: string, members: TeamMember[]): MatchResult {
+  const normalized = normalizeName(csvName);
+  const exact = members.find((m) => normalizeName(m.name) === normalized);
+  if (exact) return { kind: "exact", member: exact };
+
+  const prefixCandidates = members.filter((m) => {
+    const memberNormalized = normalizeName(m.name);
+    return (
+      memberNormalized.startsWith(`${normalized} `) || normalized.startsWith(`${memberNormalized} `)
+    );
+  });
+  if (prefixCandidates.length === 1) return { kind: "prefix", member: prefixCandidates[0] };
+  if (prefixCandidates.length > 1) return { kind: "ambiguous", candidates: prefixCandidates };
+  return { kind: "none" };
+}
+
 // Wraps the actual per-row work below: any single row can throw (a DB
 // constraint, a transient connection issue), and left uncaught that would
 // fail the whole import with an opaque, redacted production error instead
 // of a message that at least says something went wrong and to retry.
-async function applyRosterRows(teamId: string, rows: RosterRow[]): Promise<ActionResultData<RosterImportSummary>> {
+async function applyRosterRows(
+  teamId: string,
+  teamPlan: TeamPlan,
+  isDemo: boolean,
+  rows: RosterRow[],
+): Promise<ActionResultData<RosterImportSummary>> {
   try {
-    return { ok: true, data: await applyRosterRowsUnsafe(teamId, rows) };
+    return { ok: true, data: await applyRosterRowsUnsafe(teamId, teamPlan, isDemo, rows) };
   } catch (err) {
     console.error("Roster import failed partway through:", err);
     return { ok: false, error: "Something went wrong partway through importing — please try again." };
   }
 }
 
-async function applyRosterRowsUnsafe(teamId: string, rows: RosterRow[]): Promise<RosterImportSummary> {
+async function applyRosterRowsUnsafe(
+  teamId: string,
+  teamPlan: TeamPlan,
+  isDemo: boolean,
+  rows: RosterRow[],
+): Promise<RosterImportSummary> {
   const summary: RosterImportSummary = {
     membersCreated: 0,
     membersUpdated: 0,
+    servicesCreated: 0,
     assignmentsCreated: 0,
     matchedSets: [],
+    dateResults: [],
+    needsReview: [],
     rowsSkipped: 0,
   };
 
-  const existingMembers = await prisma.teamMember.findMany({ where: { teamId } });
-  const byName = new Map(existingMembers.map((m) => [m.name.toLowerCase(), m]));
+  const members = await prisma.teamMember.findMany({ where: { teamId } });
 
-  const teamSets = await prisma.worshipSet.findMany({
-    where: { teamId, serviceDate: { not: null } },
-    include: { songs: true },
-  });
-
-  const rowsByDate = new Map<string, { date: Date; entries: { memberId: string; role: string }[] }>();
+  type DateBucket = { date: Date; entries: { member: TeamMember; role: string }[] };
+  const rowsByDate = new Map<string, DateBucket>();
 
   for (const row of rows) {
     const name = row.name.trim();
@@ -80,61 +142,104 @@ async function applyRosterRowsUnsafe(teamId: string, rows: RosterRow[]): Promise
       continue;
     }
 
-    let member = byName.get(name.toLowerCase());
-    if (!member) {
+    const date = parseRosterDate(row.dateText);
+    const match = matchMember(name, members);
+
+    if (match.kind === "ambiguous") {
+      summary.needsReview.push({
+        name,
+        dateText: date ? formatServiceTitle(date) : row.dateText,
+        reason: "ambiguous",
+        detail: `"${name}" could match ${match.candidates.map((c) => c.name).join(" or ")} — not assigned. Fix the name in the file (or the roster) and re-import this row.`,
+      });
+      continue;
+    }
+
+    let member: TeamMember;
+    if (match.kind === "none") {
       member = await prisma.teamMember.create({
         data: { teamId, name, role: row.role, instrument: row.role },
       });
-      byName.set(name.toLowerCase(), member);
+      members.push(member);
       summary.membersCreated++;
-    } else if (member.role !== row.role) {
-      member = await prisma.teamMember.update({
-        where: { id: member.id },
-        data: { role: row.role, instrument: row.role },
-      });
-      byName.set(name.toLowerCase(), member);
-      summary.membersUpdated++;
+    } else {
+      member = match.member;
+      if (member.role !== row.role) {
+        member = await prisma.teamMember.update({
+          where: { id: member.id },
+          data: { role: row.role, instrument: row.role },
+        });
+        const idx = members.findIndex((m) => m.id === member.id);
+        if (idx !== -1) members[idx] = member;
+        summary.membersUpdated++;
+      }
     }
     // A person can play different roles across weeks (e.g. Acoustic one
     // Sunday, Bass the next); accumulate all of them, not just the latest.
     await ensurePrimaryTeamMemberRole(prisma, member.id, row.role);
 
-    const date = parseRosterDate(row.dateText);
     if (date) {
       const key = date.toDateString();
       const bucket = rowsByDate.get(key) ?? { date, entries: [] };
-      bucket.entries.push({ memberId: member.id, role: row.role });
+      bucket.entries.push({ member, role: row.role });
       rowsByDate.set(key, bucket);
     }
   }
 
+  if (rowsByDate.size === 0) return summary;
+
+  // The whole-service roster (who's serving this Sunday, in what role) is
+  // what the CSV actually describes — SetTeamMember, not a per-song
+  // override. This also means a date doesn't need any songs added yet for
+  // its roster to land, and a person can hold more than one role for the
+  // same date without one silently overwriting the other (SetTeamMember's
+  // unique key includes role).
+  const existingSets = await prisma.worshipSet.findMany({
+    where: { teamId, serviceDate: { not: null } },
+  });
+
   for (const { date, entries } of rowsByDate.values()) {
-    const matchedSet = teamSets.find((s) => s.serviceDate && sameDay(s.serviceDate, date));
-    if (!matchedSet || matchedSet.songs.length === 0) continue;
+    let set = existingSets.find((s) => s.serviceDate && sameDay(s.serviceDate, date));
+    let serviceCreated = false;
 
-    summary.matchedSets.push({ id: matchedSet.id, title: matchedSet.title });
-
-    for (const setSong of matchedSet.songs) {
-      for (const entry of entries) {
-        // Matched by (song, member, role) — not just (song, member) — so a
-        // person listed twice for the same date under different roles (e.g.
-        // leading AND playing acoustic that Sunday) gets both, instead of
-        // the second row silently overwriting the first. The tradeoff: if a
-        // re-imported file corrects someone's role for a date they were
-        // already imported under, this adds the new role alongside the old
-        // one rather than replacing it — a stale role has to be removed by
-        // hand from that song's per-song assignments afterward.
-        const existingAssignment = await prisma.songAssignment.findFirst({
-          where: { setSongId: setSong.id, teamMemberId: entry.memberId, role: entry.role },
+    if (!set) {
+      const limit = await checkCanCreateSet(teamId, teamPlan, isDemo);
+      if (!limit.ok) {
+        summary.needsReview.push({
+          name: "(service)",
+          dateText: formatServiceTitle(date),
+          reason: "service-limit-reached",
+          detail: `Couldn't create a service for ${formatServiceTitle(date)}: ${limit.error}`,
         });
-        if (!existingAssignment) {
-          await prisma.songAssignment.create({
-            data: { setSongId: setSong.id, teamMemberId: entry.memberId, role: entry.role },
-          });
-          summary.assignmentsCreated++;
-        }
+        continue;
       }
+      set = await prisma.worshipSet.create({
+        data: { teamId, title: formatServiceTitle(date), serviceDate: date },
+      });
+      existingSets.push(set);
+      serviceCreated = true;
+      summary.servicesCreated++;
     }
+
+    summary.matchedSets.push({ id: set.id, title: set.title });
+
+    const dateRoster: { name: string; role: string }[] = [];
+    for (const { member, role } of entries) {
+      await prisma.setTeamMember.upsert({
+        where: { setId_teamMemberId_role: { setId: set.id, teamMemberId: member.id, role } },
+        update: {},
+        create: { setId: set.id, teamMemberId: member.id, role },
+      });
+      summary.assignmentsCreated++;
+      dateRoster.push({ name: member.name, role });
+    }
+
+    summary.dateResults.push({
+      dateText: formatServiceTitle(date),
+      serviceId: set.id,
+      serviceCreated,
+      roster: dateRoster,
+    });
   }
 
   return summary;
@@ -144,7 +249,7 @@ export async function importRosterFromSpreadsheet(
   formData: FormData,
 ): Promise<ActionResultData<RosterImportSummary>> {
   return runAction(async () => {
-    const { team, membershipRole } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) {
       return { ok: false, error: "Only the worship leader can import a roster." };
     }
@@ -168,11 +273,12 @@ export async function importRosterFromSpreadsheet(
       };
     }
 
-    const result = await applyRosterRows(team.id, rows);
+    const result = await applyRosterRows(team.id, team.plan, user.isDemo, rows);
     if (!result.ok) return result;
     revalidatePath("/team");
     revalidatePath("/sets");
     revalidatePath("/my-part");
+    revalidatePath("/dashboard");
     return result;
   });
 }
@@ -181,7 +287,7 @@ export async function importRosterFromImage(
   formData: FormData,
 ): Promise<ActionResultData<RosterImportSummary>> {
   return runAction(async () => {
-    const { team, membershipRole } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) {
       return { ok: false, error: "Only the worship leader can import a roster." };
     }
@@ -278,11 +384,12 @@ If you cannot read the image clearly enough to extract real names, respond with 
       };
     }
 
-    const result = await applyRosterRows(team.id, rows);
+    const result = await applyRosterRows(team.id, team.plan, user.isDemo, rows);
     if (!result.ok) return result;
     revalidatePath("/team");
     revalidatePath("/sets");
     revalidatePath("/my-part");
+    revalidatePath("/dashboard");
     return result;
   });
 }

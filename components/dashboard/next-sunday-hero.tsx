@@ -5,6 +5,7 @@ import { CalendarHeart, ArrowRight, ListMusic } from "lucide-react";
 import type { DashboardSet } from "@/lib/dashboard/data";
 import { ServiceProgressPath } from "@/components/dashboard/service-progress-path";
 import { CoverageIcons, ROLE_CATEGORY_ICONS } from "@/components/dashboard/role-coverage-icons";
+import { ServiceRosterList } from "@/components/dashboard/service-roster-list";
 import { Tooltip } from "@/components/ui/tooltip";
 
 function formatDate(date: Date) {
@@ -143,6 +144,22 @@ export function NextSundayHero({
               </p>
             </section>
           )}
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Who&apos;s Serving</CardTitle>
+              <Link href={`/sets/${nextSunday.id}#team`} className="text-xs font-medium text-accent hover:underline">
+                {isLeaderView ? "Edit Roster" : "View"}
+              </Link>
+            </CardHeader>
+            <CardContent>
+              <ServiceRosterList
+                roster={nextSunday.serviceRoster}
+                setId={nextSunday.id}
+                canManage={isLeaderView}
+              />
+            </CardContent>
+          </Card>
 
           {nextSunday.teamCoverage.length > 0 && (
             <Card>

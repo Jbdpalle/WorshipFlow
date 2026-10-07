@@ -1,11 +1,12 @@
 import { requireUser } from "@/lib/auth/guard";
-import { getDashboardData } from "@/lib/dashboard/data";
+import { getDashboardData, getCalendarMonthData } from "@/lib/dashboard/data";
 import { NextSundayHero } from "@/components/dashboard/next-sunday-hero";
 import { FollowingSundayCard } from "@/components/dashboard/following-sunday-card";
 import { ThisWeekList } from "@/components/dashboard/this-week-list";
 import { NeedsAttentionList } from "@/components/dashboard/needs-attention-list";
 import { MemberStatusCard } from "@/components/dashboard/member-status-card";
 import { InviteNudgeBanner } from "@/components/dashboard/invite-nudge-banner";
+import { WorshipCalendar } from "@/components/dashboard/worship-calendar";
 
 function greeting() {
   const hour = new Date().getHours();
@@ -16,7 +17,11 @@ function greeting() {
 
 export default async function DashboardPage() {
   const { user, team, membershipRole } = await requireUser();
-  const data = await getDashboardData(team.id, user.id, membershipRole);
+  const today = new Date();
+  const [data, calendarEntries] = await Promise.all([
+    getDashboardData(team.id, user.id, membershipRole),
+    getCalendarMonthData(team.id, today.getFullYear(), today.getMonth()),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -36,10 +41,18 @@ export default async function DashboardPage() {
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-4">
-            <FollowingSundayCard followingSunday={data.followingSunday} />
+            <FollowingSundayCard followingSunday={data.followingSunday} isLeaderView={data.isLeaderView} />
             <ThisWeekList items={data.thisWeek} />
           </div>
-          {data.isLeaderView && <NeedsAttentionList items={data.needsAttention} />}
+          <div className="space-y-4">
+            <WorshipCalendar
+              initialYear={today.getFullYear()}
+              initialMonth={today.getMonth()}
+              initialEntries={calendarEntries}
+              isLeaderView={data.isLeaderView}
+            />
+            {data.isLeaderView && <NeedsAttentionList items={data.needsAttention} />}
+          </div>
         </div>
       </div>
     </div>

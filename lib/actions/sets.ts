@@ -23,7 +23,10 @@ export async function createSet(input: {
   leaderName?: string;
 }): Promise<ActionResultData<{ id: string }>> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can schedule a service." };
+    }
     const limit = await checkCanCreateSet(team.id, team.plan, user.isDemo);
     if (!limit.ok) return limit;
 
@@ -294,7 +297,10 @@ export async function assignMemberToSet(
   role: string,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can assign the team." };
+    }
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -313,7 +319,10 @@ export async function assignMemberToSet(
 
 export async function removeSetMember(setTeamMemberId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can change the team." };
+    }
     const row = await prisma.setTeamMember.findUnique({
       where: { id: setTeamMemberId },
       include: { set: true },

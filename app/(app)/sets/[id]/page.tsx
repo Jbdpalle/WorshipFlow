@@ -122,6 +122,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
                 setId={set.id}
                 members={set.teamMembers}
                 teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+                isLeader={isLeaderRole(membershipRole)}
               />
             </CardContent>
           </Card>

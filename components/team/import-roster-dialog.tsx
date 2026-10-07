@@ -64,22 +64,57 @@ export function ImportRosterDialog() {
         title="Import a roster"
       >
         {summary ? (
-          <div className="space-y-3">
-            <p className="text-sm">
+          <div className="space-y-4">
+            <p className="text-sm font-medium">Roster imported</p>
+            <p className="text-sm text-muted-foreground">
               {summary.membersCreated} team member{summary.membersCreated === 1 ? "" : "s"} added,{" "}
-              {summary.membersUpdated} updated.
+              {summary.membersUpdated} updated
+              {summary.servicesCreated > 0 &&
+                `, ${summary.servicesCreated} service${summary.servicesCreated === 1 ? "" : "s"} created`}
+              .
             </p>
-            {summary.matchedSets.length > 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Assigned to {summary.matchedSets.map((s) => s.title).join(", ")} (
-                {summary.assignmentsCreated} assignment{summary.assignmentsCreated === 1 ? "" : "s"}).
-              </p>
+
+            {summary.dateResults.length > 0 ? (
+              <div className="max-h-56 space-y-3 overflow-y-auto rounded-lg border border-border p-3">
+                {summary.dateResults.map((d) => (
+                  <div key={d.serviceId}>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      {d.dateText}
+                      {d.serviceCreated && " (new)"}
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {d.roster.map((r, i) => (
+                        <li key={i} className="text-sm">
+                          <span className="text-success">✓</span> {r.name} — {r.role}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No dates in the file matched an existing worship set, so no song assignments were
-                made — just the team roster was updated.
+                No dates in the file matched or could be scheduled, so just the team roster was
+                updated.
               </p>
             )}
+
+            {summary.needsReview.length > 0 && (
+              <div className="rounded-lg border border-accent/40 bg-accent/10 p-3">
+                <p className="text-xs font-semibold text-accent">
+                  ⚠ {summary.needsReview.length} item{summary.needsReview.length === 1 ? "" : "s"} need
+                  {summary.needsReview.length === 1 ? "s" : ""} attention
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {summary.needsReview.map((r, i) => (
+                    <li key={i} className="text-xs text-muted-foreground">
+                      {r.detail}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {summary.rowsSkipped > 0 && (
               <p className="text-xs text-muted-foreground">
                 {summary.rowsSkipped} row{summary.rowsSkipped === 1 ? "" : "s"} skipped (no name).

@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/db/prisma";
 import { getServiceStages, type ProgressStage } from "@/lib/songs/readiness";
-import { ROLE_CATEGORIES, categoryForRole, type RoleCategoryKey } from "@/lib/songs/constants";
+import { ROLE_CATEGORIES, ROLES, categoryForRole, type RoleCategoryKey } from "@/lib/songs/constants";
+
+function sortByRoleOrder<T extends { role: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const ai = ROLES.indexOf(a.role as (typeof ROLES)[number]);
+    const bi = ROLES.indexOf(b.role as (typeof ROLES)[number]);
+    return (ai === -1 ? ROLES.length : ai) - (bi === -1 ? ROLES.length : bi);
+  });
+}
 
 export type NeedsAttentionItem = {
   id: string;
@@ -27,11 +35,19 @@ export type TeamCoverageRow = {
   total: number;
 };
 
+export type ServiceRosterRow = { role: string; name: string };
+
 export type DashboardSet = {
   id: string;
   title: string;
   theme: string | null;
   leaderName: string | null;
+  // The actual "Worship Leader" assignment from the service roster, when
+  // one exists — preferred over the manually-typed `leaderName` field
+  // above wherever both might be shown, so the two can never contradict
+  // each other on screen. Falls back to `leaderName` when no one is
+  // assigned that role yet.
+  effectiveLeaderName: string | null;
   serviceDate: Date | null;
   songCount: number;
   teamMemberCount: number;
@@ -39,6 +55,10 @@ export type DashboardSet = {
   stages: ProgressStage[];
   setlistPreview: SetlistPreviewSong[];
   teamCoverage: TeamCoverageRow[];
+  // Who's serving this service and in what role — the whole-service
+  // roster (SetTeamMember), not a per-song override. This is the same
+  // source of truth My Part and Rehearsal Mode resolve against.
+  serviceRoster: ServiceRosterRow[];
 };
 
 export type ThisWeekItem = {
@@ -83,7 +103,7 @@ export async function getDashboardData(
     orderBy: { serviceDate: "asc" },
     take: 2,
     include: {
-      teamMembers: { select: { id: true } },
+      teamMembers: { include: { teamMember: { select: { id: true, name: true, role: true } } } },
       songs: {
         orderBy: { order: "asc" },
         include: {
@@ -129,9 +149,16 @@ export async function getDashboardData(
     set: (typeof sundaySets)[number] | undefined,
   ): DashboardSet | null {
     if (!set) return null;
-    const teamMemberIds = new Set(
-      set.songs.flatMap((s) => s.assignments.map((a) => a.teamMemberId)),
+    const teamMemberIds = new Set([
+      ...set.songs.flatMap((s) => s.assignments.map((a) => a.teamMemberId)),
+      ...set.teamMembers.map((tm) => tm.teamMemberId),
+    ]);
+
+    const serviceRoster = sortByRoleOrder(
+      set.teamMembers.map((tm) => ({ role: tm.role, name: tm.teamMember.name })),
     );
+    const effectiveLeaderName =
+      serviceRoster.find((r) => r.role === "Worship Leader")?.name ?? set.leaderName;
 
     const confirmedByCategory = new Map<string, Set<string>>();
     for (const s of set.songs) {
@@ -168,6 +195,7 @@ export async function getDashboardData(
       title: set.title,
       theme: set.theme,
       leaderName: set.leaderName,
+      effectiveLeaderName,
       serviceDate: set.serviceDate,
       songCount: set.songs.length,
       teamMemberCount: teamMemberIds.size,
@@ -175,6 +203,7 @@ export async function getDashboardData(
       stages: getServiceStages(set),
       setlistPreview,
       teamCoverage,
+      serviceRoster,
     };
   }
 
@@ -203,7 +232,8 @@ export async function getDashboardData(
 
   const needsAttention: NeedsAttentionItem[] = [];
   if (nextSet) {
-    if (!nextSet.leaderName) {
+    const hasRosterLeader = nextSet.teamMembers.some((tm) => tm.role === "Worship Leader");
+    if (!hasRosterLeader && !nextSet.leaderName) {
       needsAttention.push({
         id: "leader",
         message: "Worship leader hasn't been assigned",
@@ -219,7 +249,13 @@ export async function getDashboardData(
         href: `/sets/${nextSet.id}`,
       });
     }
-    const unassignedCount = nextSet.songs.filter((s) => s.assignments.length === 0).length;
+    // A song only truly needs attention if there's no per-song override
+    // AND no whole-set roster to fall back on — once a set has a roster,
+    // every song in it inherits those roles by default.
+    const unassignedCount =
+      nextSet.teamMembers.length === 0
+        ? nextSet.songs.filter((s) => s.assignments.length === 0).length
+        : 0;
     if (nextSet.songs.length === 0) {
       needsAttention.push({
         id: "no-songs",
@@ -270,8 +306,16 @@ export async function getDashboardData(
     if (member) {
       const roleLabel = member.instrument || member.role;
       const isVocalist = /vocal/i.test(member.role) || /vocal/i.test(member.instrument ?? "");
+      // A per-song override always counts; otherwise fall back to whether
+      // this member holds any role on the set's whole-service roster —
+      // same override-wins-over-default precedence as My Part and
+      // Rehearsal Mode (lib/songs/assignment-resolver.ts), so this card
+      // can never disagree with what those pages show.
+      const hasSetRole = nextSet?.teamMembers.some((tm) => tm.teamMemberId === member.id) ?? false;
       const assignedSongs =
-        nextSet?.songs.filter((s) => s.assignments.some((a) => a.teamMemberId === member.id)) ?? [];
+        nextSet?.songs.filter(
+          (s) => s.assignments.some((a) => a.teamMemberId === member.id) || hasSetRole,
+        ) ?? [];
       const hasAssignmentForNextSunday = assignedSongs.length > 0;
       const partReady =
         hasAssignmentForNextSunday && assignedSongs.every((s) => s.song.rehearsals.length > 0);
@@ -302,4 +346,43 @@ export async function getDashboardData(
     memberStatus,
     uninvitedMemberCount,
   };
+}
+
+export type CalendarDateEntry = {
+  date: string; // YYYY-MM-DD, local
+  setId: string;
+  title: string;
+  hasRoster: boolean;
+  roster: ServiceRosterRow[];
+};
+
+// One query per visible month, scoped to the team — no N+1. `month` is
+// 0-indexed (JS Date convention: 0 = January). Only SERVICE-type events
+// are shown; this is a worship-team service calendar, not a general
+// church calendar for every event type.
+export async function getCalendarMonthData(
+  teamId: string,
+  year: number,
+  month: number,
+): Promise<CalendarDateEntry[]> {
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 1);
+
+  const sets = await prisma.worshipSet.findMany({
+    where: { teamId, eventType: "SERVICE", serviceDate: { gte: start, lt: end }, archivedAt: null },
+    orderBy: { serviceDate: "asc" },
+    include: {
+      teamMembers: { include: { teamMember: { select: { id: true, name: true, role: true } } } },
+    },
+  });
+
+  return sets
+    .filter((s): s is typeof s & { serviceDate: Date } => s.serviceDate !== null)
+    .map((s) => ({
+      date: `${s.serviceDate.getFullYear()}-${String(s.serviceDate.getMonth() + 1).padStart(2, "0")}-${String(s.serviceDate.getDate()).padStart(2, "0")}`,
+      setId: s.id,
+      title: s.title,
+      hasRoster: s.teamMembers.length > 0,
+      roster: sortByRoleOrder(s.teamMembers.map((tm) => ({ role: tm.role, name: tm.teamMember.name }))),
+    }));
 }
