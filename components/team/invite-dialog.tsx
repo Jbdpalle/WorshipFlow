@@ -22,6 +22,8 @@ export function InviteDialog({
   teamMemberName,
   trigger,
   canGrantAdmin = false,
+  initialEmail = "",
+  initialRole = "MEMBER",
 }: {
   teamMemberId?: string;
   teamMemberName?: string;
@@ -30,20 +32,25 @@ export function InviteDialog({
   // to hand out. Server-enforced too (createInvite); this just keeps the
   // dropdown from offering an option that would be rejected anyway.
   canGrantAdmin?: boolean;
+  // Pre-fills the form for "resend" — reopening this same dialog for a
+  // teamMemberId that already has a pending invite, so the leader doesn't
+  // retype an email they already entered once.
+  initialEmail?: string;
+  initialRole?: (typeof ROLE_OPTIONS)[number]["value"];
 }) {
   const roleOptions = canGrantAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => r.value !== "ADMIN");
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<(typeof ROLE_OPTIONS)[number]["value"]>("MEMBER");
+  const [email, setEmail] = useState(initialEmail);
+  const [role, setRole] = useState<(typeof ROLE_OPTIONS)[number]["value"]>(initialRole);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   function reset() {
-    setEmail("");
-    setRole("MEMBER");
+    setEmail(initialEmail);
+    setRole(initialRole);
     setError(null);
     setLink(null);
     setCopied(false);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ChurchRole } from "@prisma/client";
 import { Plus, Trash2, UserRound, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import { addTeamMember, removeTeamMember, updateTeamMember } from "@/lib/actions
 import { revokeInvite } from "@/lib/actions/invites";
 import { InviteDialog } from "@/components/team/invite-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils/cn";
 
 type Member = {
   id: string;
@@ -25,7 +27,85 @@ type Member = {
   userId: string | null;
 };
 
-type PendingInvite = { id: string; email: string; role: string; token: string; expiresAt: Date };
+type PendingInvite = {
+  id: string;
+  email: string;
+  role: ChurchRole;
+  token: string;
+  expiresAt: Date;
+  teamMemberId: string | null;
+};
+
+function MemberInviteStatus({
+  member,
+  invite,
+  isLeader,
+  isAdmin,
+}: {
+  member: Member;
+  invite: PendingInvite | undefined;
+  isLeader: boolean;
+  isAdmin: boolean;
+}) {
+  if (member.userId) {
+    return (
+      <Tooltip content="This person has logged in and linked their own account">
+        <Badge tabIndex={0} variant="success" className="text-[10px]">
+          Active
+        </Badge>
+      </Tooltip>
+    );
+  }
+
+  const isExpired = invite && invite.expiresAt < new Date();
+
+  return (
+    <div className="flex items-center gap-2">
+      {invite ? (
+        <Tooltip
+          content={
+            isExpired
+              ? "This invite link expired — resend to generate a new one"
+              : `Invited ${invite.email} — not yet accepted. WorshipFlow invites are a link you share, not an email we send.`
+          }
+        >
+          <Badge
+            tabIndex={0}
+            variant={isExpired ? "outline" : "accent"}
+            className={cn("text-[10px]", isExpired && "text-danger")}
+          >
+            {isExpired ? "Invitation Expired" : "Invitation Sent"}
+          </Badge>
+        </Tooltip>
+      ) : (
+        <Tooltip content="Added to the roster, but hasn't logged in or linked an account yet">
+          <Badge tabIndex={0} variant="outline" className="text-[10px]">
+            Roster only
+          </Badge>
+        </Tooltip>
+      )}
+      {isLeader && (
+        // Always mounted (not conditional on `invite`) so the dialog isn't
+        // unmounted out from under itself: createInvite's revalidatePath
+        // refreshes this page's data as soon as the invite is created,
+        // which would otherwise flip this condition and close the dialog
+        // before the leader ever sees the link to copy.
+        <InviteDialog
+          teamMemberId={member.id}
+          teamMemberName={member.name}
+          canGrantAdmin={isAdmin}
+          initialEmail={invite?.email}
+          initialRole={invite?.role === "OWNER" ? "MEMBER" : invite?.role}
+          trigger={
+            <button className="text-xs font-medium text-accent hover:underline">
+              {invite ? "Resend Invitation" : "Invite"}
+            </button>
+          }
+        />
+      )}
+    </div>
+  );
+}
 
 export function TeamRoster({
   members,
@@ -43,6 +123,11 @@ export function TeamRoster({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", role: ROLES[0] as string, instrument: "" });
   const [error, setError] = useState<string | null>(null);
+
+  const inviteByMemberId = new Map(
+    pendingInvites.filter((i) => i.teamMemberId).map((i) => [i.teamMemberId as string, i]),
+  );
+  const openInvites = pendingInvites.filter((i) => !i.teamMemberId);
 
   return (
     <div className="space-y-4">
@@ -108,28 +193,13 @@ export function TeamRoster({
                 {m.instrument && m.instrument !== m.role && (
                   <p className="text-xs text-muted-foreground">{m.instrument}</p>
                 )}
-                <div className="mt-1.5 flex items-center gap-2">
-                  <Tooltip
-                    content={
-                      m.userId
-                        ? "This person has logged in and linked their own account"
-                        : "Added to the roster, but hasn't logged in or linked an account yet"
-                    }
-                  >
-                    <Badge tabIndex={0} variant={m.userId ? "success" : "outline"} className="text-[10px]">
-                      {m.userId ? "Active account" : "Roster only"}
-                    </Badge>
-                  </Tooltip>
-                  {!m.userId && isLeader && (
-                    <InviteDialog
-                      teamMemberId={m.id}
-                      teamMemberName={m.name}
-                      canGrantAdmin={isAdmin}
-                      trigger={
-                        <button className="text-xs font-medium text-accent hover:underline">Invite</button>
-                      }
-                    />
-                  )}
+                <div className="mt-1.5">
+                  <MemberInviteStatus
+                    member={m}
+                    invite={inviteByMemberId.get(m.id)}
+                    isLeader={isLeader}
+                    isAdmin={isAdmin}
+                  />
                 </div>
               </div>
               {isAdmin && (
@@ -156,11 +226,14 @@ export function TeamRoster({
         ))}
       </div>
 
-      {isLeader && pendingInvites.length > 0 && (
+      {isLeader && openInvites.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">Pending invites</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground">Open invites</h2>
+          <p className="text-xs text-muted-foreground">
+            Not tied to a specific roster member yet — whoever opens the link gets added.
+          </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {pendingInvites.map((invite) => (
+            {openInvites.map((invite) => (
               <Card key={invite.id}>
                 <CardContent className="flex items-center justify-between gap-2 pt-4">
                   <div className="min-w-0">
