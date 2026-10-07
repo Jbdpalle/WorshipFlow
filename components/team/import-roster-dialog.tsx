@@ -134,8 +134,8 @@ export function ImportRosterDialog() {
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Upload a spreadsheet (.xlsx/.csv with Name, Role, and optionally Date columns) or a
-              clear, typed roster image. Adds/updates people on your Team page, and — if a Date
-              matches an existing worship set — assigns them to that set&apos;s songs by role.
+              clear, typed roster image. Adds/updates people on your Team, and schedules or updates
+              a service for each Date in the file — which then shows up right here on Roster.
             </p>
 
             <button

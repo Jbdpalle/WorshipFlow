@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, UserRound, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +13,6 @@ import { Dialog } from "@/components/ui/dialog";
 import { ROLES } from "@/lib/songs/constants";
 import { addTeamMember, removeTeamMember, updateTeamMember } from "@/lib/actions/team";
 import { revokeInvite } from "@/lib/actions/invites";
-import { ImportRosterDialog } from "@/components/team/import-roster-dialog";
 import { InviteDialog } from "@/components/team/invite-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -49,7 +49,6 @@ export function TeamRoster({
       <div className="flex flex-wrap items-center justify-between gap-2">
         {error ? <p className="text-sm text-danger">{error}</p> : <span />}
         <div className="flex flex-wrap gap-2">
-          {isLeader && <ImportRosterDialog />}
           {isLeader && <InviteDialog canGrantAdmin={isAdmin} />}
           {isLeader && (
             <Button onClick={() => setOpen(true)}>
@@ -58,6 +57,15 @@ export function TeamRoster({
           )}
         </div>
       </div>
+
+      {isLeader && (
+        <p className="text-sm text-muted-foreground">
+          Importing a schedule?{" "}
+          <Link href="/roster" className="font-medium text-accent hover:underline">
+            Go to Roster →
+          </Link>
+        </p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {members.map((m) => (

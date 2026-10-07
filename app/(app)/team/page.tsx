@@ -4,11 +4,6 @@ import { TeamRoster } from "@/components/team/team-roster";
 import { ChurchAccessList } from "@/components/team/church-access-list";
 import { listChurchAccess } from "@/lib/actions/team";
 
-// Image-based roster import calls the Anthropic API, which can take longer
-// than Vercel's default serverless timeout — see the same note on
-// app/(app)/songs/page.tsx.
-export const maxDuration = 60;
-
 export default async function TeamPage() {
   const { team, membershipRole } = await requireUser();
   const isLeader = isLeaderRole(membershipRole);

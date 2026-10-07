@@ -357,6 +357,42 @@ export type CalendarDateEntry = {
   roster: ServiceRosterRow[];
 };
 
+export type RosterPageEntry = {
+  id: string;
+  title: string;
+  eventType: string;
+  serviceDate: Date;
+  roster: ServiceRosterRow[];
+};
+
+// The team's upcoming schedule with who's serving each date — what a
+// roster import actually produces (SetTeamMember rows per date), surfaced
+// as its own page rather than only inside the Dashboard's calendar popover
+// or a one-time import summary dialog, so an imported roster has a
+// permanent, browsable home.
+export async function getRosterPageData(teamId: string): Promise<RosterPageEntry[]> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sets = await prisma.worshipSet.findMany({
+    where: { teamId, serviceDate: { gte: today }, archivedAt: null },
+    orderBy: { serviceDate: "asc" },
+    include: {
+      teamMembers: { include: { teamMember: { select: { id: true, name: true, role: true } } } },
+    },
+  });
+
+  return sets
+    .filter((s): s is typeof s & { serviceDate: Date } => s.serviceDate !== null)
+    .map((s) => ({
+      id: s.id,
+      title: s.title,
+      eventType: s.eventType,
+      serviceDate: s.serviceDate,
+      roster: sortByRoleOrder(s.teamMembers.map((tm) => ({ role: tm.role, name: tm.teamMember.name }))),
+    }));
+}
+
 // One query per visible month, scoped to the team — no N+1. `month` is
 // 0-indexed (JS Date convention: 0 = January). Every event type shows here
 // (Sunday Service, Rehearsal/Practice, Special Event, etc.) — a team's
