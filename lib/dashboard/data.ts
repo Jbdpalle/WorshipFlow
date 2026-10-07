@@ -318,12 +318,18 @@ export type CalendarDateEntry = {
   roster: ServiceRosterRow[];
 };
 
+// The raw SetTeamMember rows (with the ids SetTeam needs to edit/remove a
+// row), alongside the simple display-only `roster` list every other
+// surface (Dashboard, Calendar) already uses — same data, two shapes.
+export type RosterSetTeamMemberRow = { id: string; role: string; teamMember: { id: string; name: string } };
+
 export type RosterPageEntry = {
   id: string;
   title: string;
   eventType: string;
   serviceDate: Date;
   roster: ServiceRosterRow[];
+  setTeamMembers: RosterSetTeamMemberRow[];
 };
 
 // The team's upcoming schedule with who's serving each date — what a
@@ -351,6 +357,11 @@ export async function getRosterPageData(teamId: string): Promise<RosterPageEntry
       eventType: s.eventType,
       serviceDate: s.serviceDate,
       roster: sortByRoleOrder(s.teamMembers.map((tm) => ({ role: tm.role, name: tm.teamMember.name }))),
+      setTeamMembers: s.teamMembers.map((tm) => ({
+        id: tm.id,
+        role: tm.role,
+        teamMember: { id: tm.teamMember.id, name: tm.teamMember.name },
+      })),
     }));
 }
 
