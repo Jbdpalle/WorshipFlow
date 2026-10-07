@@ -30,6 +30,10 @@ const SECTION_WORDS = [
 const PAGE_BREAK_RE = /^--\s*\d+\s*of\s*\d+\s*--$/i;
 const PAGE_NUMBER_RE = /^\d{1,3}$/;
 const KEY_LINE_RE = /^key\s*:\s*(.+)$/i;
+// Some exports skip the artist line and put the key directly after the
+// title on the same physical line (e.g. "Head & Shoulders Key: C") instead
+// of its own "Key: X" line — left alone, that whole line becomes the title.
+const TITLE_WITH_KEY_RE = /^(.*\S)\s+key\s*:\s*(.+)$/i;
 
 function isSectionHeader(line: string): boolean {
   const trimmed = line.trim();
@@ -57,11 +61,17 @@ export function parseChordChartText(rawText: string): ParsedChordChart {
   const nonEmpty = lines.filter((l) => l.length > 0);
 
   let cursor = 0;
-  const title = nonEmpty[cursor] ?? "Untitled Song";
+  let title = nonEmpty[cursor] ?? "Untitled Song";
   cursor++;
 
   let artist: string | null = null;
   let key: string | null = null;
+
+  const titleKeyMatch = title.match(TITLE_WITH_KEY_RE);
+  if (titleKeyMatch) {
+    title = titleKeyMatch[1].trim();
+    key = titleKeyMatch[2].trim();
+  }
 
   // Artist line: the line right after the title, if it isn't the key line
   // or already a section header (some exports skip the artist entirely).
