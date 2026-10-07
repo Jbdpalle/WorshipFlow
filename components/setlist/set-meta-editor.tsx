@@ -21,6 +21,7 @@ export function SetMetaEditor({
   initialYoutubePlaylistUrl,
   initialSpotifyPlaylistUrl,
   songOptions,
+  isLeader,
 }: {
   setId: string;
   initialTheme: string;
@@ -31,6 +32,7 @@ export function SetMetaEditor({
   initialYoutubePlaylistUrl: string;
   initialSpotifyPlaylistUrl: string;
   songOptions: SongOption[];
+  isLeader: boolean;
 }) {
   const [theme, setTheme] = useState(initialTheme);
   const [leaderName, setLeaderName] = useState(initialLeaderName);
@@ -109,6 +111,7 @@ export function SetMetaEditor({
           id="set-date"
           type="date"
           value={serviceDate}
+          disabled={!isLeader}
           onChange={(e) => {
             setServiceDate(e.target.value);
             setSaved(false);
@@ -122,6 +125,7 @@ export function SetMetaEditor({
           id="set-leader"
           value={leaderName}
           placeholder="Not assigned"
+          disabled={!isLeader}
           onChange={(e) => {
             setLeaderName(e.target.value);
             setSaved(false);
@@ -135,6 +139,7 @@ export function SetMetaEditor({
           id="set-theme"
           value={theme}
           placeholder="Not set"
+          disabled={!isLeader}
           onChange={(e) => {
             setTheme(e.target.value);
             setSaved(false);
@@ -147,6 +152,7 @@ export function SetMetaEditor({
         <Select
           id="set-anchor"
           value={anchorSongId}
+          disabled={!isLeader}
           onChange={(e) => {
             const next = e.target.value;
             setAnchorSongId(next);
@@ -167,6 +173,7 @@ export function SetMetaEditor({
           id="set-keywords"
           value={keywords}
           placeholder="grace, surrender, hope"
+          disabled={!isLeader}
           onChange={(e) => {
             setKeywords(e.target.value);
             setSaved(false);
@@ -184,6 +191,7 @@ export function SetMetaEditor({
             label="YouTube playlist"
             icon={<PlayCircle className="h-3.5 w-3.5" />}
             value={youtubePlaylistUrl}
+            disabled={!isLeader}
             onChange={(v) => {
               setYoutubePlaylistUrl(v);
               setSaved(false);
@@ -196,6 +204,7 @@ export function SetMetaEditor({
             label="Spotify playlist"
             icon={<Music2 className="h-3.5 w-3.5" />}
             value={spotifyPlaylistUrl}
+            disabled={!isLeader}
             onChange={(v) => {
               setSpotifyPlaylistUrl(v);
               setSaved(false);
@@ -205,31 +214,33 @@ export function SetMetaEditor({
           />
         </div>
       </div>
-      <div className="flex items-center justify-between gap-2 sm:col-span-2">
-        {error ? (
-          <p className="text-xs text-danger">{error}</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">{saved ? "Saved" : "Saving…"}</p>
-        )}
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() =>
-            save({
-              theme,
-              leaderName,
-              keywords,
-              anchorSongId: anchorSongId || null,
-              serviceDate: serviceDate || null,
-              youtubePlaylistUrl: youtubePlaylistUrl || null,
-              spotifyPlaylistUrl: spotifyPlaylistUrl || null,
-            })
-          }
-        >
-          <Save className="h-3.5 w-3.5" /> Save
-        </Button>
-      </div>
+      {isLeader && (
+        <div className="flex items-center justify-between gap-2 sm:col-span-2">
+          {error ? (
+            <p className="text-xs text-danger">{error}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">{saved ? "Saved" : "Saving…"}</p>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() =>
+              save({
+                theme,
+                leaderName,
+                keywords,
+                anchorSongId: anchorSongId || null,
+                serviceDate: serviceDate || null,
+                youtubePlaylistUrl: youtubePlaylistUrl || null,
+                spotifyPlaylistUrl: spotifyPlaylistUrl || null,
+              })
+            }
+          >
+            <Save className="h-3.5 w-3.5" /> Save
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -45,6 +45,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
   });
 
   if (!set || set.teamId !== team.id) notFound();
+  const isLeader = isLeaderRole(membershipRole);
 
   const [librarySongsRaw, teamMembers] = await Promise.all([
     prisma.song.findMany({
@@ -98,7 +99,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
             setId={set.id}
             setTitle={set.title}
             isArchived={!!set.archivedAt}
-            isLeader={isLeaderRole(membershipRole)}
+            isLeader={isLeader}
           />
         </div>
       </div>
@@ -122,20 +123,21 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
                 setId={set.id}
                 members={set.teamMembers}
                 teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
-                isLeader={isLeaderRole(membershipRole)}
+                isLeader={isLeader}
               />
             </CardContent>
           </Card>
 
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Setlist</h2>
-            <AddFromLibraryDialog setId={set.id} librarySongs={librarySongsRaw} />
+            {isLeader && <AddFromLibraryDialog setId={set.id} librarySongs={librarySongsRaw} />}
           </div>
           <SetlistBoard
             setId={set.id}
             initialSongs={songsWithFlowStatus}
             teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
             anchorSongId={set.anchorSongId}
+            isLeader={isLeader}
           />
         </div>
 
@@ -155,6 +157,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
                 initialYoutubePlaylistUrl={set.youtubePlaylistUrl ?? ""}
                 initialSpotifyPlaylistUrl={set.spotifyPlaylistUrl ?? ""}
                 songOptions={set.songs.map((s) => ({ songId: s.song.id, title: s.song.title }))}
+                isLeader={isLeader}
               />
             </CardContent>
           </Card>
@@ -164,7 +167,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
               <CardTitle className="text-base">Exaltation</CardTitle>
             </CardHeader>
             <CardContent>
-              <SetExaltation setId={set.id} initialExaltation={set.exaltation ?? ""} />
+              <SetExaltation setId={set.id} initialExaltation={set.exaltation ?? ""} isLeader={isLeader} />
             </CardContent>
           </Card>
 
@@ -173,7 +176,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
               <CardTitle className="text-base">Leader&apos;s Note</CardTitle>
             </CardHeader>
             <CardContent>
-              <SetNotes setId={set.id} initialNotes={set.notes ?? ""} />
+              <SetNotes setId={set.id} initialNotes={set.notes ?? ""} isLeader={isLeader} />
             </CardContent>
           </Card>
 

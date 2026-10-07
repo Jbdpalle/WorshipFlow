@@ -12,6 +12,7 @@ export function MediaLinkField({
   onChange,
   onBlur,
   placeholder,
+  disabled,
 }: {
   id: string;
   label: string;
@@ -20,6 +21,7 @@ export function MediaLinkField({
   onChange: (value: string) => void;
   onBlur: () => void;
   placeholder: string;
+  disabled?: boolean;
 }) {
   const canOpen = /^https?:\/\//i.test(value.trim());
   return (
@@ -34,6 +36,7 @@ export function MediaLinkField({
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           placeholder={placeholder}
+          disabled={disabled}
         />
         {canOpen && (
           <a

@@ -69,11 +69,13 @@ export function SetlistBoard({
   initialSongs,
   teamMembers,
   anchorSongId,
+  isLeader,
 }: {
   setId: string;
   initialSongs: SetSongData[];
   teamMembers: TeamMemberOption[];
   anchorSongId: string | null;
+  isLeader: boolean;
 }) {
   const [items, setItems] = useState(initialSongs);
   const [syncedSongs, setSyncedSongs] = useState(initialSongs);
@@ -88,6 +90,7 @@ export function SetlistBoard({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!isLeader) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     setItems((prev) => {
@@ -120,6 +123,7 @@ export function SetlistBoard({
                 index={index}
                 teamMembers={teamMembers}
                 isAnchor={anchorSongId === item.song.id}
+                isLeader={isLeader}
                 onRemoved={() => {
                   setItems((prev) => prev.filter((i) => i.id !== item.id));
                   router.refresh();
@@ -149,6 +153,7 @@ function SetSongCard({
   index,
   teamMembers,
   isAnchor,
+  isLeader,
   onRemoved,
 }: {
   setId: string;
@@ -156,6 +161,7 @@ function SetSongCard({
   index: number;
   teamMembers: TeamMemberOption[];
   isAnchor: boolean;
+  isLeader: boolean;
   onRemoved: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -187,14 +193,18 @@ function SetSongCard({
     <div ref={setNodeRef} style={style}>
       <Card className="p-4">
         <div className="flex items-start gap-3">
-          <button
-            {...attributes}
-            {...listeners}
-            className="mt-1 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
-            aria-label="Drag to reorder"
-          >
-            <GripVertical className="h-5 w-5" />
-          </button>
+          {isLeader ? (
+            <button
+              {...attributes}
+              {...listeners}
+              className="mt-1 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+              aria-label="Drag to reorder"
+            >
+              <GripVertical className="h-5 w-5" />
+            </button>
+          ) : (
+            <span className="mt-1 w-5 shrink-0" aria-hidden />
+          )}
 
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -206,31 +216,39 @@ function SetSongCard({
                   <Link href={`/songs/${item.song.id}`} className="font-semibold hover:text-accent">
                     {item.song.title}
                   </Link>
-                  <button
-                    onClick={async () => {
-                      setError(null);
-                      showErrorIfAny(
-                        await updateSetMeta(setId, { anchorSongId: isAnchor ? null : item.song.id }),
-                      );
-                      router.refresh();
-                    }}
-                    aria-label={isAnchor ? "Remove as anchor song" : "Mark as anchor song"}
-                    className={cn(
-                      "rounded-md p-0.5",
-                      isAnchor ? "text-accent" : "text-muted-foreground/40 hover:text-accent",
-                    )}
-                  >
-                    <Tooltip content="The anchor song sets the theme suggestions for the rest of the set">
-                      <Star className="h-4 w-4" fill={isAnchor ? "currentColor" : "none"} />
-                    </Tooltip>
-                  </button>
+                  {isLeader ? (
+                    <button
+                      onClick={async () => {
+                        setError(null);
+                        showErrorIfAny(
+                          await updateSetMeta(setId, { anchorSongId: isAnchor ? null : item.song.id }),
+                        );
+                        router.refresh();
+                      }}
+                      aria-label={isAnchor ? "Remove as anchor song" : "Mark as anchor song"}
+                      className={cn(
+                        "rounded-md p-0.5",
+                        isAnchor ? "text-accent" : "text-muted-foreground/40 hover:text-accent",
+                      )}
+                    >
+                      <Tooltip content="The anchor song sets the theme suggestions for the rest of the set">
+                        <Star className="h-4 w-4" fill={isAnchor ? "currentColor" : "none"} />
+                      </Tooltip>
+                    </button>
+                  ) : (
+                    isAnchor && (
+                      <Tooltip content="This service's anchor song">
+                        <Star className="h-4 w-4 text-accent" fill="currentColor" />
+                      </Tooltip>
+                    )
+                  )}
                 </div>
                 {item.song.artist && (
                   <p className="text-xs text-muted-foreground">{item.song.artist}</p>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
-                {item.song.key && (
+                {item.song.key && isLeader && (
                   <div className="flex items-center gap-1">
                     <Tooltip content="Key for this service only — the song's own key elsewhere is unchanged">
                       <Select
@@ -252,6 +270,9 @@ function SetSongCard({
                       </Select>
                     </Tooltip>
                   </div>
+                )}
+                {item.song.key && !isLeader && (
+                  <Badge variant="outline">Key {overrideKey ?? item.song.key}</Badge>
                 )}
                 {item.song.bpm && <Badge variant="outline">{item.song.bpm} BPM</Badge>}
                 {item.song.youtubeUrl && (
@@ -289,18 +310,20 @@ function SetSongCard({
                     <BookOpenText className="h-4 w-4" />
                   </Tooltip>
                 </Link>
-                <button
-                  onClick={async () => {
-                    const result = await removeSongFromSet(item.id);
-                    if (showErrorIfAny(result)) onRemoved();
-                  }}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                  aria-label="Remove from set"
-                >
-                  <Tooltip content="Remove this song from the set">
-                    <Trash2 className="h-4 w-4" />
-                  </Tooltip>
-                </button>
+                {isLeader && (
+                  <button
+                    onClick={async () => {
+                      const result = await removeSongFromSet(item.id);
+                      if (showErrorIfAny(result)) onRemoved();
+                    }}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                    aria-label="Remove from set"
+                  >
+                    <Tooltip content="Remove this song from the set">
+                      <Trash2 className="h-4 w-4" />
+                    </Tooltip>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -328,42 +351,48 @@ function SetSongCard({
                     Per-song assignment override (optional — the set&apos;s team covers most cases)
                   </label>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {item.assignments.map((a) => (
-                      <Badge key={a.id} variant="outline" className="gap-1 pr-1">
-                        <select
-                          value={a.role}
-                          aria-label={`Change ${a.teamMember.name}'s role for this song — picked the wrong instrument? fix it here`}
-                          title="Wrong instrument? Change it here instead of removing and re-adding."
-                          className="bg-transparent text-xs font-medium focus:outline-none"
-                          onChange={async (e) => {
-                            const newRole = e.target.value;
-                            if (newRole === a.role) return;
-                            if (showErrorIfAny(await assignMemberToSetSong(item.id, a.teamMember.id, newRole))) {
-                              router.refresh();
-                            }
-                          }}
-                        >
-                          {!ROLES.includes(a.role as (typeof ROLES)[number]) && (
-                            <option value={a.role}>{a.role}</option>
-                          )}
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
-                        : {a.teamMember.name}
-                        <button
-                          onClick={async () => {
-                            if (showErrorIfAny(await removeAssignment(a.id))) router.refresh();
-                          }}
-                          className="ml-1 rounded-full hover:bg-danger/20"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    {teamMembers.length > 0 && (
+                    {item.assignments.map((a) =>
+                      isLeader ? (
+                        <Badge key={a.id} variant="outline" className="gap-1 pr-1">
+                          <select
+                            value={a.role}
+                            aria-label={`Change ${a.teamMember.name}'s role for this song — picked the wrong instrument? fix it here`}
+                            title="Wrong instrument? Change it here instead of removing and re-adding."
+                            className="bg-transparent text-xs font-medium focus:outline-none"
+                            onChange={async (e) => {
+                              const newRole = e.target.value;
+                              if (newRole === a.role) return;
+                              if (showErrorIfAny(await assignMemberToSetSong(item.id, a.teamMember.id, newRole))) {
+                                router.refresh();
+                              }
+                            }}
+                          >
+                            {!ROLES.includes(a.role as (typeof ROLES)[number]) && (
+                              <option value={a.role}>{a.role}</option>
+                            )}
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
+                            ))}
+                          </select>
+                          : {a.teamMember.name}
+                          <button
+                            onClick={async () => {
+                              if (showErrorIfAny(await removeAssignment(a.id))) router.refresh();
+                            }}
+                            className="ml-1 rounded-full hover:bg-danger/20"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ) : (
+                        <Badge key={a.id} variant="outline">
+                          {a.role}: {a.teamMember.name}
+                        </Badge>
+                      ),
+                    )}
+                    {isLeader && teamMembers.length > 0 && (
                       <div className="flex items-center gap-1">
                         <Select
                           value={assignRole}

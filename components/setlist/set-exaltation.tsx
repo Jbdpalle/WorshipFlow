@@ -6,7 +6,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { updateSetExaltation } from "@/lib/actions/sets";
 
-export function SetExaltation({ setId, initialExaltation }: { setId: string; initialExaltation: string }) {
+export function SetExaltation({
+  setId,
+  initialExaltation,
+  isLeader,
+}: {
+  setId: string;
+  initialExaltation: string;
+  isLeader: boolean;
+}) {
   const [value, setValue] = useState(initialExaltation);
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +27,14 @@ export function SetExaltation({ setId, initialExaltation }: { setId: string; ini
       return;
     }
     setSaved(true);
+  }
+
+  if (!isLeader) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {initialExaltation.trim() || "Nothing set yet for this service."}
+      </p>
+    );
   }
 
   return (

@@ -67,7 +67,10 @@ async function findOwnedSet(setId: string, teamId: string): Promise<SetLookup> {
 
 export async function updateSetNotes(setId: string, notes: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can edit service notes." };
+    }
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.worshipSet.update({ where: { id: setId }, data: { notes } });
@@ -81,7 +84,10 @@ export async function updateSetNotes(setId: string, notes: string): Promise<Acti
 // material rather than how the service begins.
 export async function updateSetExaltation(setId: string, exaltation: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can edit the exaltation." };
+    }
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.worshipSet.update({ where: { id: setId }, data: { exaltation } });
@@ -106,7 +112,10 @@ export async function updateSetMeta(
   },
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can edit the service's direction." };
+    }
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -151,7 +160,10 @@ export async function updateSetMeta(
 
 export async function addSongToSet(setId: string, songId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can add songs to the setlist." };
+    }
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -181,7 +193,10 @@ export async function addSongToSet(setId: string, songId: string): Promise<Actio
 
 export async function removeSongFromSet(setSongId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can remove songs from the setlist." };
+    }
     const setSong = await prisma.setSong.findUnique({
       where: { id: setSongId },
       include: { set: true },
@@ -207,7 +222,10 @@ export async function removeSongFromSet(setSongId: string): Promise<ActionResult
 
 export async function reorderSetSongs(setId: string, orderedSetSongIds: string[]): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can reorder the setlist." };
+    }
     const lookup = await findOwnedSet(setId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -233,7 +251,10 @@ export async function updateSetSongDetails(
   },
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can edit song details." };
+    }
     const setSong = await prisma.setSong.findUnique({
       where: { id: setSongId },
       include: { set: true },
@@ -252,7 +273,10 @@ export async function assignMemberToSetSong(
   role: string,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can assign a song's musicians." };
+    }
     const setSong = await prisma.setSong.findUnique({
       where: { id: setSongId },
       include: { set: true },
@@ -275,7 +299,10 @@ export async function assignMemberToSetSong(
 
 export async function removeAssignment(assignmentId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can change a song's musicians." };
+    }
     const assignment = await prisma.songAssignment.findUnique({
       where: { id: assignmentId },
       include: { setSong: { include: { set: true } } },

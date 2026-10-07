@@ -6,7 +6,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { updateSetNotes } from "@/lib/actions/sets";
 
-export function SetNotes({ setId, initialNotes }: { setId: string; initialNotes: string }) {
+export function SetNotes({
+  setId,
+  initialNotes,
+  isLeader,
+}: {
+  setId: string;
+  initialNotes: string;
+  isLeader: boolean;
+}) {
   const [value, setValue] = useState(initialNotes);
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +27,14 @@ export function SetNotes({ setId, initialNotes }: { setId: string; initialNotes:
       return;
     }
     setSaved(true);
+  }
+
+  if (!isLeader) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {initialNotes.trim() || "No notes yet for this service."}
+      </p>
+    );
   }
 
   return (
