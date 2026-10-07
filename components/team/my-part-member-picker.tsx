@@ -18,10 +18,10 @@ export function MyPartMemberPicker({
 
   // A worship leader can look at any musician's part to check what they'll
   // see — clearly label that as a preview, never as "my part", so it's
-  // never mistaken for the leader's own assignment. The role shown in the
-  // list is each person's roster default (set on their Team card), not
-  // necessarily what they're playing in any particular service — the page
-  // below always resolves their actual, current assignment.
+  // never mistaken for the leader's own assignment. Just the name here —
+  // the page below always resolves each person's actual, current
+  // assignment, so showing a roster-default role next to their name in
+  // this list would only suggest it's live when it isn't.
   return (
     <div className="flex items-center gap-2">
       {!isOwnView && (
@@ -37,7 +37,7 @@ export function MyPartMemberPicker({
       >
         {members.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.name} (usually {m.role})
+            {m.name}
           </option>
         ))}
       </Select>
