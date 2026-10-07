@@ -16,6 +16,7 @@ export function SetMetaEditor({
   initialLeaderName,
   initialKeywords,
   initialAnchorSongId,
+  initialServiceDate,
   songOptions,
 }: {
   setId: string;
@@ -23,12 +24,14 @@ export function SetMetaEditor({
   initialLeaderName: string;
   initialKeywords: string;
   initialAnchorSongId: string;
+  initialServiceDate: string;
   songOptions: SongOption[];
 }) {
   const [theme, setTheme] = useState(initialTheme);
   const [leaderName, setLeaderName] = useState(initialLeaderName);
   const [keywords, setKeywords] = useState(initialKeywords);
   const [anchorSongId, setAnchorSongId] = useState(initialAnchorSongId);
+  const [serviceDate, setServiceDate] = useState(initialServiceDate);
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,18 +40,26 @@ export function SetMetaEditor({
   // which gives this component fresh props without remounting it — resync
   // local state from props during render rather than only on mount. See
   // https://react.dev/learn/you-might-not-need-an-effect
-  const [synced, setSynced] = useState({ initialTheme, initialLeaderName, initialKeywords, initialAnchorSongId });
+  const [synced, setSynced] = useState({
+    initialTheme,
+    initialLeaderName,
+    initialKeywords,
+    initialAnchorSongId,
+    initialServiceDate,
+  });
   if (
     synced.initialTheme !== initialTheme ||
     synced.initialLeaderName !== initialLeaderName ||
     synced.initialKeywords !== initialKeywords ||
-    synced.initialAnchorSongId !== initialAnchorSongId
+    synced.initialAnchorSongId !== initialAnchorSongId ||
+    synced.initialServiceDate !== initialServiceDate
   ) {
-    setSynced({ initialTheme, initialLeaderName, initialKeywords, initialAnchorSongId });
+    setSynced({ initialTheme, initialLeaderName, initialKeywords, initialAnchorSongId, initialServiceDate });
     setTheme(initialTheme);
     setLeaderName(initialLeaderName);
     setKeywords(initialKeywords);
     setAnchorSongId(initialAnchorSongId);
+    setServiceDate(initialServiceDate);
   }
 
   async function save(input: {
@@ -56,6 +67,7 @@ export function SetMetaEditor({
     leaderName?: string;
     keywords?: string;
     anchorSongId?: string | null;
+    serviceDate?: string | null;
   }) {
     setError(null);
     const result = await updateSetMeta(setId, input);
@@ -68,6 +80,19 @@ export function SetMetaEditor({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
+      <div>
+        <Label htmlFor="set-date">Date</Label>
+        <Input
+          id="set-date"
+          type="date"
+          value={serviceDate}
+          onChange={(e) => {
+            setServiceDate(e.target.value);
+            setSaved(false);
+          }}
+          onBlur={() => save({ serviceDate: serviceDate || null })}
+        />
+      </div>
       <div>
         <Label htmlFor="set-leader">Worship leader</Label>
         <Input
@@ -136,7 +161,9 @@ export function SetMetaEditor({
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => save({ theme, leaderName, keywords, anchorSongId: anchorSongId || null })}
+          onClick={() =>
+            save({ theme, leaderName, keywords, anchorSongId: anchorSongId || null, serviceDate: serviceDate || null })
+          }
         >
           <Save className="h-3.5 w-3.5" /> Save
         </Button>

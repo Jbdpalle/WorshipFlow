@@ -82,6 +82,7 @@ export async function updateSetMeta(
     leaderName?: string | null;
     keywords?: string | null;
     anchorSongId?: string | null;
+    serviceDate?: string | null;
   },
 ): Promise<ActionResult> {
   return runAction(async () => {
@@ -103,9 +104,13 @@ export async function updateSetMeta(
         ...(input.leaderName !== undefined ? { leaderName: input.leaderName?.trim() || null } : {}),
         ...(input.keywords !== undefined ? { keywords: input.keywords?.trim() || null } : {}),
         ...(input.anchorSongId !== undefined ? { anchorSongId: input.anchorSongId || null } : {}),
+        ...(input.serviceDate !== undefined
+          ? { serviceDate: input.serviceDate ? new Date(input.serviceDate) : null }
+          : {}),
       },
     });
     revalidatePath(`/sets/${setId}`);
+    revalidatePath("/sets");
     revalidatePath("/dashboard");
     return { ok: true };
   });
