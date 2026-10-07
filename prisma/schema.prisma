@@ -210,6 +210,7 @@ model Song {
 
   team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
   tags              SongTag[]
+  themeCategories   SongThemeCategory[]
   sections          SongSection[]
   bibleRefs         BibleReference[]
   setSongs          SetSong[]
@@ -223,6 +224,23 @@ model Song {
 }
 
 model SongTag {
+  id     String @id @default(cuid())
+  songId String
+  label  String
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@index([songId])
+  @@unique([songId, label])
+}
+
+// A song can genuinely fit more than one theme category (2-5 is typical),
+// unlike the legacy singular `Song.themeCategory` field, which stays as the
+// one "primary" category for backward compatibility with existing data and
+// lib/songs/theme-engine.ts matching. `label` is one of THEME_CATEGORIES'
+// labels (lib/songs/constants.ts), not freeform text — that's what SongTag
+// is for.
+model SongThemeCategory {
   id     String @id @default(cuid())
   songId String
   label  String

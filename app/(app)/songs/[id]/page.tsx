@@ -31,6 +31,7 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
       where: { id },
       include: {
         tags: true,
+        themeCategories: true,
         bibleRefs: true,
         sections: {
           orderBy: { order: "asc" },
@@ -65,7 +66,11 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <SongHeaderEditor songId={song.id} song={song} />
+          <SongHeaderEditor
+            songId={song.id}
+            song={song}
+            themeCategories={song.themeCategories.map((c) => c.label)}
+          />
           <TagEditor songId={song.id} tags={song.tags} />
           <ThemeVerseSuggestion songId={song.id} />
         </CardContent>

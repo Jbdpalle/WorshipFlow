@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SaveStatus, type SaveState } from "@/components/ui/save-status";
 import { MediaLinkField } from "@/components/ui/media-link-field";
+import { ThemeCategoryPicker } from "@/components/songs/theme-category-picker";
 import { ENERGY_LEVELS } from "@/lib/songs/constants";
 import { updateSong } from "@/lib/actions/songs";
 
@@ -18,13 +19,20 @@ type SongFields = {
   bpm: number | null;
   timeSignature: string | null;
   energy: string | null;
-  themeCategory: string | null;
   biblicalConnection: string | null;
   youtubeUrl: string | null;
   spotifyUrl: string | null;
 };
 
-export function SongHeaderEditor({ songId, song }: { songId: string; song: SongFields }) {
+export function SongHeaderEditor({
+  songId,
+  song,
+  themeCategories,
+}: {
+  songId: string;
+  song: SongFields;
+  themeCategories: string[];
+}) {
   const [fields, setFields] = useState({
     title: song.title,
     artist: song.artist ?? "",
@@ -32,7 +40,6 @@ export function SongHeaderEditor({ songId, song }: { songId: string; song: SongF
     bpm: song.bpm?.toString() ?? "",
     timeSignature: song.timeSignature ?? "4/4",
     energy: song.energy ?? "medium",
-    themeCategory: song.themeCategory ?? "",
     biblicalConnection: song.biblicalConnection ?? "",
     youtubeUrl: song.youtubeUrl ?? "",
     spotifyUrl: song.spotifyUrl ?? "",
@@ -59,7 +66,6 @@ export function SongHeaderEditor({ songId, song }: { songId: string; song: SongF
       bpm: fields.bpm ? Number(fields.bpm) : null,
       timeSignature: fields.timeSignature,
       energy: fields.energy,
-      themeCategory: fields.themeCategory,
       biblicalConnection: fields.biblicalConnection,
       youtubeUrl: fields.youtubeUrl,
       spotifyUrl: fields.spotifyUrl,
@@ -136,15 +142,8 @@ export function SongHeaderEditor({ songId, song }: { songId: string; song: SongF
           </Select>
         </Field>
       </div>
+      <ThemeCategoryPicker songId={songId} initialLabels={themeCategories} />
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Theme category">
-          <Input
-            value={fields.themeCategory}
-            onChange={(e) => set("themeCategory", e.target.value)}
-            onBlur={() => save({ themeCategory: fields.themeCategory })}
-            placeholder="God's Love"
-          />
-        </Field>
         <Field label="Biblical connection">
           <Input
             value={fields.biblicalConnection}

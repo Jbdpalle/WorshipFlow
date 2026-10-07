@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { SongLibraryList } from "@/components/songs/song-library-list";
 import { NewSongDialog } from "@/components/songs/new-song-dialog";
 import { ImportPdfDialog } from "@/components/songs/import-pdf-dialog";
+import { ImportSongMetadataDialog } from "@/components/songs/import-song-metadata-dialog";
 import { PasteLyricsDialog } from "@/components/songs/paste-lyrics-dialog";
 import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
@@ -35,6 +36,7 @@ export default async function SongLibraryPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {isLeader && <ImportPdfDialog />}
+          {isLeader && <ImportSongMetadataDialog />}
           <PasteLyricsDialog />
           <NewSongDialog />
         </div>

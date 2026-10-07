@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { Song, SongSection } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
-import { DEFAULT_SONG_STRUCTURE } from "@/lib/songs/constants";
+import { DEFAULT_SONG_STRUCTURE, THEME_CATEGORIES } from "@/lib/songs/constants";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
 import { checkCanCreateSong } from "@/lib/plans/limits";
@@ -140,6 +140,39 @@ export async function removeSongTag(tagId: string): Promise<ActionResult> {
     if (!tag || tag.song.teamId !== team.id) return { ok: false, error: "Not found." };
     await prisma.songTag.delete({ where: { id: tagId } });
     revalidatePath(`/songs/${tag.songId}`);
+    return { ok: true };
+  });
+}
+
+// Replaces the full set of theme categories for a song (0-5 of
+// THEME_CATEGORIES' labels). The legacy singular `themeCategory` field
+// stays in sync as the first selected label, so existing data and
+// lib/songs/theme-engine.ts's matching keep working unchanged.
+const VALID_THEME_LABELS = new Set(THEME_CATEGORIES.map((c) => c.label));
+
+export async function setSongThemeCategories(songId: string, labels: string[]): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSong(songId, team.id);
+    if (!lookup.ok) return lookup;
+
+    const unique = [...new Set(labels.map((l) => l.trim()).filter(Boolean))];
+    if (unique.length > 5) {
+      return { ok: false, error: "Pick at most 5 theme categories." };
+    }
+    const invalid = unique.filter((l) => !VALID_THEME_LABELS.has(l));
+    if (invalid.length > 0) {
+      return { ok: false, error: `Not a recognized theme category: ${invalid.join(", ")}` };
+    }
+
+    await prisma.$transaction([
+      prisma.songThemeCategory.deleteMany({ where: { songId } }),
+      prisma.songThemeCategory.createMany({ data: unique.map((label) => ({ songId, label })) }),
+      prisma.song.update({ where: { id: songId }, data: { themeCategory: unique[0] ?? null } }),
+    ]);
+
+    revalidatePath(`/songs/${songId}`);
+    revalidatePath("/songs");
     return { ok: true };
   });
 }
