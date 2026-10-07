@@ -24,7 +24,9 @@ export default async function TeamPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Team</h1>
-        <p className="text-sm text-muted-foreground">{team.name} — {members.length} members</p>
+        <p className="text-sm text-muted-foreground">
+          {team.name} — {members.length} member{members.length === 1 ? "" : "s"}
+        </p>
       </div>
       <TeamRoster members={members} pendingInvites={pendingInvites} isLeader={isLeader} isAdmin={isAdmin} />
       {isLeader && <ChurchAccessList rows={churchAccess} isAdmin={isAdmin} />}
