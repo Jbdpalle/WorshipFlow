@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import "@/lib/songs/pdf-dom-polyfill";
 import { PDFParse } from "pdf-parse";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { parseChordChartText } from "@/lib/songs/pdf-import";
 import { runAction, type ActionResultData } from "@/lib/actions/action-result";
 import { checkCanCreateSong } from "@/lib/plans/limits";
@@ -159,7 +159,10 @@ export async function importSongFromText(text: string): Promise<ActionResultData
 // type, too large) doesn't stop the rest of the batch from importing.
 export async function importSongsFromPdfs(formData: FormData): Promise<ActionResultData<PdfImportSummary>> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can bulk-import songs from PDF." };
+    }
     const limit = await checkCanCreateSong(team.id, user.isDemo);
     if (!limit.ok) return limit;
 

@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { SongLibraryList } from "@/components/songs/song-library-list";
 import { NewSongDialog } from "@/components/songs/new-song-dialog";
@@ -15,7 +15,8 @@ import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 export const maxDuration = 60;
 
 export default async function SongLibraryPage() {
-  const { user, team } = await requireUser();
+  const { user, team, membershipRole } = await requireUser();
+  const isLeader = isLeaderRole(membershipRole);
   const songs = await prisma.song.findMany({
     where: { teamId: team.id },
     orderBy: { title: "asc" },
@@ -33,7 +34,7 @@ export default async function SongLibraryPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ImportPdfDialog />
+          {isLeader && <ImportPdfDialog />}
           <PasteLyricsDialog />
           <NewSongDialog />
         </div>
