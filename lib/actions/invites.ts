@@ -132,7 +132,13 @@ async function resolveValidInvite(token: string) {
   return { ok: true as const, invite };
 }
 
-async function finalizeAcceptance(inviteId: string, userId: string, teamMemberId: string | null, teamId: string) {
+async function finalizeAcceptance(
+  inviteId: string,
+  userId: string,
+  teamMemberId: string | null,
+  teamId: string,
+  churchId: string,
+) {
   await prisma.$transaction(async (tx) => {
     await tx.invite.update({
       where: { id: inviteId },
@@ -141,6 +147,12 @@ async function finalizeAcceptance(inviteId: string, userId: string, teamMemberId
     if (teamMemberId) {
       await tx.teamMember.update({ where: { id: teamMemberId }, data: { userId } });
     }
+    // Make the church they just joined the one requireUser() resolves them
+    // to — otherwise someone who already had an older account/church (e.g.
+    // from trying the demo themselves) accepts the invite but keeps landing
+    // back on that older, unrelated church and never sees what they were
+    // just invited into.
+    await tx.user.update({ where: { id: userId }, data: { currentChurchId: churchId } });
   });
   await createSession({ userId });
   trackEvent(teamId, "invite_accepted", { userId, entityId: inviteId });
@@ -181,7 +193,7 @@ export async function acceptInviteNewUser(
       return created;
     });
 
-    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId, invite.teamId);
+    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId, invite.teamId, invite.churchId);
     return { ok: true };
   });
 }
@@ -208,7 +220,7 @@ export async function acceptInviteExistingUser(token: string, password: string):
       });
     }
 
-    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId, invite.teamId);
+    await finalizeAcceptance(invite.id, user.id, invite.teamMemberId, invite.teamId, invite.churchId);
     return { ok: true };
   });
 }

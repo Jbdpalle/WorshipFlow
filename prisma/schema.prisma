@@ -44,7 +44,16 @@ model User {
   tourStatus    String?   // "active" | "skipped" | "completed"
   tourStep      Int       @default(0)
   createdAt     DateTime  @default(now())
+  // Which church requireUser() resolves to for a user with more than one
+  // Membership — set when an invite is accepted, so a person who already
+  // had an account elsewhere lands in the church they just joined instead
+  // of silently staying on their oldest one. Null means "no explicit
+  // choice yet" — requireUser() falls back to the oldest membership, same
+  // as before this field existed. There's still no UI to change it any
+  // other time, which is the real remaining gap (a proper church switcher).
+  currentChurchId String?
 
+  currentChurch     Church?          @relation("UserCurrentChurch", fields: [currentChurchId], references: [id], onDelete: SetNull)
   ownedChurches     Church[]         @relation("ChurchOwner")
   churchMemberships Membership[]
   ownedTeams        Team[]           @relation("TeamOwner")
@@ -64,10 +73,11 @@ model Church {
   ownerId   String
   createdAt DateTime @default(now())
 
-  owner       User         @relation("ChurchOwner", fields: [ownerId], references: [id])
-  memberships Membership[]
-  teams       Team[]
-  invites     Invite[]
+  owner             User         @relation("ChurchOwner", fields: [ownerId], references: [id])
+  memberships       Membership[]
+  teams             Team[]
+  invites           Invite[]
+  usersCurrentlyHere User[]      @relation("UserCurrentChurch")
 
   @@index([ownerId])
 }

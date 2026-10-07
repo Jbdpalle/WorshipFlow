@@ -4,10 +4,13 @@ import { readSession } from "@/lib/auth/session";
 
 // Tenant isolation is granted by Membership, not by team ownership: a user
 // only ever gets a `team` back if they hold a Membership on the Church that
-// team belongs to. A user can belong to more than one church; until a
-// church switcher exists in the UI, we resolve to their oldest membership
-// (their "home" church) so every existing call site that destructures
-// `{ team }` keeps working unchanged.
+// team belongs to. A user can belong to more than one church; until a real
+// church switcher exists in the UI, we resolve to `user.currentChurchId` if
+// it points at a membership they still hold (set when they accept an
+// invite — see finalizeAcceptance in lib/actions/invites.ts, so joining a
+// new church actually lands you there instead of silently staying on
+// whichever one you had first), falling back to their oldest membership
+// for everyone who's never had that field set.
 export async function requireUser() {
   const session = await readSession();
   if (!session) redirect("/login");
@@ -24,7 +27,10 @@ export async function requireUser() {
 
   if (!user) redirect("/login");
 
-  const membership = user.churchMemberships[0];
+  const membership =
+    (user.currentChurchId &&
+      user.churchMemberships.find((m) => m.churchId === user.currentChurchId)) ||
+    user.churchMemberships[0];
   const team = membership?.church.teams[0];
   if (!membership || !team) redirect("/login");
 
