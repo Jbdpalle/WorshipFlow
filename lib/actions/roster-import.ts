@@ -116,17 +116,18 @@ async function applyRosterRowsUnsafe(teamId: string, rows: RosterRow[]): Promise
 
     for (const setSong of matchedSet.songs) {
       for (const entry of entries) {
+        // Matched by (song, member, role) — not just (song, member) — so a
+        // person listed twice for the same date under different roles (e.g.
+        // leading AND playing acoustic that Sunday) gets both, instead of
+        // the second row silently overwriting the first. The tradeoff: if a
+        // re-imported file corrects someone's role for a date they were
+        // already imported under, this adds the new role alongside the old
+        // one rather than replacing it — a stale role has to be removed by
+        // hand from that song's per-song assignments afterward.
         const existingAssignment = await prisma.songAssignment.findFirst({
-          where: { setSongId: setSong.id, teamMemberId: entry.memberId },
+          where: { setSongId: setSong.id, teamMemberId: entry.memberId, role: entry.role },
         });
-        if (existingAssignment) {
-          if (existingAssignment.role !== entry.role) {
-            await prisma.songAssignment.update({
-              where: { id: existingAssignment.id },
-              data: { role: entry.role },
-            });
-          }
-        } else {
+        if (!existingAssignment) {
           await prisma.songAssignment.create({
             data: { setSongId: setSong.id, teamMemberId: entry.memberId, role: entry.role },
           });
