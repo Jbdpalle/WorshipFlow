@@ -189,7 +189,7 @@ export async function importRosterFromImage(
       return {
         ok: false,
         error:
-          "Image roster import needs an ANTHROPIC_API_KEY set in your environment variables. Spreadsheet import (.xlsx/.csv) works without one.",
+          "Image roster import is coming in a future update — stay tuned! Spreadsheet import (.xlsx/.csv) works today.",
       };
     }
 

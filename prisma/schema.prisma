@@ -327,6 +327,7 @@ model WorshipSet {
   serviceType String?
   leaderName  String?
   notes       String? // whole-set notes — "Leader's Note" in the Set Direction UI
+  exaltation  String? // the leader's cues for opening worship — something on their heart, a verse, a prayer — distinct from `notes` (mid-service reference)
   youtubePlaylistUrl String? // whole-set listening playlist, separate from each song's own reference link
   spotifyPlaylistUrl String?
   anchorSongId String? // optional: the one song this service is built around

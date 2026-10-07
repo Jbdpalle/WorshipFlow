@@ -73,6 +73,20 @@ export async function updateSetNotes(setId: string, notes: string): Promise<Acti
   });
 }
 
+// The leader's cues for opening worship — a verse, a prayer, something on
+// their heart — distinct from `notes` above, which is mid-service reference
+// material rather than how the service begins.
+export async function updateSetExaltation(setId: string, exaltation: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSet(setId, team.id);
+    if (!lookup.ok) return lookup;
+    await prisma.worshipSet.update({ where: { id: setId }, data: { exaltation } });
+    revalidatePath(`/sets/${setId}`);
+    return { ok: true };
+  });
+}
+
 // Theme, leaderName, keywords and anchorSongId are otherwise only ever set
 // once, at creation (/sets/new) — this is the only way to edit any of them
 // afterward (the "Set Direction" card on the Set Detail page).

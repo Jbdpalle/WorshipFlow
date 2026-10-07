@@ -28,7 +28,7 @@ export async function generatePrepareMeSummary(memberId: string, setId: string):
     if (!member || member.teamId !== team.id) return { ok: false, error: "Team member not found." };
 
     if (!process.env.ANTHROPIC_API_KEY) {
-      return { ok: false, error: "AI summaries need an ANTHROPIC_API_KEY set in your environment variables." };
+      return { ok: false, error: "AI summaries are coming in a future update — stay tuned!" };
     }
 
     const set = await prisma.worshipSet.findUnique({ where: { id: setId } });

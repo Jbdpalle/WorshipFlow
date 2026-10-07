@@ -10,6 +10,7 @@ import { ServiceOrderStrip } from "@/components/setlist/service-order-strip";
 import { ThemeSuggestions } from "@/components/setlist/theme-suggestions";
 import { AddFromLibraryDialog } from "@/components/setlist/add-from-library-dialog";
 import { SetNotes } from "@/components/setlist/set-notes";
+import { SetExaltation } from "@/components/setlist/set-exaltation";
 import { SetMetaEditor } from "@/components/setlist/set-meta-editor";
 import { SetTeam } from "@/components/setlist/set-team";
 import { SetReadiness } from "@/components/setlist/set-readiness";
@@ -154,6 +155,15 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
                 initialSpotifyPlaylistUrl={set.spotifyPlaylistUrl ?? ""}
                 songOptions={set.songs.map((s) => ({ songId: s.song.id, title: s.song.title }))}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Exaltation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SetExaltation setId={set.id} initialExaltation={set.exaltation ?? ""} />
             </CardContent>
           </Card>
 

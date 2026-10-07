@@ -35,7 +35,7 @@ export async function suggestThemeAndVerse(songId: string): Promise<ActionResult
     if (!process.env.ANTHROPIC_API_KEY) {
       return {
         ok: false,
-        error: "This needs an ANTHROPIC_API_KEY set in your environment variables.",
+        error: "AI suggestions are coming in a future update — stay tuned!",
       };
     }
 
