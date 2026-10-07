@@ -69,7 +69,7 @@ export function TeamRoster({
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{m.name}</p>
                 {isLeader ? (
-                  <Tooltip content="Picked the wrong instrument? Change it here instead of removing and re-adding.">
+                  <Tooltip content="Their usual role on the roster — not a per-service assignment. Picked the wrong instrument? Change it here instead of removing and re-adding.">
                     <select
                       value={m.role}
                       aria-label={`Change ${m.name}'s role`}
@@ -216,6 +216,10 @@ export function TeamRoster({
               </option>
             ))}
           </Select>
+          <p className="text-xs text-muted-foreground">
+            Just their usual role — doesn&apos;t lock them in. Assign what they&apos;re actually
+            playing for a specific service from that service&apos;s Worship Team card.
+          </p>
           <Input
             placeholder="Instrument (optional)"
             value={form.instrument}

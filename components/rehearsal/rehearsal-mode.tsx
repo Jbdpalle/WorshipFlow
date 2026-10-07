@@ -38,6 +38,7 @@ import {
   announceToTeam,
 } from "@/lib/actions/rehearsal";
 import { cn } from "@/lib/utils/cn";
+import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
 
 type RoleNote = {
   id: string;
@@ -104,6 +105,7 @@ export function RehearsalMode({
   setId,
   setTitle,
   songs,
+  setTeamMembers,
   isLeaderView,
   viewerTeamMemberId,
   initialLiveSetSongId,
@@ -112,11 +114,18 @@ export function RehearsalMode({
   setId: string;
   setTitle: string;
   songs: SetSongData[];
+  setTeamMembers: { teamMemberId: string; role: string }[];
   isLeaderView: boolean;
   viewerTeamMemberId: string | null;
   initialLiveSetSongId: string | null;
   initialLiveSectionId: string | null;
 }) {
+  // The default role(s) this viewer holds for the whole service — falls
+  // back to here only when the current song has no per-song override (see
+  // myRole in SongRehearsalPanel below). Never falls back to account role.
+  const viewerDefaultRoles = viewerTeamMemberId
+    ? setTeamMembers.filter((m) => m.teamMemberId === viewerTeamMemberId).map((m) => m.role)
+    : [];
   const initialSongIndex = Math.max(
     0,
     songs.findIndex((s) => s.id === initialLiveSetSongId),
@@ -227,6 +236,7 @@ export function RehearsalMode({
         setId={setId}
         setTitle={setTitle}
         setSong={setSong}
+        viewerDefaultRoles={viewerDefaultRoles}
         isLeaderView={isLeaderView}
         viewerTeamMemberId={viewerTeamMemberId}
         initialLiveSectionId={setSong.id === initialLiveSetSongId ? initialLiveSectionId : null}
@@ -239,6 +249,7 @@ function SongRehearsalPanel({
   setId,
   setTitle,
   setSong,
+  viewerDefaultRoles,
   isLeaderView,
   viewerTeamMemberId,
   initialLiveSectionId,
@@ -246,6 +257,7 @@ function SongRehearsalPanel({
   setId: string;
   setTitle: string;
   setSong: SetSongData;
+  viewerDefaultRoles: string[];
   isLeaderView: boolean;
   viewerTeamMemberId: string | null;
   initialLiveSectionId: string | null;
@@ -316,9 +328,14 @@ function SongRehearsalPanel({
 
   // The viewing musician's own part for this song, independent of the
   // generic "every role" list above — null for the leader (they see
-  // everything already) or if this song has no per-song assignment for them.
+  // everything already). A per-song override wins if one exists; otherwise
+  // falls back to their default role(s) for the whole service — never to
+  // account role, and never guessed when neither exists.
   const myRole = !isLeaderView
-    ? setSong.assignments.find((a) => a.teamMemberId === viewerTeamMemberId)?.role
+    ? pickEffectiveRole(
+        setSong.assignments.find((a) => a.teamMemberId === viewerTeamMemberId)?.role,
+        viewerDefaultRoles,
+      )
     : undefined;
   const myPartNote = myRole && current ? selectRoleNoteForViewer(current.roleNotes, myRole, viewerTeamMemberId) : undefined;
 

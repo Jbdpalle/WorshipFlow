@@ -11,6 +11,7 @@ export default async function RehearsalPage({ params }: { params: Promise<{ setI
     prisma.worshipSet.findUnique({
       where: { id: setId },
       include: {
+        teamMembers: { select: { teamMemberId: true, role: true } },
         songs: {
           orderBy: { order: "asc" },
           include: {
@@ -55,6 +56,7 @@ export default async function RehearsalPage({ params }: { params: Promise<{ setI
         setId={set.id}
         setTitle={set.title}
         songs={set.songs}
+        setTeamMembers={set.teamMembers}
         isLeaderView={isLeaderView}
         viewerTeamMemberId={viewerMember?.id ?? null}
         initialLiveSetSongId={set.liveSetSongId}

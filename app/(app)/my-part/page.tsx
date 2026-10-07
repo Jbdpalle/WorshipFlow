@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
 import { PrepareMeCard } from "@/components/team/prepare-me-card";
 import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
+import { resolveMemberSongRoles } from "@/lib/songs/assignment-resolver";
 import { trackEvent } from "@/lib/usability/track";
 import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
 
@@ -33,34 +34,49 @@ export default async function MyPartPage({
   const activeMember = members.find((m) => m.id === memberIdParam) ?? ownMember ?? members[0];
   const isOwnView = !!activeMember && activeMember.id === ownMember?.id;
 
-  const assignments = activeMember
-    ? await prisma.songAssignment.findMany({
-        where: { teamMemberId: activeMember.id },
+  // A person's part can come from either an explicit per-song override
+  // (SongAssignment) or the default role(s) they hold for the whole
+  // service (SetTeamMember, set via the "Worship Team" card) — see
+  // resolveMemberSongRoles. Checking only the former was the root cause of
+  // My Part showing nothing for anyone assigned the normal, whole-set way.
+  const resolvedRoles = activeMember ? await resolveMemberSongRoles(prisma, activeMember.id) : [];
+
+  const setSongRows = resolvedRoles.length
+    ? await prisma.setSong.findMany({
+        where: { id: { in: resolvedRoles.map((r) => r.setSongId) } },
         include: {
-          setSong: {
+          set: true,
+          song: {
             include: {
-              set: true,
-              song: {
-                include: {
-                  sections: { include: { roleNotes: true }, orderBy: { order: "asc" } },
-                  changeLogs: { orderBy: { createdAt: "desc" }, take: 2 },
-                },
-              },
+              sections: { include: { roleNotes: true }, orderBy: { order: "asc" } },
+              changeLogs: { orderBy: { createdAt: "desc" }, take: 2 },
             },
           },
         },
-        orderBy: { setSong: { set: { serviceDate: "desc" } } },
       })
     : [];
+  const setSongById = new Map(setSongRows.map((ss) => [ss.id, ss]));
+
+  const assignments = resolvedRoles
+    .flatMap((r) => {
+      const setSong = setSongById.get(r.setSongId);
+      return setSong ? [{ id: `${r.setSongId}:${r.role}`, role: r.role, setSong }] : [];
+    })
+    .sort((a, b) => {
+      const aTime = a.setSong.set.serviceDate ? new Date(a.setSong.set.serviceDate).getTime() : 0;
+      const bTime = b.setSong.set.serviceDate ? new Date(b.setSong.set.serviceDate).getTime() : 0;
+      return bTime - aTime;
+    });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const nextSetId = activeMember
+  const setIdsInvolved = [...new Set(assignments.map((a) => a.setSong.set.id))];
+  const nextSetId = setIdsInvolved.length
     ? (
         await prisma.worshipSet.findFirst({
           where: {
             teamId: team.id,
-            songs: { some: { assignments: { some: { teamMemberId: activeMember.id } } } },
+            id: { in: setIdsInvolved },
             OR: [{ serviceDate: { gte: today } }, { serviceDate: null }],
             archivedAt: null,
           },
@@ -104,8 +120,9 @@ export default async function MyPartPage({
                 : `No songs assigned to ${activeMember?.name ?? "this person"} yet.`}
             </p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              A worship leader assigns musicians to songs from a service&apos;s Setlist — once
-              you&apos;re assigned a role there, it shows up here automatically.
+              A worship leader assigns people to a service from its Worship Team card, or to one
+              specific song from that song&apos;s Details — once you&apos;re assigned either way,
+              it shows up here automatically.
             </p>
             <Link href="/sets" className="mt-1 text-sm font-medium text-accent hover:underline">
               View Services →
