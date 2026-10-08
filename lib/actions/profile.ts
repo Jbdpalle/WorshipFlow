@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/guard";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { runAction, type ActionResult } from "@/lib/actions/action-result";
 
 export async function updateMyName(name: string): Promise<ActionResult> {
@@ -20,6 +21,26 @@ export async function updateMyName(name: string): Promise<ActionResult> {
     ]);
 
     revalidatePath("/", "layout");
+    return { ok: true };
+  });
+}
+
+export async function updateMyPassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<ActionResult> {
+  return runAction(async () => {
+    const { user } = await requireUser();
+
+    if (!currentPassword) return { ok: false, error: "Enter your current password." };
+    if (newPassword.length < 8) return { ok: false, error: "New password must be at least 8 characters." };
+
+    const matches = await verifyPassword(currentPassword, user.passwordHash);
+    if (!matches) return { ok: false, error: "Current password is incorrect." };
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
     return { ok: true };
   });
 }
