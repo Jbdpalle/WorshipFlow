@@ -12,6 +12,7 @@ import { DeleteSongButton } from "@/components/songs/delete-song-button";
 import { TagEditor } from "@/components/songs/tag-editor";
 import { ThemeVerseSuggestion } from "@/components/songs/theme-verse-suggestion";
 import { ArrangementEditor } from "@/components/songs/arrangement-editor";
+import { FullLyricsView } from "@/components/songs/full-lyrics-view";
 import { TeamNotesEditor, PersonalNoteEditor } from "@/components/songs/note-editors";
 import { RehearsalHistoryList } from "@/components/songs/rehearsal-history";
 import { ChangeLogPanel } from "@/components/songs/change-log";
@@ -119,6 +120,11 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
                 teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
               />
             ),
+          },
+          {
+            key: "lyrics",
+            label: "Full Lyrics",
+            content: <FullLyricsView songId={song.id} sections={song.sections} />,
           },
           {
             key: "notes",
