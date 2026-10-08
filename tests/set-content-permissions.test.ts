@@ -10,6 +10,8 @@ import {
   updateSetSongDetails,
   assignMemberToSetSong,
   removeAssignment,
+  assignMemberToSet,
+  removeSetMember,
   archiveSet,
   unarchiveSet,
 } from "@/lib/actions/sets";
@@ -113,6 +115,62 @@ describe("Set content mutations are Leader-only (pre-existing gap, now fixed)", 
     const result = await removeAssignment(assignment.id);
     expect(result.ok).toBe(false);
     expect(await prisma.songAssignment.findUnique({ where: { id: assignment.id } })).not.toBeNull();
+  });
+
+  // The Worship Team section on Set Detail (components/setlist/set-team.tsx)
+  // drives these two whole-set-roster actions, not assignMemberToSetSong —
+  // its inline editor calls assignMemberToSet + removeSetMember directly on
+  // select/remove, so a MEMBER session must be rejected here too, same as
+  // every other set-content mutation above.
+  it("rejects assignMemberToSet for a MEMBER", async () => {
+    const { set, teamMember } = await setupMemberWithSet();
+    const result = await assignMemberToSet(set.id, teamMember.id, "Bass");
+    expect(result.ok).toBe(false);
+    const rows = await prisma.setTeamMember.findMany({ where: { setId: set.id } });
+    expect(rows).toHaveLength(0);
+  });
+
+  it("rejects removeSetMember for a MEMBER", async () => {
+    const { set, teamMember } = await setupMemberWithSet();
+    const row = await prisma.setTeamMember.create({
+      data: { setId: set.id, teamMemberId: teamMember.id, role: "Bass" },
+    });
+    const result = await removeSetMember(row.id);
+    expect(result.ok).toBe(false);
+    expect(await prisma.setTeamMember.findUnique({ where: { id: row.id } })).not.toBeNull();
+  });
+
+  // The displayed musical assignment must be whatever role the SetTeamMember
+  // row holds for this set, never the account's ChurchRole (OWNER/ADMIN/
+  // LEADER/MEMBER) — this is what components/setlist/set-team.tsx reads and
+  // displays, and what My Part/Director Mode resolve through the same
+  // SetTeamMember rows via lib/songs/assignment-resolver.ts.
+  it("keeps musical assignment independent of account role (Owner+Bass, Leader+Vocal, Member+Drums)", async () => {
+    const cases: { label: string; accountRole: "OWNER" | "LEADER" | "MEMBER"; musicalRole: string }[] = [
+      { label: "owner-bass", accountRole: "OWNER", musicalRole: "Bass" },
+      { label: "leader-vocal", accountRole: "LEADER", musicalRole: "Lead Vocal" },
+      { label: "member-drums", accountRole: "MEMBER", musicalRole: "Drums" },
+    ];
+    for (const c of cases) {
+      const owner = await createTestTeam(`role-sep-${c.label}`, "OWNER");
+      cleanup.push({ teamId: owner.team.id, churchId: owner.church.id });
+      const set = await prisma.worshipSet.create({ data: { teamId: owner.team.id, title: "Role Sep Service" } });
+      const musician = await prisma.user.create({
+        data: { name: `Musician ${c.label}`, email: `${c.label}-${Date.now()}@test.invalid`, passwordHash: "x" },
+      });
+      await prisma.membership.create({ data: { userId: musician.id, churchId: owner.church.id, role: c.accountRole } });
+      const teamMember = await prisma.teamMember.create({
+        data: { teamId: owner.team.id, userId: musician.id, name: `Musician ${c.label}`, role: c.musicalRole },
+      });
+
+      await loginAs(owner.user.id);
+      const assigned = await assignMemberToSet(set.id, teamMember.id, c.musicalRole);
+      expect(assigned.ok).toBe(true);
+
+      const row = await prisma.setTeamMember.findFirst({ where: { setId: set.id, teamMemberId: teamMember.id } });
+      expect(row?.role).toBe(c.musicalRole);
+      expect(row?.role).not.toBe(c.accountRole);
+    }
   });
 
   it("archiveSet and unarchiveSet remain open to any team member (deliberate, not a gap)", async () => {
