@@ -7,6 +7,7 @@ import { NAV_GROUPS, SETTINGS_LINK, isActive } from "@/components/layout/nav-lin
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggleButton } from "@/components/layout/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
+import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils/cn";
 
 // iPad portrait / small laptop (md–lg): a 64px icon rail.
@@ -20,12 +21,10 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
       <Link
         href="/dashboard"
         aria-label="WorshipFlow home"
-        className="flex h-16 items-center justify-center gap-2 border-b border-border font-bold lg:justify-start lg:px-4"
+        className="flex h-16 items-center justify-center border-b border-border lg:justify-start lg:px-4"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-          W
-        </span>
-        <span className="hidden text-lg tracking-tight lg:inline">WorshipFlow</span>
+        <span className="lg:hidden"><Logo showWordmark={false} /></span>
+        <span className="hidden lg:inline"><Logo /></span>
       </Link>
 
       <nav aria-label="Primary" className="flex-1 overflow-y-auto px-2 py-4 lg:px-3">
