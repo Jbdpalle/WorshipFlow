@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CalendarPlus, Copy, AlertCircle } from "lucide-react";
+import { CalendarPlus, Copy, ClipboardList } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Status } from "@/components/ui/status";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SetTeam } from "@/components/setlist/set-team";
 import { eventTypeLabel } from "@/lib/songs/constants";
 import { generateWeeklyServices, copyRosterToSet } from "@/lib/actions/roster";
@@ -54,7 +57,7 @@ function PlanRosterPanel() {
   if (!open) {
     return (
       <Button onClick={() => setOpen(true)}>
-        <CalendarPlus className="h-4 w-4" /> Plan Roster
+        <CalendarPlus className="h-4 w-4" aria-hidden /> Plan roster
       </Button>
     );
   }
@@ -62,7 +65,7 @@ function PlanRosterPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Plan Roster</CardTitle>
+        <CardTitle className="text-base">Plan roster</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
@@ -89,8 +92,8 @@ function PlanRosterPanel() {
             </Select>
           </div>
         </div>
-        {error && <p className="text-sm text-danger">{error}</p>}
-        {summary && <p className="text-sm text-success">{summary}</p>}
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        {summary && <p role="status" className="text-sm text-success">{summary}</p>}
         <div className="flex gap-2">
           <Button
             disabled={busy}
@@ -126,11 +129,13 @@ function PlanRosterPanel() {
 function DateCard({
   entry,
   nextEntryId,
+  isNext,
   members,
   isLeader,
 }: {
   entry: RosterPageEntry;
   nextEntryId: string | null;
+  isNext: boolean;
   members: TeamMemberOption[];
   isLeader: boolean;
 }) {
@@ -140,28 +145,29 @@ function DateCard({
   const hasLeader = entry.roster.some((r) => r.role === "Worship Leader");
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
+    <Card className={isNext ? "border-primary/60" : undefined}>
+      <CardHeader className="space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-sm">{formatDate(entry.serviceDate)}</CardTitle>
-          {entry.eventType !== "SERVICE" && <Badge variant="outline">{eventTypeLabel(entry.eventType)}</Badge>}
+          <CardTitle className="text-base font-bold">{formatDate(entry.serviceDate)}</CardTitle>
+          <span className="flex items-center gap-1.5">
+            {isNext && <Badge variant="primary">Next up</Badge>}
+            {entry.eventType !== "SERVICE" && <Badge variant="outline">{eventTypeLabel(entry.eventType)}</Badge>}
+          </span>
         </div>
-        <Link href={`/sets/${entry.id}`} className="block truncate text-xs text-accent hover:underline">
-          {entry.title === formatDate(entry.serviceDate) ? "View Service →" : entry.title}
+        <Link
+          href={`/sets/${entry.id}`}
+          className="inline-flex min-h-9 max-w-full items-center truncate text-sm font-semibold text-primary hover:underline"
+        >
+          {entry.title === formatDate(entry.serviceDate) ? "View service →" : entry.title}
         </Link>
-        {isLeader && !hasLeader && (
-          <p className="flex items-center gap-1.5 text-xs text-accent">
-            <AlertCircle className="h-3.5 w-3.5" /> Worship leader not assigned
-          </p>
-        )}
+        {isLeader && !hasLeader && <Status tone="warning">Worship leader not assigned</Status>}
       </CardHeader>
       <CardContent className="space-y-3">
         <SetTeam setId={entry.id} members={entry.setTeamMembers} teamMembers={members} isLeader={isLeader} />
         {isLeader && entry.setTeamMembers.length > 0 && nextEntryId && (
           <div>
             <Button
-              size="sm"
-              variant="secondary"
+              variant="outline"
               disabled={copying}
               onClick={async () => {
                 setCopying(true);
@@ -175,9 +181,9 @@ function DateCard({
                 router.refresh();
               }}
             >
-              <Copy className="h-3.5 w-3.5" /> {copying ? "Copying…" : "Copy to Next Service"}
+              <Copy className="h-4 w-4" aria-hidden /> {copying ? "Copying…" : "Copy to next service"}
             </Button>
-            {copyError && <p className="mt-1 text-xs text-danger">{copyError}</p>}
+            {copyError && <p role="alert" className="mt-1 text-sm text-danger">{copyError}</p>}
           </div>
         )}
       </CardContent>
@@ -214,10 +220,10 @@ function ByLeaderView({ entries }: { entries: RosterPageEntry[] }) {
           <h3 className="label-caps">
             Worship Leader: {group.displayName}
           </h3>
-          <ul className="mt-2 space-y-1.5">
+          <ul className="mt-1 divide-y divide-border">
             {group.list.map((e) => (
               <li key={e.id} className="text-sm">
-                <Link href={`/sets/${e.id}`} className="hover:text-accent">
+                <Link href={`/sets/${e.id}`} className="inline-flex min-h-11 items-center hover:text-primary hover:underline">
                   {entryLabel(e)}
                 </Link>
               </li>
@@ -228,10 +234,10 @@ function ByLeaderView({ entries }: { entries: RosterPageEntry[] }) {
       {unassigned.length > 0 && (
         <section>
           <h3 className="label-caps">No leader assigned</h3>
-          <ul className="mt-2 space-y-1.5">
+          <ul className="mt-1 divide-y divide-border">
             {unassigned.map((e) => (
               <li key={e.id} className="text-sm">
-                <Link href={`/sets/${e.id}`} className="hover:text-accent">
+                <Link href={`/sets/${e.id}`} className="inline-flex min-h-11 items-center hover:text-primary hover:underline">
                   {entryLabel(e)}
                 </Link>
               </li>
@@ -275,15 +281,15 @@ function ByMemberView({ entries, members }: { entries: RosterPageEntry[]; member
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No upcoming services scheduled for this person.</p>
       ) : (
-        <ul className="space-y-1.5">
+        <ul className="divide-y divide-border">
           {rows.map(({ entry, roles }) => (
-            <li key={entry.id} className="flex items-baseline justify-between gap-2 text-sm">
-              <Link href={`/sets/${entry.id}`} className="hover:text-accent">
+            <li key={entry.id} className="flex items-center justify-between gap-2 text-sm">
+              <Link href={`/sets/${entry.id}`} className="inline-flex min-h-11 items-center hover:text-primary hover:underline">
                 {entryLabel(entry)}
               </Link>
               <span className="flex shrink-0 gap-1">
                 {roles.map((role) => (
-                  <Badge key={role} variant="accent">
+                  <Badge key={role} variant="primary">
                     {role}
                   </Badge>
                 ))}
@@ -311,31 +317,32 @@ export function RosterBoard({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isLeader ? <PlanRosterPanel /> : <span />}
-        <div className="flex gap-1 rounded-lg bg-surface-muted p-1">
-          {(["date", "leader", "member"] as View[]).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={`tap-target rounded-md px-3 text-xs font-medium ${
-                view === v ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground"
-              }`}
-            >
-              {v === "date" ? "By Date" : v === "leader" ? "By Leader" : "By Member"}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Group roster"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "date", label: "By date" },
+            { value: "leader", label: "By leader" },
+            { value: "member", label: "By member" },
+          ]}
+        />
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No upcoming services yet.</p>
+        <EmptyState
+          icon={ClipboardList}
+          title="No upcoming services"
+          description={isLeader ? "Use Plan roster to create a service for every Sunday in a range, then assign who is serving." : "Your worship leader hasn't scheduled anything yet. Check back soon."}
+        />
       ) : view === "date" ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {entries.map((entry, i) => (
             <DateCard
               key={entry.id}
               entry={entry}
               nextEntryId={entries[i + 1]?.id ?? null}
+              isNext={i === 0}
               members={members}
               isLeader={isLeader}
             />
