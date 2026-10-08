@@ -63,11 +63,11 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
       <div className="flex flex-col items-center gap-1 border-t border-border px-2 py-3 lg:flex-row lg:justify-between lg:px-4">
         <Link
           href={SETTINGS_LINK.href}
-          aria-label={`Settings — ${userName}, ${teamName}`}
           title="Settings"
           className="flex min-w-0 items-center gap-2.5 rounded-lg hover:bg-surface-muted lg:p-1"
         >
           <Avatar name={userName} size="md" />
+          <span className="sr-only">Settings: {userName}, {teamName}</span>
           <span className="hidden min-w-0 text-xs text-muted-foreground lg:block">
             <span className="block truncate font-semibold text-foreground">{userName}</span>
             <span className="block truncate">{teamName}</span>

@@ -83,7 +83,7 @@ export function PrepareMeCard({
             <ul className="mt-2 space-y-1.5 text-sm">
               {changed.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-baseline gap-x-2">
-                  <Link href={`/songs/${c.songId}`} className="font-semibold text-foreground hover:underline">
+                  <Link href={`/songs/${c.songId}`} className="inline-flex min-h-11 items-center font-semibold text-foreground hover:underline">
                     {c.title}
                   </Link>
                   <span className="text-muted-foreground">{c.fields.join(", ")}</span>

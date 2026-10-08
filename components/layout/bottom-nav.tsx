@@ -15,7 +15,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils/cn";
 
 const itemClasses =
-  "tap-target flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold transition-colors duration-[var(--duration-fast)]";
+  "tap-target flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-xs font-semibold transition-colors duration-[var(--duration-fast)]";
 
 // Phone navigation: four destinations and a More button that opens a bottom
 // sheet. Hidden from iPad portrait up, where the sidebar rail takes over.

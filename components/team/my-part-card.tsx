@@ -81,7 +81,7 @@ export function MyPartCard({
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border p-4 sm:p-5">
         <div className="min-w-0">
           <h3 className="text-xl font-extrabold tracking-tight text-foreground">
-            <Link href={`/songs/${song.id}`} className="hover:underline">
+            <Link href={`/songs/${song.id}`} className="inline-flex min-h-11 items-center hover:underline">
               {song.title}
             </Link>
           </h3>

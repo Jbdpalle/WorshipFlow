@@ -9,14 +9,11 @@ type Variant =
   | "warning"
   | "danger"
   | "info"
-  | "outline"
-  /** @deprecated legacy name for "primary" */
-  | "accent";
+  | "outline";
 
 const variantClasses: Record<Variant, string> = {
   default: "bg-surface-muted text-foreground",
   primary: "bg-primary text-primary-foreground",
-  accent: "bg-primary text-primary-foreground",
   musical: "bg-musical-soft text-musical",
   success: "bg-success/15 text-success",
   warning: "bg-warning/15 text-warning",

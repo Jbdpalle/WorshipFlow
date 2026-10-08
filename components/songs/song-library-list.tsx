@@ -117,7 +117,7 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
               type="button"
               disabled={!hasMatch}
               onClick={() => handleLetterClick(letter)}
-              className={`flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors ${
+              className={`flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold transition-colors ${
                 active
                   ? "bg-primary text-primary-foreground"
                   : hasMatch
@@ -144,7 +144,7 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
               <Card className="h-full transition-shadow hover:shadow-md">
                 <CardContent className="space-y-2 pt-4">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold">{song.title}</h3>
+                    <h2 className="font-semibold">{song.title}</h2>
                     {(song.youtubeUrl || song.spotifyUrl) && (
                       <div className="flex shrink-0 items-center gap-1">
                         {song.youtubeUrl && (

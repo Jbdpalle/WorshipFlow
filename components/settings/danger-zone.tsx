@@ -35,6 +35,7 @@ export function DangerZone({ churchName }: { churchName: string }) {
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <Button
         variant="danger"
+        className="h-auto min-h-11 w-full whitespace-normal py-2 sm:w-auto"
         disabled={!matches || busy}
         onClick={async () => {
           if (!confirm(`Permanently delete ${churchName}? This cannot be undone.`)) return;

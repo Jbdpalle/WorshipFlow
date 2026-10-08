@@ -118,7 +118,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
       <SetReadiness items={readiness} />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <Card id="team">
             <CardHeader>
               <CardTitle className="text-base">Worship Team</CardTitle>
@@ -146,7 +146,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Set Direction</CardTitle>

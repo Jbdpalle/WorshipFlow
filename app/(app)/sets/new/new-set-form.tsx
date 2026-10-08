@@ -134,7 +134,7 @@ export function NewSetForm() {
 
             <div className="space-y-4 border-t border-border pt-5">
               <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-musical" />
                 A theme and scripture here feed the song-category suggestions on the next screen —
                 you stay in control of what actually makes the set.
               </p>

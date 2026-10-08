@@ -61,7 +61,6 @@ export function TransitionIndicator({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Edit transition: ${typeLabel}${transition?.direction ? `, ${transition.direction}` : ""}`}
         className="group flex min-h-11 w-full items-center gap-3 rounded-lg px-1 text-left text-sm text-muted-foreground hover:bg-surface-muted"
       >
         <span
@@ -73,7 +72,10 @@ export function TransitionIndicator({
         >
           <ArrowDown className="h-4 w-4" />
         </span>
-        <span className={cn("font-semibold", transition ? "text-musical" : "text-muted-foreground")}>{typeLabel}</span>
+        <span className={cn("font-semibold", transition ? "text-musical" : "text-muted-foreground")}>
+          <span className="sr-only">Edit transition: </span>
+          {typeLabel}
+        </span>
         {transition?.direction && <span className="min-w-0 truncate">{transition.direction}</span>}
         {keyChange && (
           <span className="tnum ml-auto shrink-0 rounded-full bg-musical-soft px-2.5 py-0.5 text-xs font-bold text-musical">
@@ -97,6 +99,7 @@ export function TransitionIndicator({
         <Select
           value={type}
           onChange={(e) => setType(e.target.value as TransitionTypeValue)}
+          aria-label="Transition type"
           className="h-10 w-40 text-sm"
         >
           {TRANSITION_TYPES.map((t) => (

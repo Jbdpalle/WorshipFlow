@@ -87,15 +87,6 @@
   --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
 }
 
-/* Legacy aliases. Existing screens still say bg-accent / text-accent for
-   "the important action or highlight". Until each screen is migrated to
-   primary or musical in its own phase, accent follows primary so nothing
-   changes meaning mid-migration. Do not use in new code. */
-:root {
-  --accent: var(--primary);
-  --accent-foreground: var(--primary-foreground);
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -122,10 +113,6 @@
 
   --color-ring: var(--ring);
   --color-scrim: var(--scrim);
-
-  /* legacy — see note above */
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
 
   --font-sans:
     var(--font-figtree), ui-sans-serif, system-ui, -apple-system, "Segoe UI",

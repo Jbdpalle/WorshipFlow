@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { SaveStatus, type SaveState } from "@/components/ui/save-status";
 import { Tooltip } from "@/components/ui/tooltip";
+import { IconButton } from "@/components/ui/icon-button";
 import { DynamicIndicator } from "@/components/songs/dynamic-indicator";
 import { SongFlowRibbon } from "@/components/songs/song-flow-ribbon";
 import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker";
@@ -175,6 +176,7 @@ export function ArrangementEditor({
                   variant="secondary"
                   size="sm"
                   className="shrink-0"
+                  aria-label="Add section"
                   onClick={async () => {
                     if (!newSectionLabel.trim()) return;
                     setError(null);
@@ -267,7 +269,7 @@ function SectionOutlineRow({
       <button
         {...attributes}
         {...listeners}
-        className="flex h-9 w-7 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
+        className="flex h-11 w-9 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
         aria-label={`Drag to reorder ${section.label}`}
       >
         <GripVertical className="h-4 w-4" />
@@ -275,12 +277,12 @@ function SectionOutlineRow({
       <button
         type="button"
         onClick={onSelect}
-        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left"
         aria-current={active ? "true" : undefined}
       >
         <span
           className={cn(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
             active ? "bg-primary text-primary-foreground" : "bg-surface-muted text-muted-foreground",
           )}
         >
@@ -430,9 +432,9 @@ function FocusedSectionEditor({
 
       {/* Dynamics and repeat count */}
       <div className="rounded-lg bg-surface-muted p-3">
-        <h3 className="flex items-center gap-1.5 label-caps">
+        <h2 className="flex items-center gap-1.5 label-caps">
           <SlidersHorizontal className="h-3.5 w-3.5" /> Dynamics
-        </h3>
+        </h2>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {SECTION_INTENT_CHIPS.map((chip) => (
             <Tooltip key={chip} content={`Set this section's dynamics to "${chip}" — one tap, no typing`}>
@@ -471,7 +473,7 @@ function FocusedSectionEditor({
                 value={customDynamics}
                 onChange={(e) => setCustomDynamics(e.target.value)}
                 placeholder="e.g. Driving, Hushed, Explosive"
-                className="h-8 w-40 text-xs"
+                className="h-11 w-44 text-sm"
                 aria-label="Custom dynamics label"
               />
               <button
@@ -505,7 +507,7 @@ function FocusedSectionEditor({
                 setDynamicsSave("saved");
                 setTimeout(() => setDynamicsSave("idle"), 1800);
               }}
-              className="h-8 w-32 text-xs"
+              className="h-11 w-36 text-sm"
               aria-label="Dynamics level"
             >
               <option value="">Not set</option>
@@ -536,7 +538,7 @@ function FocusedSectionEditor({
                   setDynamicsSave("saved");
                   setTimeout(() => setDynamicsSave("idle"), 1800);
                 }}
-                className="h-8 w-14 text-center"
+                className="h-11 w-16 text-center"
                 aria-label="Repeat count"
               />
               ×
@@ -546,7 +548,6 @@ function FocusedSectionEditor({
             type="button"
             variant="secondary"
             size="sm"
-            className="h-8"
             disabled={dynamicsIsCustom && !customDynamics.trim()}
             onClick={async () => {
               setDynamicsSave("saving");
@@ -577,9 +578,9 @@ function FocusedSectionEditor({
       {/* Role-specific and group directions */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="label-caps">
+          <h2 className="label-caps">
             Role Directions
-          </h3>
+          </h2>
           {hasPreviousSection && (
             <Tooltip content="Copy every direction from the previous section onto this one, then just change what's different">
               <Button
@@ -642,9 +643,9 @@ function SongVisionGroup({ songId, initialVision }: { songId: string; initialVis
   return (
     <div className="rounded-lg bg-surface-muted p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 label-caps">
+        <h2 className="flex items-center gap-1.5 label-caps">
           <Compass className="h-3.5 w-3.5" /> Song Vision
-        </h3>
+        </h2>
         <SaveStatus state={status} />
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
@@ -792,7 +793,7 @@ function RoleNoteRow({
 
   return (
     <div className="rounded-lg bg-surface-muted p-2">
-      <div className="flex items-start gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         {isPersisted ? (
           <Tooltip content="Wrong instrument or role? Change it here — the direction text stays the same.">
             <Select
@@ -802,7 +803,7 @@ function RoleNoteRow({
                 changeRole(e.target.value);
               }}
               disabled={changingRole}
-              className="mt-0.5 h-7 w-28 shrink-0 text-[11px] font-semibold uppercase tracking-wide"
+              className="h-11 w-full text-sm font-semibold sm:w-44 sm:shrink-0"
               aria-label={`Change role from ${role}`}
             >
               {!roleChangeOptions.includes(role) && <option value={CUSTOM_ROLE_VALUE}>{role}</option>}
@@ -823,7 +824,7 @@ function RoleNoteRow({
             </Select>
           </Tooltip>
         ) : (
-          <span className="mt-1.5 w-28 shrink-0 label-caps">
+          <span className="mt-3 w-full label-caps sm:w-44 sm:shrink-0">
             {role}
           </span>
         )}
@@ -832,46 +833,32 @@ function RoleNoteRow({
           onChange={(e) => setContent(e.target.value)}
           onBlur={() => save()}
           rows={1}
-          className="min-h-0 bg-surface py-1.5 text-sm"
+          className="min-h-11 min-w-0 flex-1 basis-48 bg-surface py-2.5 text-sm"
           placeholder={directionPlaceholder(role)}
         />
-        <button
-          type="button"
-          onClick={() => save()}
-          className="mt-1.5 shrink-0 text-muted-foreground hover:text-foreground"
-          aria-label={`Save ${role} instruction`}
-        >
-          <Tooltip content="Save this direction">
+        <div className="flex shrink-0 items-center">
+          <IconButton label={`Save ${role} instruction`} onClick={() => save()}>
             <Save className="h-4 w-4" />
-          </Tooltip>
-        </button>
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="mt-1.5 shrink-0 text-muted-foreground hover:text-foreground"
-          aria-label="Assignee and visibility"
-        >
-          <Tooltip content="Aim this at one specific person, and choose who can see it">
+          </IconButton>
+          <IconButton label="Assignee and visibility" aria-expanded={expanded} onClick={() => setExpanded((e) => !e)}>
             <Settings2 className="h-4 w-4" />
-          </Tooltip>
-        </button>
-        <button
-          onClick={async () => {
-            await upsertRoleNote(sectionId, role, "", songId, { teamMemberId: teamMemberId || null });
-            onRemoved();
-          }}
-          className="mt-1.5 shrink-0 text-muted-foreground hover:text-danger"
-          aria-label={`Remove ${role} instruction`}
-        >
-          <Tooltip content="Remove this direction">
+          </IconButton>
+          <IconButton
+            label={`Remove ${role} instruction`}
+            tone="danger"
+            onClick={async () => {
+              await upsertRoleNote(sectionId, role, "", songId, { teamMemberId: teamMemberId || null });
+              onRemoved();
+            }}
+          >
             <X className="h-4 w-4" />
-          </Tooltip>
-        </button>
+          </IconButton>
+        </div>
       </div>
-      <SaveStatus state={status} className="ml-[7.5rem] mt-1" />
-      {roleError && <p className="ml-[7.5rem] mt-1 text-xs text-danger">{roleError}</p>}
+      <SaveStatus state={status} className="mt-1 sm:ml-[11.5rem]" />
+      {roleError && <p role="alert" className="mt-1 text-sm text-danger sm:ml-[11.5rem]">{roleError}</p>}
       {expanded && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 pl-[7.5rem] text-xs">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm sm:pl-[11.5rem]">
           <span className="text-muted-foreground">For:</span>
           <Select
             value={teamMemberId}
@@ -880,7 +867,8 @@ function RoleNoteRow({
               setTeamMemberId(next);
               save({ teamMemberId: next || null });
             }}
-            className="h-7 w-32 text-xs"
+            className="h-11 w-44 text-sm"
+            aria-label="Direction is for"
           >
             <option value="">Anyone in {role}</option>
             {teamMembers.map((m) => (
@@ -897,7 +885,8 @@ function RoleNoteRow({
               setVisibility(next);
               save({ visibility: next });
             }}
-            className="h-7 w-28 text-xs"
+            className="h-11 w-40 text-sm"
+            aria-label="Visible to"
           >
             <option value="TEAM">Everyone</option>
             <option value="ROLE">{role} only</option>

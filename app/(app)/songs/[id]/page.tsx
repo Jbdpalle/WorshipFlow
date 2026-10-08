@@ -96,7 +96,7 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
         <div className="flex flex-wrap items-center gap-2">
           {facts.map((f) => (
             <Badge key={f.label} variant={f.musical ? "musical" : "default"} className="tnum gap-1.5 px-3 py-1 text-sm">
-              <span className="text-xs font-medium opacity-70">{f.label}</span> {f.value}
+              <span className="text-xs font-medium">{f.label}</span> {f.value}
             </Badge>
           ))}
           {song.tags.map((t) => (

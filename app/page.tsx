@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
 import { redirect } from "next/navigation";
 import { Music4, ListMusic, Users2, Mic2, Radio } from "lucide-react";
 import { readSession } from "@/lib/auth/session";
@@ -19,12 +20,7 @@ export default async function RootPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-5">
-        <span className="flex items-center gap-2 font-semibold">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-            <Music4 className="h-4 w-4" />
-          </span>
-          WorshipFlow
-        </span>
+        <Logo />
         <div className="flex items-center gap-2">
           <Link href="/login">
             <Button variant="ghost" size="sm">Log in</Button>
@@ -54,7 +50,7 @@ export default async function RootPage() {
         <div className="mt-20 grid gap-6 text-left sm:grid-cols-2 lg:grid-cols-5">
           {STEPS.map((step) => (
             <div key={step.label} className="space-y-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
                 <step.icon className="h-4 w-4" />
               </span>
               <h3 className="font-semibold">{step.label}</h3>
@@ -64,7 +60,7 @@ export default async function RootPage() {
         </div>
 
         <div className="mt-20 rounded-2xl border border-border bg-surface p-8 text-left">
-          <p className="text-sm font-medium text-accent">The problem</p>
+          <p className="text-sm font-medium text-primary">The problem</p>
           <p className="mt-2 text-lg">
             A worship leader knows what they want a song to sound like, and where they want to
             take the worship moment — but getting that picture out of their head and into every

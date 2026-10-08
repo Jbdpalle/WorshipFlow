@@ -29,7 +29,7 @@ function PlanRow({ team }: { team: AdminTeamRow }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={team.plan === "FREE" ? "outline" : "accent"}>{team.plan}</Badge>
+          <Badge variant={team.plan === "FREE" ? "outline" : "primary"}>{team.plan}</Badge>
           <Select
             value={team.plan}
             disabled={saving}

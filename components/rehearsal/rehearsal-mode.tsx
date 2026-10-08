@@ -660,7 +660,7 @@ function LeaderCueButton({
       <span className="flex items-center gap-1.5 text-sm font-semibold">
         <Icon className="h-4 w-4" /> {label}
       </span>
-      <span className="text-[11px] font-normal opacity-80">{sublabel}</span>
+      <span className="text-xs font-normal opacity-80">{sublabel}</span>
     </Button>
   );
 }

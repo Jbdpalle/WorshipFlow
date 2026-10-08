@@ -34,7 +34,7 @@ export function SectionHeader({
         </Heading>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
-      {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+      {action && <div className="flex max-w-full flex-wrap items-center gap-2">{action}</div>}
     </div>
   );
 }

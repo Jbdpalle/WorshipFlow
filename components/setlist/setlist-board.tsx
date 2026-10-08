@@ -197,7 +197,7 @@ function SetSongCard({
             <button
               {...attributes}
               {...listeners}
-              className="mt-1 cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
+              className="flex h-11 w-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground active:cursor-grabbing"
               aria-label="Drag to reorder"
             >
               <GripVertical className="h-5 w-5" />
@@ -213,7 +213,7 @@ function SetSongCard({
                   <span className="text-xs font-mono text-muted-foreground">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <Link href={`/songs/${item.song.id}`} className="font-semibold hover:text-primary hover:underline">
+                  <Link href={`/songs/${item.song.id}`} className="inline-flex min-h-11 items-center font-semibold hover:text-primary hover:underline">
                     {item.song.title}
                   </Link>
                   {isLeader ? (
@@ -260,7 +260,8 @@ function SetSongCard({
                             showErrorIfAny(await updateSetSongDetails(item.id, { overrideKey: next }));
                           })
                         }
-                        className="h-7 w-16 text-xs"
+                        className="h-10 w-20 text-sm"
+                        aria-label="Key for this service"
                       >
                         {CHROMATIC_KEYS.map((k) => (
                           <option key={k} value={k}>
@@ -293,7 +294,7 @@ function SetSongCard({
                     href={item.song.spotifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
+                    className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-muted"
                     aria-label="Listen on Spotify"
                   >
                     <Tooltip content="Listen to the reference version on Spotify">
@@ -303,7 +304,7 @@ function SetSongCard({
                 )}
                 <Link
                   href={`/songs/${item.song.id}/chart?setSongId=${item.id}`}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-muted"
+                  className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-muted"
                   aria-label="View chart"
                 >
                   <Tooltip content="Open the musician's chart — lyrics and chords, large text">
@@ -316,7 +317,7 @@ function SetSongCard({
                       const result = await removeSongFromSet(item.id);
                       if (showErrorIfAny(result)) onRemoved();
                     }}
-                    className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
+                    className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-danger/10 hover:text-danger"
                     aria-label="Remove from set"
                   >
                     <Tooltip content="Remove this song from the set">
@@ -330,14 +331,15 @@ function SetSongCard({
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/songs/${item.song.id}`}
-                className={cn("flex items-center gap-1.5 text-xs font-medium hover:underline", flow.className)}
+                className={cn("flex min-h-11 items-center gap-1.5 text-sm font-semibold hover:underline", flow.className)}
               >
                 <FlowIcon className="h-3.5 w-3.5" /> {flow.label}
               </Link>
               <button
                 type="button"
                 onClick={() => setDetailsOpen((o) => !o)}
-                className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                className="flex min-h-11 items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                aria-expanded={detailsOpen}
               >
                 <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", detailsOpen && "rotate-180")} />
                 Details

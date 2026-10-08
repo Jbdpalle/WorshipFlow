@@ -58,7 +58,6 @@ export function SetCard({
   return (
     <Link
       href={`/sets/${entry.id}`}
-      aria-label={`${entry.title}, ${dateLabel}`}
       className="group block h-full rounded-xl"
     >
       <Card

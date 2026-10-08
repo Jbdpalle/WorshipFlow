@@ -1,5 +1,5 @@
-import { Music4 } from "lucide-react";
 import Link from "next/link";
+import { LogoMark } from "@/components/brand/logo";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { getInviteInfo } from "@/lib/actions/invites";
 import { AcceptInviteForm } from "@/components/invite/accept-invite-form";
@@ -12,8 +12,8 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-            <Music4 className="h-6 w-6" />
+          <span className="text-primary">
+            <LogoMark className="h-14 w-14" />
           </span>
           <h1 className="text-xl font-semibold">WorshipFlow</h1>
         </div>
@@ -48,7 +48,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Link href="/login" className="text-sm font-medium text-accent">
+                <Link href="/login" className="text-sm font-medium text-primary">
                   Go to login →
                 </Link>
               </CardContent>

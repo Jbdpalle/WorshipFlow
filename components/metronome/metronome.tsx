@@ -194,11 +194,11 @@ export function Metronome({ initialBpm = 80 }: { initialBpm?: number }) {
           <path
             d={describeArc(50, 50, 40, START_ANGLE, angle)}
             fill="none"
-            stroke="var(--accent)"
+            stroke="var(--primary)"
             strokeWidth="4"
             strokeLinecap="round"
           />
-          <circle cx={knobX} cy={knobY} r="4" className="fill-accent" />
+          <circle cx={knobX} cy={knobY} r="4" className="fill-primary" />
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-4xl font-bold tabular-nums">{bpm}</span>
@@ -209,7 +209,7 @@ export function Metronome({ initialBpm = 80 }: { initialBpm?: number }) {
                 key={i}
                 className={cn(
                   "h-2.5 w-2.5 rounded-full bg-border transition-colors",
-                  running && beatFlash === i * subdivision && "bg-accent",
+                  running && beatFlash === i * subdivision && "bg-primary",
                 )}
               />
             ))}

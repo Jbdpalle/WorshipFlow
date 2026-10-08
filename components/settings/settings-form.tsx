@@ -40,7 +40,7 @@ export function SettingsForm({
 
   return (
     <div className="flex items-start gap-2">
-      <div className="flex-1 space-y-1">
+      <div className="min-w-0 flex-1 space-y-1">
         <Input
           aria-label={field === "name" ? "Your name" : "Church or team name"}
           aria-invalid={error ? true : undefined}

@@ -50,7 +50,7 @@ export function ServiceOrderStrip({ songs }: { songs: ServiceOrderSong[] }) {
               )}
             >
               <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] font-mono text-muted-foreground">
+                <span className="text-xs font-mono text-muted-foreground">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <FlowIcon className={cn("h-3.5 w-3.5 shrink-0", flow.className)} aria-hidden />
@@ -61,7 +61,7 @@ export function ServiceOrderStrip({ songs }: { songs: ServiceOrderSong[] }) {
               </p>
             </Link>
             {i < songs.length - 1 && (
-              <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {s.transitionFrom ? TRANSITION_LABELS[s.transitionFrom.type] ?? s.transitionFrom.type : "→"}
               </span>
             )}

@@ -58,7 +58,7 @@ export function FeedbackForm() {
                 className={cn(
                   "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
                   rating === r.value
-                    ? "border-accent bg-accent text-accent-foreground"
+                    ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-surface-muted text-foreground hover:bg-border",
                 )}
               >

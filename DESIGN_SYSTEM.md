@@ -71,6 +71,56 @@ Tailwind defaults are kept so existing layouts do not shift: `sm` 640, `md` 768 
 - **Bottom sheet:** the phone version of a drawer.
 - **Inline:** quick repeated edits (dynamics, assignments).
 
-## Migration plan
+## Components
 
-Phase 2 (this change) only retargets tokens, adds the font and fixes the danger-button text colour. Components and screens are migrated in later phases: shell and navigation, core components, Dashboard, Sets, Song Detail, My Part, Rehearsal, Director Mode, Roster, Team, Calendar, Settings, then a responsive and accessibility audit. Visual changes ship separately from business-logic changes.
+All in `components/ui` unless noted. Do not create one-off versions of these.
+
+| Need | Use |
+|---|---|
+| Action | `Button` (primary / secondary / outline / ghost / danger; `loading`), `IconButton` (needs a `label`), `TextLink` |
+| Label vs state | `Badge` (a label), `Status` (state: always icon + word + colour) |
+| Surfaces | `Card` (`muted` for past items), `SectionHeader`, `EmptyState`, `Skeleton`, `Avatar` |
+| Choosing | `Tabs`, `SegmentedControl`, `FilterChip`, `Select`, `Checkbox`, `Switch` |
+| Overlays | `Dialog` (one decision), `Sheet` (drawer on iPad/desktop, bottom sheet on phone) |
+| Feedback | `SaveStatus` (inline), `Status`; avoid toasts |
+| Musical | `DynamicIndicator`, `SongFlowRibbon` (`components/songs`), `LogoMark` / `Logo` (`components/brand`) |
+
+## Screen patterns
+
+- **Dashboard:** next service first, then Set / Who's serving / Needs attention (or Your part for a musician), then Coming up and the calendar.
+- **Sets / Roster:** date first; upcoming prominent, past muted; status as icon + word.
+- **Song Detail:** vision, then the flow ribbon, then the section editor; metadata edits live in a `Sheet`.
+- **My Part:** when am I serving, what do I play in each song (sections in order, with dynamics), what changed.
+- **Rehearsal / Director:** Now, My part, Next on one screen. Director adds Signal and Announce.
+- **Team:** person, musical role ("Plays"), account status and invitation status are separate labelled parts. Account permission lives in Church access.
+
+## Guard rails (enforced by tests)
+
+`tests/design-tokens.test.ts` checks light/dark parity and WCAG AA contrast for every pairing. `tests/design-guard.test.ts` fails the build if UI source uses the retired `accent` colour, raw Tailwind palette colours, hard-coded hex colours, pure white/black, or text under 12px.
+
+## Responsive and accessibility audit (Phase 15)
+
+Run with Playwright + axe-core against Dashboard, Sets, a Set, Songs, a Song, My Part, Rehearsal, Roster, Team and Settings, in Light and Stage, at 320, 390, 834 and 1280px, with demo data. After fixes: **0 axe violations, 0 pages with sideways overflow, 0 interactive controls under 36px.** Found and fixed along the way: overflow at 320px (My Part, Settings, a Set), 16 unlabeled selects, an unnamed icon button, a low-contrast label, skipped heading levels, mismatched accessible names, and many small controls.
+
+Not covered by the automated pass, so worth a human check on real devices: Android system font scaling, real iPad/Pencil use, screen-reader walkthroughs, and the musician (non-leader) Rehearsal view live-following a leader on a second device.
+
+### Consistency matrix
+
+| | Dashboard | Roster | Sets | Team | Songs | Song Detail | My Part | Rehearsal | Director | Calendar | Settings |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Tokens (no legacy colours) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Typography roles | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Cards (border, no shadow) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Buttons (shared `Button`) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Status = icon + word + colour | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | n/a |
+| Navigation (shell) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Empty states | yes | yes | yes | n/a | existing | existing | yes | n/a | n/a | n/a | n/a |
+| Phone / iPad / desktop checked | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+
+"existing" means the screen still uses its original wording for that state and has not been rewritten into the EmptyState pattern.
+
+## Known follow-ups
+
+- Songs library and a few dialogs (import, new song, invite) are on the new tokens but keep their original layouts.
+- Loading skeletons exist as components but most screens still render server-side without a loading state.
+- The "Rehearse" tab in the phone bar is not added because rehearsal opens from a specific set.
