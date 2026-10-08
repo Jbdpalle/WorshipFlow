@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { cloneElement, useId, useState } from "react";
 import { Save, PlayCircle, Music2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -78,13 +78,13 @@ export function SongHeaderEditor({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          Fields save as you tab away — use Save if you&apos;re not sure it caught your last edit.
+        <p className="text-sm text-muted-foreground">
+          Fields save as you tab away. Use Save if you&apos;re not sure it caught your last edit.
         </p>
         <div className="flex items-center gap-2">
           <SaveStatus state={status} />
-          <Button type="button" variant="secondary" size="sm" onClick={saveAll}>
-            <Save className="h-3.5 w-3.5" /> Save
+          <Button type="button" variant="secondary" onClick={saveAll}>
+            <Save className="h-4 w-4" aria-hidden /> Save
           </Button>
         </div>
       </div>
@@ -192,18 +192,21 @@ export function SongHeaderEditor({
           placeholder="https://open.spotify.com/track/..."
         />
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Share the exact version you want the team to listen to — this plays no audio itself, it just links out.
       </p>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// A label tied to its control, so screen readers announce "Title, edit text"
+// instead of an unnamed field.
+function Field({ label, children }: { label: string; children: React.ReactElement<{ id?: string }> }) {
+  const id = useId();
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      {children}
+      <Label htmlFor={id}>{label}</Label>
+      {cloneElement(children, { id })}
     </div>
   );
 }

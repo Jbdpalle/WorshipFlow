@@ -1,5 +1,6 @@
 import { requireUser, isLeaderRole, isAdminRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
+import { SectionHeader } from "@/components/ui/section-header";
 import { TeamRoster } from "@/components/team/team-roster";
 import { ChurchAccessList } from "@/components/team/church-access-list";
 import { listChurchAccess } from "@/lib/actions/team";
@@ -22,12 +23,12 @@ export default async function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Team</h1>
-        <p className="text-sm text-muted-foreground">
-          {team.name} — {members.length} member{members.length === 1 ? "" : "s"}
-        </p>
-      </div>
+      <SectionHeader
+        level={1}
+        label="Team"
+        title={team.name}
+        description={`${members.length} member${members.length === 1 ? "" : "s"}. What someone plays, their account, and their invitation are shown separately.`}
+      />
       <TeamRoster members={members} pendingInvites={pendingInvites} isLeader={isLeader} isAdmin={isAdmin} />
       {isLeader && <ChurchAccessList rows={churchAccess} isAdmin={isAdmin} />}
     </div>

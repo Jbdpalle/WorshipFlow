@@ -62,7 +62,7 @@ export function PasteLyricsDialog() {
             placeholder={"Amazing Grace\nJohn Newton\nKey: G\n\nVerse 1\nG         G7           C       G\nAmazing grace how sweet the sound…"}
           />
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button className="w-full" disabled={!text.trim() || saving} onClick={handleSubmit}>
+          <Button loading={saving} className="w-full" disabled={!text.trim() || saving} onClick={handleSubmit}>
             {saving ? "Adding…" : "Add to library"}
           </Button>
         </div>

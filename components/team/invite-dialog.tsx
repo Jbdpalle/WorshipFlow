@@ -61,7 +61,7 @@ export function InviteDialog({
       {trigger ? (
         <span onClick={() => setOpen(true)}>{trigger}</span>
       ) : (
-        <Button variant="outline" className="border-accent text-accent hover:bg-accent/10" onClick={() => setOpen(true)}>
+        <Button variant="outline" onClick={() => setOpen(true)}>
           <UserPlus className="h-4 w-4" /> Invite
         </Button>
       )}
@@ -149,7 +149,7 @@ export function InviteDialog({
               </Select>
             </div>
             {error && <p className="text-sm text-danger">{error}</p>}
-            <Button type="submit" className="w-full" disabled={sending}>
+            <Button loading={sending} type="submit" className="w-full" disabled={sending}>
               <Mail className="h-4 w-4" /> {sending ? "Creating invite…" : "Create invite link"}
             </Button>
           </form>

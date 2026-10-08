@@ -17,10 +17,11 @@ export function LogoutButton({ className, showLabel }: { className?: string; sho
     <button
       onClick={logout}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg p-2 text-muted-foreground hover:bg-surface-muted hover:text-foreground",
+        "tap-target flex w-11 items-center justify-center gap-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground",
         className,
       )}
       title="Log out"
+      aria-label="Log out"
     >
       <LogOut className="h-4 w-4" />
       {showLabel && <span>Log out</span>}

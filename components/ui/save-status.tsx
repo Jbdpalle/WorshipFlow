@@ -18,20 +18,20 @@ export function SaveStatus({
   if (state === "idle") return null;
   if (state === "saving") {
     return (
-      <span className={cn("flex items-center gap-1 text-xs text-muted-foreground", className)}>
+      <span role="status" className={cn("flex items-center gap-1 text-xs text-muted-foreground", className)}>
         <Loader2 className="h-3 w-3 animate-spin" /> Saving…
       </span>
     );
   }
   if (state === "error") {
     return (
-      <span className={cn("text-xs text-danger", className)}>
+      <span role="alert" className={cn("text-xs text-danger", className)}>
         {errorMessage ?? "Couldn't save — try again"}
       </span>
     );
   }
   return (
-    <span className={cn("flex items-center gap-1 text-xs text-success", className)}>
+    <span role="status" className={cn("flex items-center gap-1 text-xs text-success", className)}>
       <Check className="h-3 w-3" /> Saved
     </span>
   );

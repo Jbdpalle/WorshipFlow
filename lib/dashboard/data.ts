@@ -39,6 +39,9 @@ export type DashboardSet = {
   effectiveLeaderName: string | null;
   serviceDate: Date | null;
   songCount: number;
+  // The set's songs in order, for showing "what are we playing" on the
+  // Dashboard. Display-only; key/tempo prefer this service's override.
+  songs: { id: string; title: string; key: string | null; bpm: number | null }[];
   teamMemberCount: number;
   notes: string | null;
   stages: ProgressStage[];
@@ -160,6 +163,12 @@ export async function getDashboardData(
       effectiveLeaderName,
       serviceDate: set.serviceDate,
       songCount: set.songs.length,
+      songs: set.songs.map((s) => ({
+        id: s.id,
+        title: s.song.title,
+        key: s.overrideKey ?? s.song.key,
+        bpm: s.overrideBpm ?? s.song.bpm,
+      })),
       teamMemberCount: teamMemberIds.size,
       notes: set.notes,
       stages: getServiceStages(set),

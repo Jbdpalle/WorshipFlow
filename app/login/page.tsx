@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { LogoMark } from "@/components/brand/logo";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Music4 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,8 +56,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-            <Music4 className="h-6 w-6" />
+          <span className="text-primary">
+            <LogoMark className="h-14 w-14" />
           </span>
           <h1 className="text-xl font-semibold">WorshipFlow</h1>
           <p className="text-sm text-muted-foreground">
@@ -95,7 +95,7 @@ export default function LoginPage() {
                 />
               </div>
               {error && <p className="text-sm text-danger">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading || !mounted}>
+              <Button loading={loading} type="submit" className="w-full" disabled={loading || !mounted}>
                 {loading ? "Logging in…" : "Log in"}
               </Button>
             </form>
@@ -105,7 +105,7 @@ export default function LoginPage() {
               <div className="absolute inset-x-0 top-1/2 -z-10 border-t border-border" />
             </div>
 
-            <Button
+            <Button loading={demoLoading}
               type="button"
               variant="outline"
               className="w-full"
@@ -119,7 +119,7 @@ export default function LoginPage() {
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           New here?{" "}
-          <Link href="/signup" className="font-medium text-accent">
+          <Link href="/signup" className="font-medium text-primary">
             Create a worship team
           </Link>
         </p>

@@ -81,8 +81,8 @@ export function DemoTourBanner({
   // Never started — offer the choice once per page until they decide.
   if (!tourStatus && !promptDismissed) {
     return (
-      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-accent/10 px-4 py-2.5 text-sm">
-        <Compass className="h-4 w-4 shrink-0 text-accent" />
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-info/10 px-4 py-2.5 text-sm">
+        <Compass className="h-4 w-4 shrink-0 text-info" />
         <span className="font-medium">Take the guided tour?</span>
         <span className="text-muted-foreground">
           We&apos;ll walk you through building a set, directing rehearsal, and more — hands-on.
@@ -110,8 +110,8 @@ export function DemoTourBanner({
   if (tourStatus === "active") {
     const current = TOUR_STEPS.find((s) => s.step === tourStep) ?? TOUR_STEPS[0];
     return (
-      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-accent/10 px-4 py-2.5 text-sm">
-        <Compass className="h-4 w-4 shrink-0 text-accent" />
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-info/10 px-4 py-2.5 text-sm">
+        <Compass className="h-4 w-4 shrink-0 text-info" />
         <span className="font-medium">
           Step {current.step} of {TOUR_TOTAL_STEPS}: {current.title}
         </span>

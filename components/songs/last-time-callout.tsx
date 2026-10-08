@@ -22,8 +22,8 @@ export function LastTimeCallout({
   if (!lastRehearsal && recentChanges.length === 0) return null;
 
   return (
-    <div className="space-y-2 rounded-xl border border-accent/30 bg-accent/5 p-3.5">
-      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent">
+    <div className="space-y-2 rounded-xl border border-border bg-musical-soft p-4">
+      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.1em] text-musical">
         <History className="h-3.5 w-3.5" /> Last Time
       </div>
       {lastRehearsal && (

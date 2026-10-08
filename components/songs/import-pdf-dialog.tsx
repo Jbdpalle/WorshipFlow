@@ -193,7 +193,7 @@ export function ImportPdfDialog() {
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-accent"
+              className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary"
             >
               <FileUp className="h-6 w-6 text-muted-foreground" />
               <span className="text-sm">
@@ -241,7 +241,7 @@ export function ImportPdfDialog() {
 
             {error && <p className="text-sm text-danger">{error}</p>}
 
-            <Button className="w-full" disabled={files.length === 0 || importing} onClick={handleImport}>
+            <Button loading={importing} className="w-full" disabled={files.length === 0 || importing} onClick={handleImport}>
               {importing
                 ? progress && progress.total > 1
                   ? `Importing batch ${progress.done + 1} of ${progress.total}…`

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ export function QuickDirectionPicker({
   teamMembers: TeamMemberOption[];
   onAdded: () => void;
 }) {
+  const uid = useId();
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<string>(ROLES[0]);
   const [customRole, setCustomRole] = useState("");
@@ -102,7 +103,7 @@ export function QuickDirectionPicker({
   return (
     <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h4 className="label-caps">
           Quick Direction
         </h4>
         <button type="button" onClick={reset} className="text-muted-foreground hover:text-foreground" aria-label="Cancel">
@@ -119,7 +120,8 @@ export function QuickDirectionPicker({
               value={customRole}
               onChange={(e) => setCustomRole(e.target.value)}
               placeholder="e.g. Percussion"
-              className="h-8 w-44 text-sm"
+              aria-label="Custom role"
+              className="h-11 w-44 text-sm"
             />
           ) : (
             <Select
@@ -128,7 +130,7 @@ export function QuickDirectionPicker({
                 setRole(e.target.value);
                 setSelectedChips([]);
               }}
-              className="h-8 w-44 text-sm"
+              className="h-11 w-44 text-sm"
               aria-label="Who is this direction for"
             >
               <optgroup label="Individual role">
@@ -154,7 +156,7 @@ export function QuickDirectionPicker({
             <Select
               value={teamMemberId}
               onChange={(e) => setTeamMemberId(e.target.value)}
-              className="h-8 w-36 text-xs"
+              className="h-11 w-40 text-sm"
               aria-label="Aim at one specific person"
             >
               <option value="">Anyone in this role</option>
@@ -179,7 +181,7 @@ export function QuickDirectionPicker({
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                 selectedChips.includes(chip)
-                  ? "border-accent bg-accent text-accent-foreground"
+                  ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-surface text-foreground hover:bg-surface-muted",
               )}
             >
@@ -191,7 +193,7 @@ export function QuickDirectionPicker({
             onClick={() => setShowExtra((v) => !v)}
             className={cn(
               "rounded-full border border-dashed px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-muted",
-              showExtra && "border-accent text-accent",
+              showExtra && "border-primary text-primary",
             )}
           >
             More…
@@ -202,26 +204,29 @@ export function QuickDirectionPicker({
       {showExtra && (
         <div className="grid gap-2 border-t border-border pt-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Custom (optional)</label>
+            <label htmlFor={`${uid}-custom`} className="text-sm font-semibold">Custom (optional)</label>
             <Input
+              id={`${uid}-custom`}
               value={customWhat}
               onChange={(e) => setCustomWhat(e.target.value)}
               placeholder="e.g. Walking bassline"
-              className="h-8 text-sm"
+              className="text-sm"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Intensity (optional)</label>
-            <div className="flex items-center gap-1">
+            <p id={`${uid}-intensity`} className="text-sm font-semibold">Intensity (optional)</p>
+            <div role="group" aria-labelledby={`${uid}-intensity`} className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
                   type="button"
                   onClick={() => setIntensity(intensity === n ? null : n)}
+                  aria-label={`Intensity ${n} of 5`}
+                  aria-pressed={intensity === n}
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold",
+                    "flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold",
                     intensity !== null && n <= intensity
-                      ? "border-accent bg-accent text-accent-foreground"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-surface text-muted-foreground hover:bg-surface-muted",
                   )}
                 >
@@ -231,25 +236,30 @@ export function QuickDirectionPicker({
             </div>
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs font-medium text-muted-foreground">Note (optional)</label>
+            <label htmlFor={`${uid}-note`} className="text-sm font-semibold">Note (optional)</label>
             <Input
+              id={`${uid}-note`}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Stay underneath the vocal"
-              className="h-8 text-sm"
+              className="text-sm"
             />
           </div>
         </div>
       )}
 
-      {content && <p className="text-xs text-muted-foreground">Preview: &ldquo;{content}&rdquo;</p>}
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {content && <p className="text-sm text-muted-foreground">Preview: &ldquo;{content}&rdquo;</p>}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
 
       <div className="flex gap-2">
-        <Button type="button" size="sm" disabled={!canSubmit || saving} onClick={handleAdd}>
+        <Button loading={saving} type="button" disabled={!canSubmit || saving} onClick={handleAdd}>
           {saving ? "Adding…" : "Add Direction"}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={reset}>
+        <Button type="button" variant="ghost" onClick={reset}>
           Cancel
         </Button>
       </div>

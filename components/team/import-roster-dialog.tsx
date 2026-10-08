@@ -100,8 +100,8 @@ export function ImportRosterDialog() {
             )}
 
             {summary.needsReview.length > 0 && (
-              <div className="rounded-lg border border-accent/40 bg-accent/10 p-3">
-                <p className="text-xs font-semibold text-accent">
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
+                <p className="text-sm font-semibold text-warning">
                   ⚠ {summary.needsReview.length} item{summary.needsReview.length === 1 ? "" : "s"} need
                   {summary.needsReview.length === 1 ? "s" : ""} attention
                 </p>
@@ -141,7 +141,7 @@ export function ImportRosterDialog() {
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-accent"
+              className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary"
             >
               <Upload className="h-6 w-6 text-muted-foreground" />
               <span className="text-sm">
@@ -158,7 +158,7 @@ export function ImportRosterDialog() {
 
             {error && <p className="text-sm text-danger">{error}</p>}
 
-            <Button className="w-full" disabled={!file || importing} onClick={handleImport}>
+            <Button loading={importing} className="w-full" disabled={!file || importing} onClick={handleImport}>
               {importing ? "Importing…" : "Import"}
             </Button>
           </div>

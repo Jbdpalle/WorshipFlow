@@ -1,4 +1,5 @@
 import { Metronome } from "@/components/metronome/metronome";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default async function MetronomePage({
@@ -11,7 +12,7 @@ export default async function MetronomePage({
 
   return (
     <div className="mx-auto max-w-md space-y-6">
-      <h1 className="text-2xl font-semibold">Metronome</h1>
+      <SectionHeader level={1} label="Tools" title="Metronome" description="Set a tempo, or tap it in." />
       <Card>
         <CardContent className="py-8">
           <Metronome initialBpm={Number.isFinite(initialBpm) ? initialBpm : 80} />

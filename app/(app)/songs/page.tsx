@@ -1,5 +1,6 @@
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
+import { SectionHeader } from "@/components/ui/section-header";
 import { SongLibraryList } from "@/components/songs/song-library-list";
 import { NewSongDialog } from "@/components/songs/new-song-dialog";
 import { ImportPdfDialog } from "@/components/songs/import-pdf-dialog";
@@ -27,19 +28,18 @@ export default async function SongLibraryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Song Library</h1>
-          <p className="text-sm text-muted-foreground">
-            {songs.length} {songs.length === 1 ? "song" : "songs"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {isLeader && <ImportPdfDialog />}
-          {isLeader && <ImportSongMetadataDialog />}
-          <PasteLyricsDialog />
-          <NewSongDialog />
-        </div>
+      <SectionHeader
+        level={1}
+        label="Library"
+        title="Songs"
+        description="Every song your team plays, with its key, tempo and arrangement."
+        action={<NewSongDialog />}
+      />
+      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
+        <span className="label-caps mr-1 shrink-0">Bring songs in</span>
+        {isLeader && <ImportPdfDialog />}
+        {isLeader && <ImportSongMetadataDialog />}
+        <PasteLyricsDialog />
       </div>
       <SongLibraryList songs={songs} />
     </div>

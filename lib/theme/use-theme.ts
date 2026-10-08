@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-export type ThemePreference = "system" | "light" | "dark";
+// Light is the default. Stage (dark) is a manual choice, never inferred from
+// the OS, so a phone in dark mode still opens WorshipFlow in light.
+export type ThemePreference = "light" | "dark";
 
 const STORAGE_KEY = "worshipflow-theme";
 const EVENT = "worshipflow:theme-change";
@@ -10,41 +12,33 @@ const EVENT = "worshipflow:theme-change";
 export function getStoredTheme(): ThemePreference {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark") return v;
+    if (v === "dark") return "dark";
   } catch {
     // ignore — localStorage can throw in private browsing
   }
-  return "system";
+  return "light";
 }
 
-// "system" removes the override and falls back to prefers-color-scheme (see
-// globals.css); "light"/"dark" pin an explicit choice that wins regardless
-// of OS setting. Mirrors the same inline script that runs before paint in
-// app/layout.tsx, so the two never disagree.
+// Mirrors the inline script that runs before paint in app/layout.tsx, so
+// the two never disagree. Also keeps the browser UI colour in step.
 export function applyTheme(theme: ThemePreference) {
   const root = document.documentElement;
-  if (theme === "system") {
-    root.removeAttribute("data-theme");
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
-    }
-  } else {
-    root.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      // ignore
-    }
+  root.setAttribute("data-theme", theme);
+  try {
+    localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    // ignore
   }
+  document
+    .querySelectorAll('meta[name="theme-color"]')
+    .forEach((m) => m.setAttribute("content", theme === "dark" ? "#16181a" : "#f3f0ea"));
   window.dispatchEvent(new CustomEvent(EVENT, { detail: theme }));
 }
 
 // Several toggle controls can be on screen at once (sidebar + Settings) —
 // this keeps them all in sync without a React context provider.
 export function useTheme(): [ThemePreference, (theme: ThemePreference) => void] {
-  const [theme, setThemeState] = useState<ThemePreference>("system");
+  const [theme, setThemeState] = useState<ThemePreference>("light");
 
   useEffect(() => {
     // Reads localStorage, which isn't available during SSR.

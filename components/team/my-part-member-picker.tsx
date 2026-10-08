@@ -30,16 +30,16 @@ export function MyPartMemberPicker({
   // assignment, so showing a roster-default role next to their name in
   // this list would only suggest it's live when it isn't.
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {!isOwnView && (
-        <Badge variant="accent" className="gap-1">
-          <Eye className="h-3 w-3" /> Preview as
+        <Badge variant="info" className="gap-1 px-3 py-1 text-sm">
+          <Eye className="h-3.5 w-3.5" aria-hidden /> Preview as
         </Badge>
       )}
       <Select
         value={groups.find((g) => g.ids.includes(activeId ?? ""))?.ids[0] ?? activeId}
         onChange={(e) => router.push(`/my-part?member=${e.target.value}`)}
-        className="w-56"
+        className="w-full sm:w-56"
         aria-label={isOwnView ? "Viewing your own part" : "Preview another musician's part"}
       >
         {groups.map((g) => (

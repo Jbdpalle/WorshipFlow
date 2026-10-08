@@ -79,7 +79,7 @@ export function ThemeSuggestions({
         ) : (
           Array.from(byCategory.entries()).map(([category, songs]) => (
             <div key={category} className="space-y-2">
-              <h4 className="text-sm font-semibold">{category}</h4>
+              <h3 className="text-sm font-semibold">{category}</h3>
               <div className="space-y-2">
                 {songs.map(({ song }) => (
                   <div

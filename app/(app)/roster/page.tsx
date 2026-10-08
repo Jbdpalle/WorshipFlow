@@ -2,6 +2,8 @@ import { ClipboardList } from "lucide-react";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { getRosterPageData } from "@/lib/dashboard/data";
+import { SectionHeader } from "@/components/ui/section-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ImportRosterDialog } from "@/components/team/import-roster-dialog";
 import { RosterBoard } from "@/components/roster/roster-board";
 
@@ -24,26 +26,20 @@ export default async function RosterPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Roster</h1>
-          <p className="text-sm text-muted-foreground">
-            Who&apos;s serving, when — plan ahead, or import a schedule and it shows up here.
-          </p>
-        </div>
-        {isLeader && <ImportRosterDialog />}
-      </div>
+      <SectionHeader
+        level={1}
+        label="Roster"
+        title="Who's serving, and when"
+        description="Plan ahead, or import a schedule and it shows up here."
+        action={isLeader ? <ImportRosterDialog /> : undefined}
+      />
 
       {entries.length === 0 && !isLeader ? (
-        <section className="rounded-2xl border border-border bg-surface p-8 text-center shadow-sm sm:p-12">
-          <ClipboardList className="mx-auto h-9 w-9 text-accent" aria-hidden />
-          <h2 className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            No roster yet
-          </h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Your worship leader hasn&apos;t scheduled anything yet — check back soon.
-          </p>
-        </section>
+        <EmptyState
+          icon={ClipboardList}
+          title="No roster yet"
+          description="Your worship leader hasn't scheduled anything yet. Check back soon."
+        />
       ) : (
         <RosterBoard entries={entries} members={members} isLeader={isLeader} />
       )}

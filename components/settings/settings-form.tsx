@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SaveStatus } from "@/components/ui/save-status";
 import { updateMyName, updateChurchName } from "@/lib/actions/profile";
 
 export function SettingsForm({
@@ -39,8 +40,10 @@ export function SettingsForm({
 
   return (
     <div className="flex items-start gap-2">
-      <div className="flex-1">
+      <div className="min-w-0 flex-1 space-y-1">
         <Input
+          aria-label={field === "name" ? "Your name" : "Church or team name"}
+          aria-invalid={error ? true : undefined}
           value={value}
           disabled={disabled || saving}
           onChange={(e) => {
@@ -52,10 +55,9 @@ export function SettingsForm({
             if (e.key === "Enter") e.currentTarget.blur();
           }}
         />
-        {error && <p className="mt-1 text-xs text-danger">{error}</p>}
-        {saved && !error && <p className="mt-1 text-xs text-success">Saved</p>}
+        <SaveStatus state={error ? "error" : saving ? "saving" : saved ? "saved" : "idle"} errorMessage={error ?? undefined} />
       </div>
-      <Button type="button" size="sm" variant="secondary" disabled={disabled || saving} onClick={save}>
+      <Button loading={saving} type="button" variant="secondary" disabled={disabled || saving} onClick={save}>
         {saving ? "Saving…" : "Save"}
       </Button>
     </div>

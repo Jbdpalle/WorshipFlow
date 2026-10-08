@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ChurchRole } from "@prisma/client";
-import { Plus, Trash2, UserRound, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import { IconButton } from "@/components/ui/icon-button";
+import { Status } from "@/components/ui/status";
+import { TextLink } from "@/components/ui/text-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -16,7 +18,6 @@ import { addTeamMember, removeTeamMember, updateTeamMember } from "@/lib/actions
 import { revokeInvite } from "@/lib/actions/invites";
 import { InviteDialog } from "@/components/team/invite-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils/cn";
 
 type Member = {
   id: string;
@@ -50,9 +51,9 @@ function MemberInviteStatus({
   if (member.userId) {
     return (
       <Tooltip content="This person has logged in and linked their own account">
-        <Badge tabIndex={0} variant="success" className="text-[10px]">
-          Active
-        </Badge>
+        <span tabIndex={0}>
+          <Status tone="success">Account active</Status>
+        </span>
       </Tooltip>
     );
   }
@@ -60,7 +61,7 @@ function MemberInviteStatus({
   const isExpired = invite && invite.expiresAt < new Date();
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {invite ? (
         <Tooltip
           content={
@@ -69,19 +70,17 @@ function MemberInviteStatus({
               : `Invited ${invite.email} — not yet accepted. WorshipFlow invites are a link you share, not an email we send.`
           }
         >
-          <Badge
-            tabIndex={0}
-            variant={isExpired ? "outline" : "accent"}
-            className={cn("text-[10px]", isExpired && "text-danger")}
-          >
-            {isExpired ? "Invitation Expired" : "Invitation Sent"}
-          </Badge>
+          <span tabIndex={0}>
+            <Status tone={isExpired ? "warning" : "info"}>
+              {isExpired ? "Invitation expired" : "Invitation sent"}
+            </Status>
+          </span>
         </Tooltip>
       ) : (
         <Tooltip content="Added to the roster, but hasn't logged in or linked an account yet">
-          <Badge tabIndex={0} variant="outline" className="text-[10px]">
-            Roster only
-          </Badge>
+          <span tabIndex={0}>
+            <Status tone="muted">No account yet</Status>
+          </span>
         </Tooltip>
       )}
       {isLeader && (
@@ -97,8 +96,8 @@ function MemberInviteStatus({
           initialEmail={invite?.email}
           initialRole={invite?.role === "OWNER" ? "MEMBER" : invite?.role}
           trigger={
-            <button className="text-xs font-medium text-accent hover:underline">
-              {invite ? "Resend Invitation" : "Invite"}
+            <button type="button" className="tap-target rounded-lg px-1 text-sm font-semibold text-primary hover:underline">
+              {invite ? "Resend invitation" : "Invite"}
             </button>
           }
         />
@@ -132,12 +131,12 @@ export function TeamRoster({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {error ? <p className="text-sm text-danger">{error}</p> : <span />}
+        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : <span />}
         <div className="flex flex-wrap gap-2">
           {isLeader && <InviteDialog canGrantAdmin={isAdmin} />}
           {isLeader && (
             <Button onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4" /> Add Team Member
+              <Plus className="h-4 w-4" aria-hidden /> Add team member
             </Button>
           )}
         </div>
@@ -145,28 +144,25 @@ export function TeamRoster({
 
       {isLeader && (
         <p className="text-sm text-muted-foreground">
-          Importing a schedule?{" "}
-          <Link href="/roster" className="font-medium text-accent hover:underline">
-            Go to Roster →
-          </Link>
+          Importing a schedule? <TextLink href="/roster" className="inline-flex">Go to Roster →</TextLink>
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {members.map((m) => (
           <Card key={m.id}>
             <CardContent className="flex items-start gap-3 pt-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
-                <UserRound className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{m.name}</p>
+              <Avatar name={m.name} size="lg" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <p className="text-base font-bold">{m.name}</p>
+                <div>
+                <p className="label-caps">Plays</p>
                 {isLeader ? (
                   <Tooltip content="Their usual role on the roster — not a per-service assignment. Picked the wrong instrument? Change it here instead of removing and re-adding.">
                     <select
                       value={m.role}
                       aria-label={`Change ${m.name}'s role`}
-                      className="-ml-1 rounded-md bg-transparent px-1 text-sm text-muted-foreground hover:bg-surface-muted focus:outline-none"
+                      className="tap-target -ml-1 rounded-md bg-transparent px-1 text-sm font-semibold text-foreground hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-ring"
                       onChange={async (e) => {
                         const newRole = e.target.value;
                         if (newRole === m.role) return;
@@ -188,12 +184,14 @@ export function TeamRoster({
                     </select>
                   </Tooltip>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{m.role}</p>
+                  <p className="text-sm font-semibold">{m.role}</p>
                 )}
                 {m.instrument && m.instrument !== m.role && (
-                  <p className="text-xs text-muted-foreground">{m.instrument}</p>
+                  <p className="text-sm text-muted-foreground">{m.instrument}</p>
                 )}
-                <div className="mt-1.5">
+                </div>
+                <div>
+                  <p className="label-caps">Account</p>
                   <MemberInviteStatus
                     member={m}
                     invite={inviteByMemberId.get(m.id)}
@@ -204,7 +202,9 @@ export function TeamRoster({
               </div>
               {isAdmin && (
                 <Tooltip content={`Remove ${m.name} from the team roster`}>
-                  <button
+                  <IconButton
+                    label={`Remove ${m.name} from the team`}
+                    tone="danger"
                     onClick={async () => {
                       setError(null);
                       const result = await removeTeamMember(m.id);
@@ -214,11 +214,9 @@ export function TeamRoster({
                       }
                       router.refresh();
                     }}
-                    className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                    aria-label="Remove"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </IconButton>
                 </Tooltip>
               )}
             </CardContent>
@@ -228,8 +226,8 @@ export function TeamRoster({
 
       {isLeader && openInvites.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">Open invites</h2>
-          <p className="text-xs text-muted-foreground">
+          <h2 className="text-lg font-bold">Open invites</h2>
+          <p className="text-sm text-muted-foreground">
             Not tied to a specific roster member yet — whoever opens the link gets added.
           </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -243,16 +241,16 @@ export function TeamRoster({
                     </p>
                   </div>
                   <Tooltip content="Cancel this invite before it's accepted">
-                    <button
+                    <IconButton
+                      label={`Revoke invite for ${invite.email}`}
+                      tone="danger"
                       onClick={async () => {
                         const result = await revokeInvite(invite.id);
                         if (result.ok) router.refresh();
                       }}
-                      className="shrink-0 rounded-md p-2.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"
-                      aria-label="Revoke invite"
                     >
                       <X className="h-4 w-4" />
-                    </button>
+                    </IconButton>
                   </Tooltip>
                 </CardContent>
               </Card>
@@ -306,8 +304,8 @@ export function TeamRoster({
             value={form.instrument}
             onChange={(e) => setForm((f) => ({ ...f, instrument: e.target.value }))}
           />
-          {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full" disabled={saving}>
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+          <Button loading={saving} type="submit" className="w-full" disabled={saving}>
             {saving ? "Adding…" : "Add"}
           </Button>
         </form>

@@ -110,7 +110,7 @@ export function AddFromLibraryDialog({
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Song title"
               />
-              <Button type="button" onClick={handleQuickCreate} disabled={creating}>
+              <Button loading={creating} type="button" onClick={handleQuickCreate} disabled={creating}>
                 {creating ? "Adding…" : "Add"}
               </Button>
             </div>

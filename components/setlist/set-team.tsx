@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { IconButton } from "@/components/ui/icon-button";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { ROLES } from "@/lib/songs/constants";
@@ -36,16 +37,16 @@ export function SetTeam({
           {isLeader && " — assign the team once below and every song in this set will show who's playing."}
         </p>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {members.map((m) =>
             isLeader ? (
-              <Badge key={m.id} variant="outline" className="gap-1 pr-1">
-                {m.teamMember.name} —
+              <div key={m.id} className="flex min-h-11 max-w-full flex-wrap items-center gap-2 rounded-lg border border-border bg-surface pl-3 pr-1">
+                <span className="text-sm font-bold">{m.teamMember.name}</span>
                 <select
                   value={m.role}
                   aria-label={`Change ${m.teamMember.name}'s role — picked the wrong instrument? fix it here`}
                   title="Wrong instrument? Change it here instead of removing and re-adding."
-                  className="bg-transparent text-xs font-medium focus:outline-none"
+                  className="h-9 rounded-md bg-surface-muted px-2 text-sm font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-ring"
                   onChange={async (e) => {
                     const newRole = e.target.value;
                     if (newRole === m.role) return;
@@ -74,7 +75,9 @@ export function SetTeam({
                     </option>
                   ))}
                 </select>
-                <button
+                <IconButton
+                  label={`Remove ${m.teamMember.name}`}
+                  tone="danger"
                   onClick={async () => {
                     const result = await removeSetMember(m.id);
                     if (!result.ok) {
@@ -83,12 +86,10 @@ export function SetTeam({
                     }
                     router.refresh();
                   }}
-                  className="ml-1 rounded-full hover:bg-danger/20"
-                  aria-label={`Remove ${m.teamMember.name}`}
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+                  <X className="h-4 w-4" />
+                </IconButton>
+              </div>
             ) : (
               <Badge key={m.id} variant="outline">
                 {m.teamMember.name} — {m.role}
@@ -99,11 +100,12 @@ export function SetTeam({
       )}
 
       {isLeader && teamMembers.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={assignRole}
             onChange={(e) => setAssignRole(e.target.value)}
-            className="h-8 w-40 text-xs"
+            aria-label="Role to assign"
+            className="h-11 w-44 text-sm"
           >
             <option value="" disabled>
               Select a role
@@ -117,7 +119,8 @@ export function SetTeam({
           <Select
             value={assignMember}
             onChange={(e) => setAssignMember(e.target.value)}
-            className="h-8 w-36 text-xs"
+            aria-label="Person to assign"
+            className="h-11 w-44 text-sm"
           >
             <option value="" disabled>
               Select a person
@@ -130,7 +133,6 @@ export function SetTeam({
           </Select>
           <Button
             type="button"
-            size="sm"
             variant="secondary"
             disabled={!assignRole || !assignMember}
             onClick={async () => {
@@ -150,7 +152,7 @@ export function SetTeam({
           </Button>
         </div>
       )}
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     </div>
   );
 }
