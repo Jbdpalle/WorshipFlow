@@ -1,7 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import { FileText } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { LyricsChordsView, type LyricsChordsMode } from "@/components/songs/lyrics-chords-view";
 
 type Section = {
   id: string;
@@ -11,11 +15,12 @@ type Section = {
 };
 
 // Song Flow breaks a song into sections on purpose — that's what makes
-// per-section direction-giving possible — but reading the whole song as
-// one continuous piece is still a real need. This is lyrics only (no
-// chords, no transpose/size controls): that fuller, stand-ready chart
-// already lives at /songs/[id]/chart for whoever's playing.
+// per-section direction-giving possible — but reading the whole song
+// straight through, with or without chords, is still a real need. This
+// stays simple on purpose: a Lyrics/Chords toggle, no transpose or text
+// size — that fuller, stand-ready chart lives at /songs/[id]/chart.
 export function FullLyricsView({ songId, sections }: { songId: string; sections: Section[] }) {
+  const [mode, setMode] = useState<LyricsChordsMode>("lyrics");
   const sectionsWithLyrics = sections.filter((s) => s.lyricsChords?.trim());
 
   if (sectionsWithLyrics.length === 0) {
@@ -31,9 +36,18 @@ export function FullLyricsView({ songId, sections }: { songId: string; sections:
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SegmentedControl
+          label="Show"
+          value={mode as "lyrics" | "all"}
+          onChange={setMode}
+          options={[
+            { value: "lyrics", label: "Lyrics" },
+            { value: "all", label: "Lyrics + Chords" },
+          ]}
+        />
         <ButtonLink href={`/songs/${songId}/chart`} variant="outline">
-          Need chords? Open chart
+          Transpose or resize? Open chart
         </ButtonLink>
       </div>
       {sectionsWithLyrics.map((section) => (
@@ -42,7 +56,7 @@ export function FullLyricsView({ songId, sections }: { songId: string; sections:
             {section.label}
             {section.repeatCount && section.repeatCount > 1 ? ` ×${section.repeatCount}` : ""}
           </h2>
-          <LyricsChordsView content={section.lyricsChords!} mode="lyrics" />
+          <LyricsChordsView content={section.lyricsChords!} mode={mode} />
         </div>
       ))}
     </div>
