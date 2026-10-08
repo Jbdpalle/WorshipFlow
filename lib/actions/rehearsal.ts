@@ -11,19 +11,47 @@ export async function startRehearsal(
   songId: string,
   setSongId: string | null,
   bpmUsed?: number,
+  practiceSessionId?: string | null,
 ): Promise<ActionResultData<{ id: string }>> {
   return runAction(async () => {
     const { user, team } = await requireUser();
     const song = await prisma.song.findUnique({ where: { id: songId } });
     if (!song || song.teamId !== team.id) return { ok: false, error: "Song not found." };
 
+    if (practiceSessionId) {
+      const session = await prisma.practiceSession.findUnique({ where: { id: practiceSessionId } });
+      if (!session) return { ok: false, error: "Practice session not found." };
+    }
+
     const rehearsal = await prisma.rehearsal.create({
-      data: { songId, setSongId, bpmUsed: bpmUsed ?? song.bpm },
+      data: { songId, setSongId, bpmUsed: bpmUsed ?? song.bpm, practiceSessionId: practiceSessionId || null },
     });
     revalidatePath(`/songs/${songId}`);
     trackEvent(team.id, "rehearsal_started", { entityId: rehearsal.id, meta: { songId } });
     await advanceTourIfNeeded(user.id, team.id, 9);
     return { ok: true, data: { id: rehearsal.id } };
+  });
+}
+
+// Tracks which sections actually got visited during a practice session's
+// per-song Rehearsal row, for an accurate "sections covered" count on the
+// Finish Practice summary — append-only, deduped, cheap enough to call on
+// every section move the leader makes.
+export async function recordSectionVisit(rehearsalId: string, sectionId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const rehearsal = await prisma.rehearsal.findUnique({
+      where: { id: rehearsalId },
+      include: { song: true },
+    });
+    if (!rehearsal || rehearsal.song.teamId !== team.id) return { ok: false, error: "Not found." };
+    if (rehearsal.sectionsVisited.includes(sectionId)) return { ok: true };
+
+    await prisma.rehearsal.update({
+      where: { id: rehearsalId },
+      data: { sectionsVisited: { push: sectionId } },
+    });
+    return { ok: true };
   });
 }
 

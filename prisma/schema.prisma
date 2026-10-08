@@ -364,6 +364,17 @@ enum EventType {
   CUSTOM
 }
 
+// Which experience currently owns WorshipSet's live-position fields
+// (liveSetSongId/liveSectionId below) — Director Mode is one screen
+// reused by both Practice Sessions and the Live Set, so this says which
+// of the two a live position in progress actually means. NONE: nobody is
+// live right now (the fields may still hold the last position, stale).
+enum SetLiveMode {
+  NONE
+  PRACTICE
+  LIVE
+}
+
 model WorshipSet {
   id          String    @id @default(cuid())
   teamId      String
@@ -395,6 +406,20 @@ model WorshipSet {
   liveAnnouncement   String?
   liveAnnouncementAt DateTime?
 
+  // Which of Practice/Live currently owns the live-position fields above,
+  // and (for PRACTICE) which session. Both Finish Practice and Finish Live
+  // Set reset liveMode to NONE and clear activePracticeSessionId/the
+  // relevant started/ended timestamp — never a second "whose turn is it"
+  // flag anywhere else.
+  liveMode                SetLiveMode @default(NONE)
+  activePracticeSessionId String?
+  // The real Live Set run, distinct from any PRACTICE run through
+  // liveMode above — lets the Live Set tab show Ready/Live/Completed
+  // without a separate stored status (same "compute it" approach
+  // lib/songs/readiness.ts already uses for the four setup stages).
+  liveStartedAt DateTime?
+  liveEndedAt   DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -406,6 +431,8 @@ model WorshipSet {
   anchorSong   Song?            @relation("AnchorSong", fields: [anchorSongId], references: [id], onDelete: SetNull)
   liveSetSong  SetSong?         @relation("LiveSetSong", fields: [liveSetSongId], references: [id], onDelete: SetNull)
   liveSection  SongSection?     @relation(fields: [liveSectionId], references: [id], onDelete: SetNull)
+  practiceSessions      PracticeSession[] @relation("SetPracticeSessions")
+  activePracticeSession PracticeSession?  @relation("ActivePracticeSession", fields: [activePracticeSessionId], references: [id], onDelete: SetNull)
 
   @@index([teamId])
   @@index([eventType])
@@ -413,6 +440,7 @@ model WorshipSet {
   @@index([liveSetSongId])
   @@index([liveSectionId])
   @@index([archivedAt])
+  @@index([activePracticeSessionId])
 }
 
 // The service's roster, assigned once for the whole set instead of
@@ -512,22 +540,63 @@ model BibleReference {
 
 // ── Rehearsals ───────────────────────────────────────────────────────
 
-model Rehearsal {
-  id         String   @id @default(cuid())
-  setSongId  String?
-  songId     String
-  bpmUsed    Int?
-  summary    String?
-  occurredAt DateTime @default(now())
+enum PracticeSessionStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+}
 
-  setSong SetSong?            @relation(fields: [setSongId], references: [id], onDelete: SetNull)
-  song    Song                @relation(fields: [songId], references: [id], onDelete: Cascade)
+// A dated, named, whole-set practice gathering — the one thing nothing
+// else in this schema represents. Rehearsal (below) is per-song, created
+// implicitly whenever Director Mode opens a song, with no name, date or
+// status of its own; a PracticeSession groups the Rehearsal rows created
+// during it (see Rehearsal.practiceSessionId) so "songs practiced" and
+// "experiments tried" are derived from existing data, never duplicated.
+// Its live position reuses WorshipSet.liveSetSongId/liveSectionId (via
+// WorshipSet.liveMode = PRACTICE while it's the activePracticeSessionId)
+// — Director Mode itself is not reimplemented or forked.
+model PracticeSession {
+  id          String                @id @default(cuid())
+  setId       String
+  name        String
+  status      PracticeSessionStatus @default(PLANNED)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  notes       String?
+  createdAt   DateTime              @default(now())
+
+  set          WorshipSet   @relation("SetPracticeSessions", fields: [setId], references: [id], onDelete: Cascade)
+  activeForSet WorshipSet[] @relation("ActivePracticeSession")
+  rehearsals   Rehearsal[]
+
+  @@index([setId])
+}
+
+model Rehearsal {
+  id                String   @id @default(cuid())
+  setSongId         String?
+  songId            String
+  bpmUsed           Int?
+  summary           String?
+  occurredAt        DateTime @default(now())
+  practiceSessionId String?
+  // Distinct SongSection ids visited while this per-song Rehearsal row was
+  // current during a practice session — appended to by setLivePosition,
+  // never deduped elsewhere, so "sections covered" on the Finish Practice
+  // summary is a real count instead of an estimate.
+  sectionsVisited   String[] @default([])
+
+  setSong         SetSong?            @relation(fields: [setSongId], references: [id], onDelete: SetNull)
+  song            Song                @relation(fields: [songId], references: [id], onDelete: Cascade)
+  practiceSession PracticeSession?    @relation(fields: [practiceSessionId], references: [id], onDelete: SetNull)
   notes   RehearsalNote[]
   checks  RehearsalCheck[]
   arrangementChanges ArrangementChange[]
 
   @@index([songId])
   @@index([setSongId])
+  @@index([practiceSessionId])
 }
 
 model RehearsalNote {

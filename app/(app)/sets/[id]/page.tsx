@@ -17,7 +17,7 @@ import { SetReadiness } from "@/components/setlist/set-readiness";
 import { SetActions } from "@/components/setlist/set-actions";
 import { ServiceProgressPath } from "@/components/dashboard/service-progress-path";
 import { getSetReadiness, getSongFlowStatus, getServiceStages } from "@/lib/songs/readiness";
-import { CalendarDays, PlayCircle } from "lucide-react";
+import { CalendarDays, ClipboardList, Radio } from "lucide-react";
 
 export default async function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -93,8 +93,11 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         }
         action={
           <>
-            <ButtonLink href={`/rehearsal/${set.id}`}>
-                <PlayCircle className="h-4 w-4" aria-hidden /> Start rehearsal
+            <ButtonLink href={`/sets/${set.id}/practice`} variant="outline">
+                <ClipboardList className="h-4 w-4" aria-hidden /> Practice Sessions
+              </ButtonLink>
+            <ButtonLink href={`/sets/${set.id}/live`} variant="outline">
+                <Radio className="h-4 w-4" aria-hidden /> Live Set
               </ButtonLink>
             <SetActions
               setId={set.id}
