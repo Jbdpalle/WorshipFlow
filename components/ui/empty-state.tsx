@@ -10,12 +10,15 @@ export function EmptyState({
   description,
   action,
   className,
+  as: Heading = "h2",
 }: {
   icon?: LucideIcon;
   title: string;
   description?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** Heading level; use h1 when this is the whole page (not found). */
+  as?: "h1" | "h2";
 }) {
   return (
     <div
@@ -25,7 +28,7 @@ export function EmptyState({
       )}
     >
       {Icon && <Icon className="h-8 w-8 text-muted-foreground" aria-hidden />}
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <Heading className="text-lg font-semibold text-foreground">{title}</Heading>
       {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-1">{action}</div>}
     </div>

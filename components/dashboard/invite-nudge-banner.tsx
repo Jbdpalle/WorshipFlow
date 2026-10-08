@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 
 // Shown to leaders at the top of the Dashboard — the invite flow already
 // gives roster members their own login at the right role, but it sits
@@ -20,11 +19,9 @@ export function InviteNudgeBanner({ count }: { count: number }) {
           check My Part and Rehearsal Mode on their own phone.
         </p>
       </div>
-      <Link href="/team">
-        <Button variant="outline" className="shrink-0">
+      <ButtonLink href="/team" variant="outline" className="shrink-0">
           Invite team
-        </Button>
-      </Link>
+        </ButtonLink>
     </section>
   );
 }

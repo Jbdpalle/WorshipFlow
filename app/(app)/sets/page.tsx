@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { SectionHeader } from "@/components/ui/section-header";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { TextLink } from "@/components/ui/text-link";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Plus, ListMusic } from "lucide-react";
 import { EVENT_TYPES } from "@/lib/songs/constants";
 import { getSetsPageData } from "@/lib/dashboard/data";
@@ -37,11 +36,9 @@ export default async function SetsPage({
         label="Sets"
         title={showArchived ? "Archived sets" : "Worship sets & events"}
         action={
-          <Link href="/sets/new">
-            <Button>
+          <ButtonLink href="/sets/new">
               <Plus className="h-4 w-4" aria-hidden /> New event
-            </Button>
-          </Link>
+            </ButtonLink>
         }
       />
 
@@ -81,11 +78,9 @@ export default async function SetsPage({
             title="No worship sets yet"
             description="Create a service to build its setlist, add song flow, assign the team and rehearse, all in one place."
             action={
-              <Link href="/sets/new">
-                <Button size="lg">
+              <ButtonLink href="/sets/new" size="lg">
                   <Plus className="h-4 w-4" aria-hidden /> Create your first set
-                </Button>
-              </Link>
+                </ButtonLink>
             }
           />
         ) : (
@@ -94,9 +89,7 @@ export default async function SetsPage({
             title="No events of this type"
             description="Try another filter, or create a new event."
             action={
-              <Link href="/sets">
-                <Button variant="outline">Show all sets</Button>
-              </Link>
+              <ButtonLink href="/sets" variant="outline">Show all sets</ButtonLink>
             }
           />
         )

@@ -170,7 +170,7 @@ export function NewSetForm() {
 
       <div className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-surface/95 p-4 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none md:bottom-0">
         <div className="mx-auto flex max-w-2xl justify-end">
-          <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={loading || !mounted}>
+          <Button loading={loading} type="submit" size="lg" className="w-full sm:w-auto" disabled={loading || !mounted}>
             {loading ? "Creating…" : "Create Service"}
           </Button>
         </div>

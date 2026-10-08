@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -71,11 +70,9 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
         description={song.artist ?? undefined}
         action={
           <>
-            <Link href={`/songs/${song.id}/chart`}>
-              <Button variant="outline">
+            <ButtonLink href={`/songs/${song.id}/chart`} variant="outline">
                 <BookOpenText className="h-4 w-4" aria-hidden /> View chart
-              </Button>
-            </Link>
+              </ButtonLink>
             <SongDetailsSheet>
               <SongHeaderEditor
                 songId={song.id}

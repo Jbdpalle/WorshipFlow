@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { generatePrepareMeSummary } from "@/lib/actions/prepare";
 
 type ChangeEntry = { id: string; field: string; fromValue: string | null; toValue: string | null };
@@ -70,11 +70,9 @@ export function PrepareMeCard({
             · Everything {memberName} needs before this one.
           </p>
         </div>
-        <Link href={`/rehearsal/${setId}`}>
-          <Button>
+        <ButtonLink href={`/rehearsal/${setId}`}>
             Rehearse
-          </Button>
-        </Link>
+          </ButtonLink>
       </CardHeader>
       <CardContent className="space-y-3">
         {changed.length > 0 ? (
@@ -99,7 +97,7 @@ export function PrepareMeCard({
           {summary ? (
             <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm">{summary}</p>
           ) : (
-            <Button
+            <Button loading={loading}
               type="button"
               variant="outline"
               disabled={loading}

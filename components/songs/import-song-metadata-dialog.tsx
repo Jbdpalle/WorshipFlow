@@ -110,7 +110,7 @@ export function ImportSongMetadataDialog() {
 
             {error && <p className="text-sm text-danger">{error}</p>}
 
-            <Button className="w-full" disabled={!file || importing} onClick={handleImport}>
+            <Button loading={importing} className="w-full" disabled={!file || importing} onClick={handleImport}>
               {importing ? "Importing…" : "Import"}
             </Button>
           </div>

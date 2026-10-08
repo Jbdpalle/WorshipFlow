@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { redirect } from "next/navigation";
 import { Music4, ListMusic, Users2, Mic2, Radio } from "lucide-react";
 import { readSession } from "@/lib/auth/session";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 
 const STEPS = [
   { icon: ListMusic, label: "Plan", body: "Build the set — songs, order, keys, the shape of the service." },
@@ -22,12 +21,8 @@ export default async function RootPage() {
       <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-5">
         <Logo />
         <div className="flex items-center gap-2">
-          <Link href="/login">
-            <Button variant="ghost" size="sm">Log in</Button>
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Create a worship team</Button>
-          </Link>
+          <ButtonLink href="/login" variant="ghost" size="sm">Log in</ButtonLink>
+          <ButtonLink href="/signup" size="sm">Create a worship team</ButtonLink>
         </div>
       </header>
 
@@ -39,12 +34,8 @@ export default async function RootPage() {
           Plan the set. Communicate the vision. Rehearse together.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/signup">
-            <Button size="lg">Create a worship team</Button>
-          </Link>
-          <Link href="/login">
-            <Button variant="outline" size="lg">Log in</Button>
-          </Link>
+          <ButtonLink href="/signup" size="lg">Create a worship team</ButtonLink>
+          <ButtonLink href="/login" variant="outline" size="lg">Log in</ButtonLink>
         </div>
 
         <div className="mt-20 grid gap-6 text-left sm:grid-cols-2 lg:grid-cols-5">

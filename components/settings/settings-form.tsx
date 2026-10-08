@@ -57,7 +57,7 @@ export function SettingsForm({
         />
         <SaveStatus state={error ? "error" : saving ? "saving" : saved ? "saved" : "idle"} errorMessage={error ?? undefined} />
       </div>
-      <Button type="button" variant="secondary" disabled={disabled || saving} onClick={save}>
+      <Button loading={saving} type="button" variant="secondary" disabled={disabled || saving} onClick={save}>
         {saving ? "Saving…" : "Save"}
       </Button>
     </div>

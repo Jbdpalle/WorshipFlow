@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { deleteChurch } from "@/lib/actions/church";
 
 export function DangerZone({ churchName }: { churchName: string }) {
   const router = useRouter();
   const [confirmText, setConfirmText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   const matches = confirmText === churchName;
 
@@ -32,26 +32,26 @@ export function DangerZone({ churchName }: { churchName: string }) {
           placeholder={churchName}
         />
       </div>
-      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <Button
         variant="danger"
         className="h-auto min-h-11 w-full whitespace-normal py-2 sm:w-auto"
-        disabled={!matches || busy}
-        onClick={async () => {
-          if (!confirm(`Permanently delete ${churchName}? This cannot be undone.`)) return;
-          setBusy(true);
-          setError(null);
+        disabled={!matches}
+        onClick={() => setOpen(true)}
+      >
+        Delete {churchName} permanently
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`Permanently delete ${churchName}?`}
+        description="Every set, song, team member and rehearsal goes with it. This cannot be undone."
+        confirmLabel="Yes, delete everything"
+        onConfirm={async () => {
           const result = await deleteChurch(confirmText);
-          if (!result.ok) {
-            setBusy(false);
-            setError(result.error);
-            return;
-          }
+          if (!result.ok) return result.error;
           router.push("/login");
         }}
-      >
-        {busy ? "Deleting…" : `Delete ${churchName} permanently`}
-      </Button>
+      />
     </div>
   );
 }

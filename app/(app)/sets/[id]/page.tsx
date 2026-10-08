@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SetlistBoard } from "@/components/setlist/setlist-board";
 import { ServiceOrderStrip } from "@/components/setlist/service-order-strip";
@@ -94,11 +93,9 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         }
         action={
           <>
-            <Link href={`/rehearsal/${set.id}`}>
-              <Button>
+            <ButtonLink href={`/rehearsal/${set.id}`}>
                 <PlayCircle className="h-4 w-4" aria-hidden /> Start rehearsal
-              </Button>
-            </Link>
+              </ButtonLink>
             <SetActions
               setId={set.id}
               setTitle={set.title}

@@ -6,6 +6,7 @@ import { ShieldX } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import { revokeChurchAccess, setMembershipRole, type ChurchAccessRow } from "@/lib/actions/team";
 
@@ -20,6 +21,7 @@ export function ChurchAccessList({ rows, isAdmin }: { rows: ChurchAccessRow[]; i
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<ChurchAccessRow | null>(null);
 
   if (rows.length === 0) return null;
 
@@ -78,20 +80,7 @@ export function ChurchAccessList({ rows, isAdmin }: { rows: ChurchAccessRow[]; i
                     label={`Revoke ${row.name}'s access`}
                     tone="danger"
                     disabled={pendingId === row.membershipId}
-                    onClick={async () => {
-                      if (!confirm(`Revoke ${row.name}'s access to this church? They won't be able to see it anymore.`)) {
-                        return;
-                      }
-                      setError(null);
-                      setPendingId(row.membershipId);
-                      const result = await revokeChurchAccess(row.membershipId);
-                      setPendingId(null);
-                      if (!result.ok) {
-                        setError(result.error);
-                        return;
-                      }
-                      router.refresh();
-                    }}
+                    onClick={() => setRevokeTarget(row)}
                   >
                     <ShieldX className="h-4 w-4" />
                   </IconButton>
@@ -101,6 +90,22 @@ export function ChurchAccessList({ rows, isAdmin }: { rows: ChurchAccessRow[]; i
           </Card>
         ))}
       </div>
+      <ConfirmDialog
+        open={!!revokeTarget}
+        onClose={() => setRevokeTarget(null)}
+        title={`Revoke ${revokeTarget?.name ?? "this person"}'s access?`}
+        description="They won't be able to log in to this church or see it anymore. Their roster card stays, and you can invite them again later."
+        confirmLabel="Revoke access"
+        onConfirm={async () => {
+          if (!revokeTarget) return;
+          setError(null);
+          setPendingId(revokeTarget.membershipId);
+          const result = await revokeChurchAccess(revokeTarget.membershipId);
+          setPendingId(null);
+          if (!result.ok) return result.error;
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

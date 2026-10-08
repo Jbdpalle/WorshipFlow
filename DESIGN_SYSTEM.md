@@ -94,7 +94,28 @@ All in `components/ui` unless noted. Do not create one-off versions of these.
 - **Rehearsal / Director:** Now, My part, Next on one screen. Director adds Signal and Announce.
 - **Team:** person, musical role ("Plays"), account status and invitation status are separate labelled parts. Account permission lives in Church access.
 
+## States: loading, empty, error, success
+
+Every screen has all four. They use shared pieces so they look and behave the same everywhere.
+
+| State | What the person sees | Built with |
+|---|---|---|
+| **Page loading** | A skeleton shaped like the real page, announced once as "Loading" | `loading.tsx` per route, composed from `PageSkeleton`, `HeaderSkeleton`, `CardSkeleton`, `RowListSkeleton` |
+| **Card / section loading** | A `Skeleton` in the shape of the content | `Skeleton`, `SkeletonLines` |
+| **Action in flight** | The button shows a spinner and its "Saving…" text, and is disabled | `Button loading` |
+| **Inline loading** | "Saving…" then "Saved", or a spinner with a label | `SaveStatus`, `Spinner` |
+| **Empty** | What is missing, why it matters, one next action | `EmptyState` |
+| **Error (a page)** | Plain words, "Try again", a way home, a short reference. The sidebar stays | `app/(app)/error.tsx` + `ErrorState`; public pages use `app/error.tsx`; the root layout uses `app/global-error.tsx` |
+| **Error (an action)** | The reason, next to what failed, announced to screen readers | inline `role="alert"` text, or the error line inside `ConfirmDialog` |
+| **Not found** | "We couldn't find that page" with two ways out | `app/(app)/not-found.tsx`, `app/not-found.tsx` |
+| **Success** | Quiet and visible: "Saved", a status chip, or the new thing appearing. No toasts | `SaveStatus`, `Status` |
+| **Confirm a destructive action** | An in-app dialog naming what will be lost | `ConfirmDialog` (never the browser's built-in popup) |
+
+Rehearsal loading mirrors the real layout (set order, title, Now and Next) so the screen does not jump when the song arrives.
+
 ## Guard rails (enforced by tests)
+
+`tests/route-states.test.ts` fails if a route loses its loading, error or not-found coverage, or a loading screen stops using the shared skeletons. `tests/design-guard.test.ts` also fails on native browser dialogs and on a `<Button>` nested inside a `<Link>` (use `ButtonLink`).
 
 `tests/design-tokens.test.ts` checks light/dark parity and WCAG AA contrast for every pairing. `tests/design-guard.test.ts` fails the build if UI source uses the retired `accent` colour, raw Tailwind palette colours, hard-coded hex colours, pure white/black, or text under 12px.
 
@@ -119,8 +140,11 @@ Not covered by the automated pass, so worth a human check on real devices: Andro
 
 "existing" means the screen still uses its original wording for that state and has not been rewritten into the EmptyState pattern.
 
+## Flow verification
+
+A scripted walk-through (Playwright) signs up as a brand-new team and goes through: empty dashboard, empty library, add a song, add sections and dynamics, edit song details in the drawer, cancel a delete confirmation, add a team member, create an invite link, create a set, add a song to it, assign the team, open Rehearsal and move through it, send a Director announcement, My Part, Roster, change a setting and switch theme, the phone More sheet, and log out. It runs on a phone-sized and a desktop-sized screen against a production build, watching for console errors, failed requests and accessibility violations at each step. Result: every step passes, with zero issues.
+
 ## Known follow-ups
 
-- Songs library and a few dialogs (import, new song, invite) are on the new tokens but keep their original layouts.
-- Loading skeletons exist as components but most screens still render server-side without a loading state.
+- The import dialogs (PDF, theme data, roster) are on the new tokens but keep their original layouts inside the shared `Dialog`.
 - The "Rehearse" tab in the phone bar is not added because rehearsal opens from a specific set.

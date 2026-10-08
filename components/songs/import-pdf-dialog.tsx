@@ -241,7 +241,7 @@ export function ImportPdfDialog() {
 
             {error && <p className="text-sm text-danger">{error}</p>}
 
-            <Button className="w-full" disabled={files.length === 0 || importing} onClick={handleImport}>
+            <Button loading={importing} className="w-full" disabled={files.length === 0 || importing} onClick={handleImport}>
               {importing
                 ? progress && progress.total > 1
                   ? `Importing batch ${progress.done + 1} of ${progress.total}…`

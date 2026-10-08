@@ -95,7 +95,7 @@ export default function LoginPage() {
                 />
               </div>
               {error && <p className="text-sm text-danger">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading || !mounted}>
+              <Button loading={loading} type="submit" className="w-full" disabled={loading || !mounted}>
                 {loading ? "Logging in…" : "Log in"}
               </Button>
             </form>
@@ -105,7 +105,7 @@ export default function LoginPage() {
               <div className="absolute inset-x-0 top-1/2 -z-10 border-t border-border" />
             </div>
 
-            <Button
+            <Button loading={demoLoading}
               type="button"
               variant="outline"
               className="w-full"

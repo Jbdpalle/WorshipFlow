@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Status } from "@/components/ui/status";
 import type { MemberStatus } from "@/lib/dashboard/data";
@@ -49,9 +48,7 @@ export function MemberStatusCard({ status }: { status: MemberStatus | null }) {
       <CardContent className="flex flex-1 flex-col justify-between gap-4">
         {body}
         {showAction && (
-          <Link href="/my-part" className="self-start">
-            <Button variant="outline">View my part</Button>
-          </Link>
+          <ButtonLink href="/my-part" className="self-start" variant="outline">View my part</ButtonLink>
         )}
       </CardContent>
     </Card>

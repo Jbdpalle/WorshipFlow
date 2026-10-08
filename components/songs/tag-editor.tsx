@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { IconButton } from "@/components/ui/icon-button";
 import { addSongTag, removeSongTag } from "@/lib/actions/songs";
 
 export function TagEditor({
@@ -19,12 +19,18 @@ export function TagEditor({
   const router = useRouter();
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className="space-y-2">
+      <p className="label-caps">Tags</p>
+      <div className="flex flex-wrap items-center gap-2">
         {tags.map((tag) => (
-          <Badge key={tag.id} variant="outline" className="gap-1 pr-1">
+          <span
+            key={tag.id}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-surface pl-3 text-sm font-semibold"
+          >
             {tag.label}
             <button
+              type="button"
+              aria-label={`Remove tag ${tag.label}`}
               onClick={async () => {
                 setError(null);
                 const result = await removeSongTag(tag.id);
@@ -34,11 +40,11 @@ export function TagEditor({
                 }
                 router.refresh();
               }}
-              className="rounded-full hover:bg-danger/20"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-danger/15 hover:text-danger"
             >
-              <X className="h-3 w-3" />
+              <X className="h-4 w-4" aria-hidden />
             </button>
-          </Badge>
+          </span>
         ))}
         <form
           onSubmit={async (e) => {
@@ -56,17 +62,22 @@ export function TagEditor({
           className="flex items-center gap-1"
         >
           <Input
+            aria-label="New tag"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Add tag"
-            className="h-7 w-24 text-xs"
+            className="w-32"
           />
-          <button type="submit" className="rounded-md p-1 text-muted-foreground hover:bg-surface-muted">
-            <Plus className="h-3.5 w-3.5" />
-          </button>
+          <IconButton type="submit" label="Add tag">
+            <Plus className="h-4 w-4" />
+          </IconButton>
         </form>
       </div>
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -68,7 +68,7 @@ export function DemoConversionForm({ defaultName }: { defaultName: string }) {
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading || !mounted}>
+          <Button loading={loading} type="submit" className="w-full" disabled={loading || !mounted}>
             {loading ? "Creating your account…" : "Create Free Account"}
           </Button>
         </form>

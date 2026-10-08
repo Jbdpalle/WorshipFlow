@@ -4,36 +4,31 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { deleteSong } from "@/lib/actions/songs";
 
 export function DeleteSongButton({ songId, songTitle }: { songId: string; songTitle: string }) {
   const router = useRouter();
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleDelete() {
-    if (!window.confirm(`Delete "${songTitle}"? This removes its arrangement, notes, and rehearsal history too — it can't be undone.`)) {
-      return;
-    }
-    setDeleting(true);
-    setError(null);
-    const result = await deleteSong(songId);
-    if (!result.ok) {
-      setError(result.error);
-      setDeleting(false);
-      return;
-    }
-    router.push("/songs");
-    router.refresh();
-  }
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Button variant="ghost" size="sm" onClick={handleDelete} disabled={deleting}>
-        <Trash2 className="h-4 w-4 text-danger" />
-        {deleting ? "Deleting…" : "Delete"}
+    <>
+      <Button variant="outline" className="text-danger" onClick={() => setOpen(true)}>
+        <Trash2 className="h-4 w-4" aria-hidden /> Delete song
       </Button>
-      {error && <p className="text-xs text-danger">{error}</p>}
-    </div>
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`Delete "${songTitle}"?`}
+        description="This removes its arrangement, notes and rehearsal history too. It can't be undone. The song is also removed from any set it is in."
+        confirmLabel="Delete song"
+        onConfirm={async () => {
+          const result = await deleteSong(songId);
+          if (!result.ok) return result.error;
+          router.push("/songs");
+          router.refresh();
+        }}
+      />
+    </>
   );
 }

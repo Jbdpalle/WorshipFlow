@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MyPartCard } from "@/components/team/my-part-card";
@@ -136,9 +135,7 @@ export default async function MyPartPage({
           title={isOwnView ? "No songs assigned to you yet" : `No songs assigned to ${activeMember?.name ?? "this person"} yet`}
           description="A worship leader assigns people to a service from its Worship Team card, or to one song from that song's details. Once you're assigned, your part appears here automatically."
           action={
-            <Link href="/sets">
-              <Button variant="outline">View services</Button>
-            </Link>
+            <ButtonLink href="/sets" variant="outline">View services</ButtonLink>
           }
         />
       ) : (

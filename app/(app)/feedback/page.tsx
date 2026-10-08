@@ -3,6 +3,9 @@ import { prisma } from "@/lib/db/prisma";
 import { FeedbackForm } from "@/components/feedback/feedback-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SectionHeader } from "@/components/ui/section-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { MessageSquare } from "lucide-react";
 
 export default async function FeedbackPage() {
   const { user } = await requireUser();
@@ -24,31 +27,31 @@ export default async function FeedbackPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Feedback</h1>
-        <p className="text-sm text-muted-foreground">
-          Testing WorshipFlow with your team? Bugs, ideas, and general thoughts all help.
-        </p>
-      </div>
+      <SectionHeader
+        level={1}
+        label="Feedback"
+        title="Tell us what you think"
+        description="Testing WorshipFlow with your team? Bugs, ideas, and general thoughts all help."
+      />
       <FeedbackForm />
 
       {isAdmin && (
         <div className="space-y-3">
-          <h2 className="font-semibold">All Feedback (admin)</h2>
+          <h2 className="text-xl font-bold">All feedback (admin)</h2>
           {inbox.length === 0 && (
-            <p className="text-sm text-muted-foreground">No feedback submitted yet.</p>
+            <EmptyState icon={MessageSquare} title="No feedback yet" description="Messages your team sends from this page will show up here." />
           )}
           {inbox.map((f) => (
             <Card key={f.id}>
               <CardHeader className="flex items-center justify-between gap-3 pb-2">
                 <Badge variant={f.type === "bug" ? "danger" : "outline"}>{f.type}</Badge>
-                <span className="text-xs text-muted-foreground">
+                <span className="tnum text-sm text-muted-foreground">
                   {new Date(f.createdAt).toLocaleString()}
                 </span>
               </CardHeader>
               <CardContent className="pt-0">
                 <p className="text-sm">{f.message}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {f.user?.email ?? "Anonymous"} {f.page && `· ${f.page}`}
                 </p>
               </CardContent>

@@ -47,16 +47,17 @@ export function FeedbackForm() {
     <Card>
       <CardContent className="space-y-4 pt-4">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">How easy was this?</label>
-          <p className="text-xs text-muted-foreground">Optional — skip if you just have a message below.</p>
-          <div className="flex flex-wrap gap-1.5">
+          <p id="rating-label" className="text-sm font-semibold">How easy was this?</p>
+          <p className="text-sm text-muted-foreground">Optional. Skip if you just have a message below.</p>
+          <div role="group" aria-labelledby="rating-label" className="flex flex-wrap gap-2">
             {RATINGS.map((r) => (
               <button
                 key={r.value}
                 type="button"
+                aria-pressed={rating === r.value}
                 onClick={() => setRating((prev) => (prev === r.value ? null : r.value))}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                  "tap-target rounded-full border px-4 text-sm font-semibold transition-colors",
                   rating === r.value
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-surface-muted text-foreground hover:bg-border",
@@ -68,8 +69,8 @@ export function FeedbackForm() {
           </div>
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Type</label>
-          <Select value={type} onChange={(e) => setType(e.target.value)}>
+          <label htmlFor="feedback-type" className="text-sm font-semibold">Type</label>
+          <Select id="feedback-type" value={type} onChange={(e) => setType(e.target.value)}>
             {FEEDBACK_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
@@ -78,16 +79,21 @@ export function FeedbackForm() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Message</label>
+          <label htmlFor="feedback-message" className="text-sm font-semibold">Message</label>
           <Textarea
+            id="feedback-message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={5}
             placeholder="What happened, what you expected, or what would help your team…"
           />
         </div>
-        {error && <p className="text-sm text-danger">{error}</p>}
-        <Button
+        {error && (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <Button loading={sending}
           disabled={sending || (!message.trim() && !rating)}
           onClick={async () => {
             setSending(true);

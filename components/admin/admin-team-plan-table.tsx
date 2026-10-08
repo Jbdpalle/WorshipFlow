@@ -23,7 +23,7 @@ function PlanRow({ team }: { team: AdminTeamRow }) {
           <p className="truncate font-medium text-foreground">
             {team.churchName} <span className="text-muted-foreground">/ {team.name}</span>
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Owner: {team.ownerEmail} · {team.memberCount} member{team.memberCount === 1 ? "" : "s"} ·{" "}
             {team.activeSetCount} active set{team.activeSetCount === 1 ? "" : "s"}
           </p>
@@ -33,7 +33,8 @@ function PlanRow({ team }: { team: AdminTeamRow }) {
           <Select
             value={team.plan}
             disabled={saving}
-            className="h-8 w-32 text-xs"
+            className="h-11 w-36 text-sm"
+            aria-label={`Plan for ${team.name}`}
             onChange={async (e) => {
               setSaving(true);
               setError(null);
@@ -53,7 +54,7 @@ function PlanRow({ team }: { team: AdminTeamRow }) {
             ))}
           </Select>
         </div>
-        {error && <p className="w-full text-xs text-danger">{error}</p>}
+        {error && <p role="alert" className="w-full text-sm text-danger">{error}</p>}
       </CardContent>
     </Card>
   );

@@ -583,7 +583,7 @@ function FocusedSectionEditor({
           </h2>
           {hasPreviousSection && (
             <Tooltip content="Copy every direction from the previous section onto this one, then just change what's different">
-              <Button
+              <Button loading={copyingPrevious}
                 type="button"
                 size="sm"
                 variant="ghost"

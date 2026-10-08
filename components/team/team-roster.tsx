@@ -305,7 +305,7 @@ export function TeamRoster({
             onChange={(e) => setForm((f) => ({ ...f, instrument: e.target.value }))}
           />
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full" disabled={saving}>
+          <Button loading={saving} type="submit" className="w-full" disabled={saving}>
             {saving ? "Adding…" : "Add"}
           </Button>
         </form>

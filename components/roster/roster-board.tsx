@@ -170,7 +170,7 @@ function DateCard({
         <SetTeam setId={entry.id} members={entry.setTeamMembers} teamMembers={members} isLeader={isLeader} />
         {isLeader && entry.setTeamMembers.length > 0 && nextEntryId && (
           <div>
-            <Button
+            <Button loading={copying}
               variant="outline"
               disabled={copying}
               onClick={async () => {

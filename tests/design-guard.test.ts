@@ -48,12 +48,20 @@ describe("design guard", () => {
     // Generated icons and document metadata are the only places a literal
     // hex is allowed (they cannot read CSS variables).
     const allowed = (file: string, text: string) =>
-      /^app\/(layout|manifest)\.tsx?$/.test(file) || /icon/.test(file) || text.includes("ImageResponse");
+      /^app\/(layout|manifest|global-error)\.tsx?$/.test(file) || /icon/.test(file) || text.includes("ImageResponse");
     expect(offenders(/#[0-9a-fA-F]{6}\b/, allowed)).toEqual([]);
   });
 
   it("uses no pure white or black fills/text (tokens carry the contrast)", () => {
     expect(offenders(/\b(?:bg|text|border)-(?:white|black)(?![/\w-])/)).toEqual([]);
+  });
+
+  it("uses no native browser dialogs (use ConfirmDialog / Dialog)", () => {
+    expect(offenders(/\b(?:window\.)?(?:confirm|alert|prompt)\(/, (file) => file.includes("install-prompt"))).toEqual([]);
+  });
+
+  it("never nests a Button inside a Link (use ButtonLink: one element, one tab stop)", () => {
+    expect(offenders(/<Link\b[^<>]*>\s*<Button\b/)).toEqual([]);
   });
 
   it("sets no text below 12px", () => {

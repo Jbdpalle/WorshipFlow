@@ -149,7 +149,7 @@ export function InviteDialog({
               </Select>
             </div>
             {error && <p className="text-sm text-danger">{error}</p>}
-            <Button type="submit" className="w-full" disabled={sending}>
+            <Button loading={sending} type="submit" className="w-full" disabled={sending}>
               <Mail className="h-4 w-4" /> {sending ? "Creating invite…" : "Create invite link"}
             </Button>
           </form>

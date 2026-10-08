@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { ArrowRight, CalendarHeart } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { DashboardSet } from "@/lib/dashboard/data";
@@ -31,9 +30,7 @@ export function NextSundayHero({
         }
         action={
           isLeaderView ? (
-            <Link href="/sets/new">
-              <Button size="lg">Schedule service</Button>
-            </Link>
+            <ButtonLink href="/sets/new" size="lg">Schedule service</ButtonLink>
           ) : undefined
         }
         className="py-14"
@@ -61,18 +58,14 @@ export function NextSundayHero({
           <p className="text-sm text-muted-foreground">{meta.join(" · ")}</p>
         </div>
         {isLeaderView ? (
-          <Link href={allComplete ? `/rehearsal/${nextSunday.id}` : nextIncomplete!.href}>
-            <Button size="lg">
+          <ButtonLink href={allComplete ? `/rehearsal/${nextSunday.id}` : nextIncomplete!.href} size="lg">
               {allComplete ? "Start rehearsal" : "Continue planning"}
               <ArrowRight className="h-4 w-4" aria-hidden />
-            </Button>
-          </Link>
+            </ButtonLink>
         ) : (
-          <Link href="/my-part">
-            <Button size="lg">
+          <ButtonLink href="/my-part" size="lg">
               Open my part <ArrowRight className="h-4 w-4" aria-hidden />
-            </Button>
-          </Link>
+            </ButtonLink>
         )}
       </div>
 

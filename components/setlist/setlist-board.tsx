@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ROLES, CHROMATIC_KEYS } from "@/lib/songs/constants";
 import type { SongFlowStatus } from "@/lib/songs/readiness";
@@ -348,19 +349,24 @@ function SetSongCard({
 
             {detailsOpen && (
               <div className="space-y-3 border-t border-border pt-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Per-song assignment override (optional — the set&apos;s team covers most cases)
-                  </label>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                <div className="space-y-2">
+                  <p className="label-caps">Per-song assignment override</p>
+                  <p className="text-sm text-muted-foreground">
+                    Optional. The set&apos;s team covers most cases.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
                     {item.assignments.map((a) =>
                       isLeader ? (
-                        <Badge key={a.id} variant="outline" className="gap-1 pr-1">
+                        <div
+                          key={a.id}
+                          className="flex min-h-11 max-w-full flex-wrap items-center gap-2 rounded-lg border border-border bg-surface pl-3 pr-1"
+                        >
+                          <span className="text-sm font-bold">{a.teamMember.name}</span>
                           <select
                             value={a.role}
-                            aria-label={`Change ${a.teamMember.name}'s role for this song — picked the wrong instrument? fix it here`}
+                            aria-label={`Change ${a.teamMember.name}'s role for this song`}
                             title="Wrong instrument? Change it here instead of removing and re-adding."
-                            className="bg-transparent text-xs font-medium focus:outline-none"
+                            className="h-9 rounded-md bg-surface-muted px-2 text-sm font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-ring"
                             onChange={async (e) => {
                               const newRole = e.target.value;
                               if (newRole === a.role) return;
@@ -378,16 +384,16 @@ function SetSongCard({
                               </option>
                             ))}
                           </select>
-                          : {a.teamMember.name}
-                          <button
+                          <IconButton
+                            label={`Remove ${a.teamMember.name} from this song`}
+                            tone="danger"
                             onClick={async () => {
                               if (showErrorIfAny(await removeAssignment(a.id))) router.refresh();
                             }}
-                            className="ml-1 rounded-full hover:bg-danger/20"
                           >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
+                            <X className="h-4 w-4" />
+                          </IconButton>
+                        </div>
                       ) : (
                         <Badge key={a.id} variant="outline">
                           {a.role}: {a.teamMember.name}
@@ -395,11 +401,12 @@ function SetSongCard({
                       ),
                     )}
                     {isLeader && teamMembers.length > 0 && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Select
                           value={assignRole}
                           onChange={(e) => setAssignRole(e.target.value)}
-                          className="h-7 w-32 text-xs"
+                          aria-label="Role for this song"
+                          className="h-11 w-44 text-sm"
                         >
                           {ROLES.map((r) => (
                             <option key={r} value={r}>
@@ -410,7 +417,8 @@ function SetSongCard({
                         <Select
                           value={assignMember}
                           onChange={(e) => setAssignMember(e.target.value)}
-                          className="h-7 w-28 text-xs"
+                          aria-label="Person for this song"
+                          className="h-11 w-44 text-sm"
                         >
                           {teamMembers.map((m) => (
                             <option key={m.id} value={m.id}>
@@ -420,9 +428,7 @@ function SetSongCard({
                         </Select>
                         <Button
                           type="button"
-                          size="sm"
                           variant="secondary"
-                          className="h-7 px-2 text-xs"
                           onClick={async () => {
                             if (!assignMember) return;
                             if (showErrorIfAny(await assignMemberToSetSong(item.id, assignMember, assignRole))) {
@@ -438,7 +444,11 @@ function SetSongCard({
                 </div>
               </div>
             )}
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
           </div>
         </div>
       </Card>

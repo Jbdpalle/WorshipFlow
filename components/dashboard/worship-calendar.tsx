@@ -2,9 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -215,17 +214,13 @@ export function WorshipCalendar({
                   emptyActionLabel="Assign team"
                 />
                 <div className="flex flex-wrap gap-2">
-                  <Link href={`/sets/${selectedEntry.setId}`}>
-                    <Button variant="outline">
+                  <ButtonLink href={`/sets/${selectedEntry.setId}`} variant="outline">
                       View service
-                    </Button>
-                  </Link>
+                    </ButtonLink>
                   {isLeaderView && selectedEntry.hasRoster && (
-                    <Link href={`/sets/${selectedEntry.setId}#team`}>
-                      <Button variant="outline">
+                    <ButtonLink href={`/sets/${selectedEntry.setId}#team`} variant="outline">
                         Edit roster
-                      </Button>
-                    </Link>
+                      </ButtonLink>
                   )}
                 </div>
               </div>
@@ -233,7 +228,7 @@ export function WorshipCalendar({
               <div className="mt-2 space-y-2">
                 <p className="text-sm text-muted-foreground">No service scheduled.</p>
                 {isLeaderView && (
-                  <Button disabled={creating} onClick={handleCreateService}>
+                  <Button loading={creating} disabled={creating} onClick={handleCreateService}>
                     {creating ? "Creating…" : "Schedule service"}
                   </Button>
                 )}
