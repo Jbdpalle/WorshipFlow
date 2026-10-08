@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ChurchRole } from "@prisma/client";
-import { Plus, Trash2, UserRound, X } from "lucide-react";
+import { Pencil, Plus, Trash2, UserRound, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,81 @@ function MemberInviteStatus({
   );
 }
 
+// Two TeamMember rows can end up with the same real person's name, most
+// often from a roster import that didn't exactly match an existing row
+// (see lib/songs/member-name.ts) — renaming one here to match the other
+// exactly (same case/whitespace) is what lets them merge everywhere a
+// member-name picker renders. Nickname/spelling fixes ("kk" → "Karthik")
+// need the same treatment.
+function MemberNameEditor({ member, isLeader }: { member: Member; isLeader: boolean }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(member.name);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!isLeader) {
+    return <p className="font-medium">{member.name}</p>;
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setValue(member.name);
+          setError(null);
+          setEditing(true);
+        }}
+        className="group flex items-center gap-1.5 text-left"
+        aria-label={`Rename ${member.name}`}
+      >
+        <span className="font-medium">{member.name}</span>
+        <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/70" />
+      </button>
+    );
+  }
+
+  async function save() {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === member.name) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const result = await updateTeamMember(member.id, { name: trimmed });
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setEditing(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <Input
+          autoFocus
+          aria-label={`Edit ${member.name}'s name`}
+          value={value}
+          disabled={saving}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={save}
+          className="h-7 px-1.5 text-sm font-medium"
+        />
+      </div>
+      {error && <p className="text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
 export function TeamRoster({
   members,
   pendingInvites,
@@ -160,7 +235,7 @@ export function TeamRoster({
                 <UserRound className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{m.name}</p>
+                <MemberNameEditor member={m} isLeader={isLeader} />
                 {isLeader ? (
                   <Tooltip content="Their usual role on the roster — not a per-service assignment. Picked the wrong instrument? Change it here instead of removing and re-adding.">
                     <select
