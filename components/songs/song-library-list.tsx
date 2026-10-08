@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Sparkles, PlayCircle, Music2 } from "lucide-react";
+import { Library, Music2, PlayCircle, Search, SearchX, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { loadSampleData } from "@/lib/actions/sample-data";
+import { cn } from "@/lib/utils/cn";
 
 type LibrarySong = {
   id: string;
@@ -24,10 +26,15 @@ type LibrarySong = {
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
+// The library as a binder index: find a song by search, key, theme or first
+// letter, then read one scannable row per song (title, artist, key, tempo,
+// theme). The whole row opens the song; reference links sit on top of it.
 export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  const [keyFilter, setKeyFilter] = useState("");
+  const [themeFilter, setThemeFilter] = useState("");
   const [loadingSample, setLoadingSample] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
 
@@ -40,43 +47,46 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
     return set;
   }, [songs]);
 
+  const keys = useMemo(
+    () => [...new Set(songs.map((s) => s.key).filter((k): k is string => !!k))].sort(),
+    [songs],
+  );
+  const themes = useMemo(
+    () => [...new Set(songs.map((s) => s.themeCategory).filter((t): t is string => !!t))].sort(),
+    [songs],
+  );
+
   const filtered = useMemo(() => {
-    if (activeLetter) {
-      return songs.filter((s) => s.title.trim().toUpperCase().startsWith(activeLetter));
-    }
     const q = query.toLowerCase().trim();
-    if (!q) return songs;
-    return songs.filter((s) =>
-      [s.title, s.artist, s.themeCategory, ...s.tags.map((t) => t.label)]
+    return songs.filter((s) => {
+      if (activeLetter && !s.title.trim().toUpperCase().startsWith(activeLetter)) return false;
+      if (keyFilter && s.key !== keyFilter) return false;
+      if (themeFilter && s.themeCategory !== themeFilter) return false;
+      if (!q || activeLetter) return true;
+      return [s.title, s.artist, s.themeCategory, ...s.tags.map((t) => t.label)]
         .filter(Boolean)
-        .some((f) => f!.toLowerCase().includes(q)),
-    );
-  }, [songs, query, activeLetter]);
+        .some((f) => f!.toLowerCase().includes(q));
+    });
+  }, [songs, query, activeLetter, keyFilter, themeFilter]);
 
-  function handleQueryChange(value: string) {
-    setQuery(value);
-    if (value) setActiveLetter(null);
-  }
+  const filtering = !!(query || activeLetter || keyFilter || themeFilter);
 
-  function handleLetterClick(letter: string) {
+  function clearFilters() {
     setQuery("");
-    setActiveLetter((prev) => (prev === letter ? null : letter));
+    setActiveLetter(null);
+    setKeyFilter("");
+    setThemeFilter("");
   }
 
   if (songs.length === 0) {
     return (
-      <Card>
-        <CardContent className="space-y-3 py-10 text-center">
-          <p className="text-muted-foreground">
-            No songs yet — add your first one above, or explore with sample songs and a sample
-            roster first.
-          </p>
-          {sampleError && <p className="text-sm text-danger">{sampleError}</p>}
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={loadingSample}
-            onClick={async () => {
+      <EmptyState
+        icon={Library}
+        title="Your song library is empty"
+        description="Songs are the heart of every set. Add your first song, import from a PDF, or explore with sample songs and a sample roster first."
+        action={
+          <div className="space-y-2">
+            <Button type="button" variant="outline" loading={loadingSample} onClick={async () => {
               setLoadingSample(true);
               setSampleError(null);
               const result = await loadSampleData();
@@ -86,109 +96,189 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
                 return;
               }
               router.refresh();
-            }}
-          >
-            <Sparkles className="h-4 w-4" /> {loadingSample ? "Loading…" : "Load sample songs to explore"}
-          </Button>
-        </CardContent>
-      </Card>
+            }}>
+              <Sparkles className="h-4 w-4" aria-hidden /> {loadingSample ? "Loading sample songs…" : "Load sample songs to explore"}
+            </Button>
+            {sampleError && (
+              <p role="alert" className="text-sm text-danger">
+                {sampleError}
+              </p>
+            )}
+          </div>
+        }
+        className="py-14"
+      />
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder="Search title, artist, theme, tags, scripture…"
-          className="pl-9"
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 basis-64 sm:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            type="search"
+            aria-label="Search songs"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (e.target.value) setActiveLetter(null);
+            }}
+            placeholder="Search title, artist, theme, tags…"
+            className="pl-9"
+          />
+        </div>
+        {keys.length > 0 && (
+          <Select
+            aria-label="Filter by key"
+            value={keyFilter}
+            onChange={(e) => setKeyFilter(e.target.value)}
+            className="w-32"
+          >
+            <option value="">All keys</option>
+            {keys.map((k) => (
+              <option key={k} value={k}>
+                Key {k}
+              </option>
+            ))}
+          </Select>
+        )}
+        {themes.length > 0 && (
+          <Select
+            aria-label="Filter by theme"
+            value={themeFilter}
+            onChange={(e) => setThemeFilter(e.target.value)}
+            className="w-44"
+          >
+            <option value="">All themes</option>
+            {themes.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        )}
+        {filtering && (
+          <Button type="button" variant="ghost" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
       </div>
 
-      <div className="flex flex-wrap gap-1">
-        {ALPHABET.map((letter) => {
-          const hasMatch = availableLetters.has(letter);
-          const active = activeLetter === letter;
-          return (
-            <button
-              key={letter}
-              type="button"
-              disabled={!hasMatch}
-              onClick={() => handleLetterClick(letter)}
-              className={`flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors ${
-                active
-                  ? "bg-accent text-accent-foreground"
-                  : hasMatch
-                    ? "bg-surface-muted text-foreground hover:bg-surface-muted/70"
-                    : "text-muted-foreground/30"
-              }`}
-            >
-              {letter}
-            </button>
-          );
-        })}
-      </div>
+      <nav aria-label="Jump to letter" className="-mx-1 overflow-x-auto px-1 pb-1">
+        <ul className="flex w-max gap-1 lg:w-auto lg:flex-wrap">
+          {ALPHABET.map((letter) => {
+            const hasMatch = availableLetters.has(letter);
+            const active = activeLetter === letter;
+            return (
+              <li key={letter}>
+                <button
+                  type="button"
+                  disabled={!hasMatch}
+                  aria-pressed={active}
+                  aria-label={`Songs starting with ${letter}`}
+                  onClick={() => {
+                    setQuery("");
+                    setActiveLetter((prev) => (prev === letter ? null : letter));
+                  }}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold transition-colors duration-[var(--duration-fast)]",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : hasMatch
+                        ? "bg-surface-muted text-foreground hover:bg-border"
+                        : "text-muted-foreground opacity-50",
+                  )}
+                >
+                  {letter}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <p role="status" className="tnum text-sm text-muted-foreground">
+        {filtering
+          ? `${filtered.length} of ${songs.length} songs`
+          : `${songs.length} ${songs.length === 1 ? "song" : "songs"}, A to Z`}
+      </p>
 
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            {activeLetter ? `No songs start with "${activeLetter}".` : `No songs match "${query}".`}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={SearchX}
+          title="No songs match"
+          description={
+            activeLetter
+              ? `No songs start with "${activeLetter}" with the current filters.`
+              : "Try a different search, or clear the filters to see every song."
+          }
+          action={
+            <Button variant="outline" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          }
+        />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
           {filtered.map((song) => (
-            <Link key={song.id} href={`/songs/${song.id}`}>
-              <Card className="h-full transition-shadow hover:shadow-md">
-                <CardContent className="space-y-2 pt-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold">{song.title}</h3>
-                    {(song.youtubeUrl || song.spotifyUrl) && (
-                      <div className="flex shrink-0 items-center gap-1">
-                        {song.youtubeUrl && (
-                          <button
-                            type="button"
-                            aria-label="Open YouTube reference"
-                            className="rounded-md p-1 text-muted-foreground hover:bg-surface-muted hover:text-foreground"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              window.open(song.youtubeUrl!, "_blank", "noopener,noreferrer");
-                            }}
-                          >
-                            <PlayCircle className="h-4 w-4" />
-                          </button>
-                        )}
-                        {song.spotifyUrl && (
-                          <button
-                            type="button"
-                            aria-label="Open Spotify reference"
-                            className="rounded-md p-1 text-muted-foreground hover:bg-surface-muted hover:text-foreground"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              window.open(song.spotifyUrl!, "_blank", "noopener,noreferrer");
-                            }}
-                          >
-                            <Music2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {song.artist && <p className="text-xs text-muted-foreground">{song.artist}</p>}
-                  <div className="flex flex-wrap gap-1.5">
-                    {song.key && <Badge variant="outline">Key {song.key}</Badge>}
-                    {song.bpm && <Badge variant="outline">{song.bpm} BPM</Badge>}
-                    {song.themeCategory && <Badge variant="accent">{song.themeCategory}</Badge>}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <li
+              key={song.id}
+              className="relative flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 transition-colors duration-[var(--duration-fast)] hover:bg-surface-muted"
+            >
+              <div className="min-w-0 flex-1 basis-56">
+                <h2 className="truncate text-base font-bold">
+                  <Link
+                    href={`/songs/${song.id}`}
+                    className="inline-flex min-h-11 max-w-full items-center truncate after:absolute after:inset-0 focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring"
+                  >
+                    {song.title}
+                  </Link>
+                </h2>
+                {song.artist && <p className="truncate text-sm text-muted-foreground">{song.artist}</p>}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {song.key && (
+                  <Badge variant="musical" className="tnum">
+                    Key {song.key}
+                  </Badge>
+                )}
+                {song.bpm && (
+                  <Badge variant="musical" className="tnum">
+                    {song.bpm} BPM
+                  </Badge>
+                )}
+                {song.themeCategory && <Badge variant="outline">{song.themeCategory}</Badge>}
+              </div>
+              {(song.youtubeUrl || song.spotifyUrl) && (
+                <div className="relative z-10 flex items-center">
+                  {song.youtubeUrl && (
+                    <a
+                      href={song.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open YouTube reference for ${song.title}`}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface hover:text-foreground"
+                    >
+                      <PlayCircle className="h-5 w-5" aria-hidden />
+                    </a>
+                  )}
+                  {song.spotifyUrl && (
+                    <a
+                      href={song.spotifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open Spotify reference for ${song.title}`}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface hover:text-foreground"
+                    >
+                      <Music2 className="h-5 w-5" aria-hidden />
+                    </a>
+                  )}
+                </div>
+              )}
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

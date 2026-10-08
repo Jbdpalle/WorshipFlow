@@ -51,7 +51,7 @@ export default async function RehearsalPage({ params }: { params: Promise<{ setI
   const isLeaderView = membershipRole !== "MEMBER";
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="mx-auto w-full max-w-6xl">
       <RehearsalMode
         setId={set.id}
         setTitle={set.title}

@@ -1,8 +1,10 @@
 import { requireUser } from "@/lib/auth/guard";
 import { getDashboardData, getCalendarMonthData } from "@/lib/dashboard/data";
+import { SectionHeader } from "@/components/ui/section-header";
 import { NextSundayHero } from "@/components/dashboard/next-sunday-hero";
-import { FollowingSundayCard } from "@/components/dashboard/following-sunday-card";
-import { ThisWeekList } from "@/components/dashboard/this-week-list";
+import { ServiceSetCard } from "@/components/dashboard/service-set-card";
+import { ServiceTeamCard } from "@/components/dashboard/service-team-card";
+import { ComingUpCard } from "@/components/dashboard/coming-up-card";
 import { NeedsAttentionList } from "@/components/dashboard/needs-attention-list";
 import { MemberStatusCard } from "@/components/dashboard/member-status-card";
 import { InviteNudgeBanner } from "@/components/dashboard/invite-nudge-banner";
@@ -15,6 +17,9 @@ function greeting() {
   return "Good evening";
 }
 
+// "What do I need to know right now?" Order of importance: the next
+// service, then its set / team / what needs attention (or, for a
+// musician, their own part), then what comes after.
 export default async function DashboardPage() {
   const { user, team, membershipRole } = await requireUser();
   const today = new Date();
@@ -22,39 +27,55 @@ export default async function DashboardPage() {
     getDashboardData(team.id, user.id, membershipRole),
     getCalendarMonthData(team.id, today.getFullYear(), today.getMonth()),
   ]);
+  const next = data.nextSunday;
+  const hasComingUp = !!data.followingSunday || data.thisWeek.length > 0;
+  const calendar = (
+    <WorshipCalendar
+      initialYear={today.getFullYear()}
+      initialMonth={today.getMonth()}
+      initialEntries={calendarEntries}
+      isLeaderView={data.isLeaderView}
+    />
+  );
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold text-foreground">
-        {greeting()}, {user.name.split(" ")[0]}
-      </h1>
+      <SectionHeader
+        level={1}
+        label={today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+        title={`${greeting()}, ${user.name.split(" ")[0]}`}
+      />
 
       <InviteNudgeBanner count={data.uninvitedMemberCount} />
 
-      <NextSundayHero nextSunday={data.nextSunday} isLeaderView={data.isLeaderView} />
+      <NextSundayHero nextSunday={next} isLeaderView={data.isLeaderView} />
 
-      {!data.isLeaderView && <MemberStatusCard status={data.memberStatus} />}
-
-      <div className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Calendar &amp; attention
-        </h2>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-4">
-            <FollowingSundayCard followingSunday={data.followingSunday} isLeaderView={data.isLeaderView} />
-            <ThisWeekList items={data.thisWeek} />
-            {data.isLeaderView && <NeedsAttentionList items={data.needsAttention} />}
-          </div>
-          <div className="space-y-4">
-            <WorshipCalendar
-              initialYear={today.getFullYear()}
-              initialMonth={today.getMonth()}
-              initialEntries={calendarEntries}
-              isLeaderView={data.isLeaderView}
-            />
+      {next && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <ServiceSetCard set={next} isLeaderView={data.isLeaderView} />
+          <ServiceTeamCard set={next} isLeaderView={data.isLeaderView} />
+          <div className="md:col-span-2 lg:col-span-1">
+            {data.isLeaderView ? (
+              <NeedsAttentionList items={data.needsAttention} />
+            ) : (
+              <MemberStatusCard status={data.memberStatus} />
+            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {!next && !data.isLeaderView && <MemberStatusCard status={data.memberStatus} />}
+
+      {hasComingUp ? (
+        <div className="grid items-start gap-4 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <ComingUpCard following={data.followingSunday} thisWeek={data.thisWeek} />
+          </div>
+          <div className="lg:col-span-3">{calendar}</div>
+        </div>
+      ) : (
+        calendar
+      )}
     </div>
   );
 }

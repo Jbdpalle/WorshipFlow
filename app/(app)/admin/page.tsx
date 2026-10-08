@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/guard";
 import { isSuperAdmin } from "@/lib/auth/super-admin";
 import { listAllTeamsForAdmin } from "@/lib/actions/plan";
+import { SectionHeader } from "@/components/ui/section-header";
 import { AdminTeamPlanTable } from "@/components/admin/admin-team-plan-table";
 
 // Not linked from any nav — the two accounts in lib/auth/super-admin.ts
@@ -17,14 +18,12 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Plan Administration</h1>
-        <p className="text-sm text-muted-foreground">
-          Beta is running with every team unrestricted (see BETA_ALL_TEAMS_UNRESTRICTED in
-          lib/plans/limits.ts) — changing a plan here has no effect on anyone&apos;s limits yet.
-          This just sets the field ahead of when pricing goes live.
-        </p>
-      </div>
+      <SectionHeader
+        level={1}
+        label="Admin"
+        title="Plan administration"
+        description="Beta is running with every team unrestricted (see BETA_ALL_TEAMS_UNRESTRICTED in lib/plans/limits.ts), so changing a plan here has no effect on anyone's limits yet. This only sets the field ahead of when pricing goes live."
+      />
       <AdminTeamPlanTable teams={teams} />
     </div>
   );

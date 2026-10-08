@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Tags } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { THEME_CATEGORIES } from "@/lib/songs/constants";
 import { setSongThemeCategories } from "@/lib/actions/songs";
 import { cn } from "@/lib/utils/cn";
@@ -38,9 +37,9 @@ export function ThemeCategoryPicker({
 
   return (
     <div className="space-y-1.5">
-      <Label className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Tags className="h-3.5 w-3.5" /> Theme categories (2-5 recommended)
-      </Label>
+      <p className="flex items-center gap-1.5 text-sm font-semibold">
+        <Tags className="h-4 w-4" aria-hidden /> Theme categories (2 to 5 recommended)
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {THEME_CATEGORIES.map((category) => {
           const active = selected.includes(category.label);
@@ -54,7 +53,7 @@ export function ThemeCategoryPicker({
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                 active
-                  ? "border-accent bg-accent text-accent-foreground"
+                  ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-surface text-muted-foreground hover:bg-surface-muted",
               )}
             >

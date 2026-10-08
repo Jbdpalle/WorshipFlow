@@ -4,10 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { generatePrepareMeSummary } from "@/lib/actions/prepare";
-import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 
 type ChangeEntry = { id: string; field: string; fromValue: string | null; toValue: string | null };
 type RoleNote = {
@@ -48,15 +46,23 @@ export function PrepareMeCard({
   setDate: Date | null;
   assignments: PrepareAssignment[];
 }) {
+  const changed = assignments
+    .map((a) => ({
+      id: a.id,
+      songId: a.setSong.song.id,
+      title: a.setSong.song.title,
+      fields: a.setSong.song.changeLogs.map((c) => c.field),
+    }))
+    .filter((c) => c.fields.length > 0);
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <Card className="border-accent/30 bg-accent/5">
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+    <Card>
+      <CardHeader className="flex items-center justify-between gap-3">
         <div>
-          <CardTitle className="text-base">Prepare Me — {setTitle}</CardTitle>
+          <CardTitle className="text-base">Get ready: {setTitle}</CardTitle>
           <p className="text-xs text-muted-foreground">
             {setDate
               ? new Date(setDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
@@ -64,65 +70,36 @@ export function PrepareMeCard({
             · Everything {memberName} needs before this one.
           </p>
         </div>
-        <Link href={`/rehearsal/${setId}`}>
-          <Button size="sm" variant="secondary">
+        <ButtonLink href={`/rehearsal/${setId}`}>
             Rehearse
-          </Button>
-        </Link>
+          </ButtonLink>
       </CardHeader>
       <CardContent className="space-y-3">
-        {assignments.map((a) => {
-          const song = a.setSong.song;
-          const notes = song.sections
-            .map((s) => {
-              // Same priority rule as My Part's main list: a note aimed at
-              // this specific person wins over a shared one, and is never
-              // shown to someone else who merely shares the same role.
-              const note = selectRoleNoteForViewer(s.roleNotes, a.role, memberId);
-              return note ? { label: s.label, content: note.content } : null;
-            })
-            .filter((n): n is { label: string; content: string } => n !== null);
-
-          return (
-            <div key={a.id} className="rounded-lg bg-surface p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Link href={`/songs/${song.id}`} className="font-medium hover:text-accent">
-                  {song.title}
-                </Link>
-                <div className="flex gap-1.5">
-                  <Badge variant="accent">{a.role}</Badge>
-                  {song.key && <Badge variant="outline">Key {song.key}</Badge>}
-                  {song.bpm && <Badge variant="outline">{song.bpm} BPM</Badge>}
-                </div>
-              </div>
-              {notes.length > 0 ? (
-                <ul className="mt-1.5 space-y-0.5 text-sm text-muted-foreground">
-                  {notes.map((n, i) => (
-                    <li key={i}>
-                      <span className="font-medium text-foreground">{n.label}:</span> {n.content}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-1.5 text-sm text-muted-foreground">Play it as written.</p>
-              )}
-              {song.changeLogs.length > 0 && (
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Changed recently: {song.changeLogs.map((c) => c.field).join(", ")}
-                </p>
-              )}
-            </div>
-          );
-        })}
+        {changed.length > 0 ? (
+          <div>
+            <p className="label-caps">What changed since last time</p>
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {changed.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-baseline gap-x-2">
+                  <Link href={`/songs/${c.songId}`} className="inline-flex min-h-11 items-center font-semibold text-foreground hover:underline">
+                    {c.title}
+                  </Link>
+                  <span className="text-muted-foreground">{c.fields.join(", ")}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nothing has changed in your songs recently.</p>
+        )}
 
         <div className="space-y-2 border-t border-border pt-3">
           {summary ? (
-            <p className="rounded-lg bg-surface px-3 py-2 text-sm">{summary}</p>
+            <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm">{summary}</p>
           ) : (
-            <Button
+            <Button loading={loading}
               type="button"
-              size="sm"
-              variant="ghost"
+              variant="outline"
               disabled={loading}
               onClick={async () => {
                 setLoading(true);

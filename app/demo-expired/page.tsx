@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
+import { LogoMark } from "@/components/brand/logo";
 import { prisma } from "@/lib/db/prisma";
 import { readSession } from "@/lib/auth/session";
 import { DemoConversionForm } from "@/components/auth/demo-conversion-form";
-import { Music4 } from "lucide-react";
 
 // Reads the session directly rather than through requireUser() — that's
 // exactly what redirected here, so going through it again would loop.
@@ -23,8 +23,8 @@ export default async function DemoExpiredPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-            <Music4 className="h-6 w-6" />
+          <span className="text-primary">
+            <LogoMark className="h-14 w-14" />
           </span>
           <h1 className="text-xl font-semibold">Your WorshipFlow demo has ended</h1>
           <p className="text-sm text-muted-foreground">

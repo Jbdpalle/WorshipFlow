@@ -38,7 +38,7 @@ export function ChangeLogPanel({ songId, changes }: { songId: string; changes: C
       )}
       {grouped.map(([day, entries]) => (
         <div key={day}>
-          <h4 className="text-sm font-semibold">{day}</h4>
+          <h3 className="text-sm font-semibold">{day}</h3>
           <ul className="mt-1 space-y-1.5">
             {entries.map((c) => (
               <li key={c.id} className="rounded-lg bg-surface-muted px-3 py-2 text-sm">

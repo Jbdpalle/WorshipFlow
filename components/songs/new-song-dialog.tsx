@@ -55,7 +55,7 @@ export function NewSongDialog() {
   return (
     <>
       <Button onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4" /> Add Song
+        <Plus className="h-4 w-4" aria-hidden /> Add song
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Add a song to your library">
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -97,7 +97,7 @@ export function NewSongDialog() {
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full" disabled={saving}>
+          <Button loading={saving} type="submit" className="w-full" disabled={saving}>
             {saving ? "Adding…" : "Add to library"}
           </Button>
         </form>

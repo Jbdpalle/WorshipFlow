@@ -1,12 +1,13 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { SectionHeader } from "@/components/ui/section-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { MyPartCard } from "@/components/team/my-part-card";
+import { Music2 } from "lucide-react";
 import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
 import { PrepareMeCard } from "@/components/team/prepare-me-card";
 import { MyRosterCard } from "@/components/team/my-roster-card";
-import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 import { resolveMemberSongRoles } from "@/lib/songs/assignment-resolver";
 import { getMyRosterData } from "@/lib/dashboard/data";
 import { groupMembersByName } from "@/lib/songs/member-name";
@@ -110,101 +111,69 @@ export default async function MyPartPage({
   const prepareAssignments = nextSetId ? assignments.filter((a) => a.setSong.set.id === nextSetId) : [];
   const nextSet = prepareAssignments[0]?.setSong.set ?? null;
 
+  // Presentation grouping only: this service's songs in set order first,
+  // everything else after (same data, same order as before for the rest).
+  const nextAssignments = [...prepareAssignments].sort((x, y) => x.setSong.order - y.setSong.order);
+  const otherAssignments = assignments.filter((a) => !prepareAssignments.includes(a));
+  const firstName = activeMember?.name.split(" ")[0] ?? "this person";
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">My Part</h1>
-          <p className="text-sm text-muted-foreground">
-            Only what {activeMember?.name ?? "this person"} needs to know — nothing else.
-          </p>
-        </div>
-        <MyPartMemberPicker members={members} activeId={activeMember?.id} isOwnView={isOwnView} />
-      </div>
+    <div className="space-y-8">
+      <SectionHeader
+        level={1}
+        label="My Part"
+        title={isOwnView ? "What I play" : `${firstName}'s part`}
+        description={`Only what ${activeMember?.name ?? "this person"} needs to know. Nothing else.`}
+        action={<MyPartMemberPicker members={members} activeId={activeMember?.id} isOwnView={isOwnView} />}
+      />
 
       {activeMember && <MyRosterCard data={myRoster} memberName={activeMember.name} />}
 
-      {activeMember && nextSet && prepareAssignments.length > 0 && (
-        <PrepareMeCard
-          memberId={activeMember.id}
-          memberName={activeMember.name}
-          setId={nextSet.id}
-          setTitle={nextSet.title}
-          setDate={nextSet.serviceDate}
-          assignments={prepareAssignments}
-        />
-      )}
-
       {assignments.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-            <p className="text-muted-foreground">
-              {isOwnView
-                ? "No songs assigned to you yet."
-                : `No songs assigned to ${activeMember?.name ?? "this person"} yet.`}
-            </p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              A worship leader assigns people to a service from its Worship Team card, or to one
-              specific song from that song&apos;s Details — once you&apos;re assigned either way,
-              it shows up here automatically.
-            </p>
-            <Link href="/sets" className="mt-1 text-sm font-medium text-accent hover:underline">
-              View Services →
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Music2}
+          title={isOwnView ? "No songs assigned to you yet" : `No songs assigned to ${activeMember?.name ?? "this person"} yet`}
+          description="A worship leader assigns people to a service from its Worship Team card, or to one song from that song's details. Once you're assigned, your part appears here automatically."
+          action={
+            <ButtonLink href="/sets" variant="outline">View services</ButtonLink>
+          }
+        />
       ) : (
-        <div className="space-y-4">
-          {assignments.map((a) => (
-            <Card key={a.id}>
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <div>
-                  <CardTitle className="text-base">
-                    <Link href={`/songs/${a.setSong.song.id}`} className="hover:text-accent">
-                      {a.setSong.song.title}
-                    </Link>
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {a.setSong.set.title}
-                    {a.setSong.set.serviceDate &&
-                      ` — ${new Date(a.setSong.set.serviceDate).toLocaleDateString()}`}
-                  </p>
-                </div>
-                <div className="flex gap-1.5">
-                  <Badge variant="accent">{a.role}</Badge>
-                  {a.setSong.song.key && <Badge variant="outline">Key {a.setSong.song.key}</Badge>}
-                  {a.setSong.song.bpm && <Badge variant="outline">{a.setSong.song.bpm} BPM</Badge>}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {a.setSong.song.sections.map((section) => {
-                  // A note aimed at one specific person (visibility: PERSON)
-                  // takes priority over a shared TEAM/ROLE note for that
-                  // person, and is never shown to anyone else playing the
-                  // same role — see selectRoleNoteForViewer.
-                  const note = selectRoleNoteForViewer(section.roleNotes, a.role, activeMember!.id);
-                  if (!note) return null;
-                  return (
-                    <div key={section.id} className="rounded-lg bg-surface-muted px-3 py-2 text-sm">
-                      <span className="font-semibold">
-                        {section.label}
-                        {section.repeatCount && section.repeatCount > 1 ? ` ×${section.repeatCount}` : ""}:{" "}
-                      </span>
-                      {note.content}
-                    </div>
-                  );
-                })}
-                {a.setSong.song.sections.every(
-                  (s) => !selectRoleNoteForViewer(s.roleNotes, a.role, activeMember!.id),
-                ) && (
-                  <p className="text-sm text-muted-foreground">
-                    No specific instructions yet for {a.role} — play it as written.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <>
+          {activeMember && nextSet && nextAssignments.length > 0 && (
+            <section className="space-y-4">
+              <SectionHeader
+                label="Next service"
+                title={nextSet.title}
+                description={
+                  nextSet.serviceDate
+                    ? new Date(nextSet.serviceDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+                    : "No date set"
+                }
+              />
+              {nextAssignments.map((a) => (
+                <MyPartCard key={a.id} assignment={a} memberId={activeMember.id} />
+              ))}
+              <PrepareMeCard
+                memberId={activeMember.id}
+                memberName={activeMember.name}
+                setId={nextSet.id}
+                setTitle={nextSet.title}
+                setDate={nextSet.serviceDate}
+                assignments={nextAssignments}
+              />
+            </section>
+          )}
+
+          {activeMember && otherAssignments.length > 0 && (
+            <section className="space-y-4">
+              <SectionHeader level={2} title="Other services" description="Earlier and later services you are part of." />
+              {otherAssignments.map((a) => (
+                <MyPartCard key={a.id} assignment={a} memberId={activeMember.id} muted showSet />
+              ))}
+            </section>
+          )}
+        </>
       )}
     </div>
   );

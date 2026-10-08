@@ -14,10 +14,10 @@ export function ServiceProgressPath({ stages }: { stages: ProgressStage[] }) {
           <Link href={stage.href} className="group flex min-w-0 items-center gap-2.5">
             <span
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold",
                 stage.complete
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-surface text-muted-foreground group-hover:border-accent/50 group-hover:text-foreground",
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-surface text-muted-foreground group-hover:border-primary/50 group-hover:text-foreground",
               )}
               aria-hidden
             >

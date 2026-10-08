@@ -59,7 +59,7 @@ export function ThemeVerseSuggestion({ songId }: { songId: string }) {
   if (!suggestion) {
     return (
       <div className="space-y-1">
-        <Button type="button" size="sm" variant="ghost" disabled={loading} onClick={handleSuggest}>
+        <Button loading={loading} type="button" size="sm" variant="ghost" disabled={loading} onClick={handleSuggest}>
           <Sparkles className="h-3.5 w-3.5" /> {loading ? "Reading lyrics…" : "Suggest theme & verse"}
         </Button>
         {error && <p className="text-xs text-danger">{error}</p>}
@@ -68,7 +68,7 @@ export function ThemeVerseSuggestion({ songId }: { songId: string }) {
   }
 
   return (
-    <div className="space-y-2 rounded-lg bg-accent/5 p-3 text-sm">
+    <div className="space-y-2 rounded-lg bg-musical-soft p-3 text-sm">
       <div>
         <span className="font-medium">Theme:</span> {suggestion.theme}
       </div>
@@ -81,7 +81,7 @@ export function ThemeVerseSuggestion({ songId }: { songId: string }) {
       </p>
       {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
-        <Button type="button" size="sm" disabled={applying} onClick={handleApply}>
+        <Button loading={applying} type="button" size="sm" disabled={applying} onClick={handleApply}>
           {applying ? "Applying…" : "Use this"}
         </Button>
         <Button

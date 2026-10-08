@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import type { ServiceRosterRow } from "@/lib/dashboard/data";
 
 // The named "who's serving, in what role" list shared by every Dashboard
@@ -23,21 +23,18 @@ export function ServiceRosterList({
       <div className="space-y-1.5">
         <p className="text-sm text-muted-foreground">No team assigned yet.</p>
         {canManage && (
-          <Link
-            href={emptyHref ?? `/sets/${setId}#team`}
-            className="text-xs font-medium text-accent hover:underline"
-          >
-            {emptyActionLabel ?? "Assign Team"} →
-          </Link>
+          <TextLink href={emptyHref ?? `/sets/${setId}#team`}>
+            {emptyActionLabel ?? "Assign team"} →
+          </TextLink>
         )}
       </div>
     );
   }
 
   return (
-    <ul className="space-y-1.5">
+    <ul className="divide-y divide-border">
       {roster.map((r, i) => (
-        <li key={i} className="flex items-baseline justify-between gap-2 text-sm">
+        <li key={i} className="flex items-baseline justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0">
           <span className="text-muted-foreground">{r.role}</span>
           <span className="font-medium text-foreground">{r.name}</span>
         </li>
