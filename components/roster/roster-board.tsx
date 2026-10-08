@@ -156,11 +156,15 @@ function DateCard({
         </div>
         <Link
           href={`/sets/${entry.id}`}
-          className="inline-flex min-h-9 max-w-full items-center truncate text-sm font-semibold text-primary hover:underline"
+          className="flex min-h-9 max-w-full items-center truncate text-sm font-semibold text-primary hover:underline"
         >
           {entry.title === formatDate(entry.serviceDate) ? "View service →" : entry.title}
         </Link>
-        {isLeader && !hasLeader && <Status tone="warning">Worship leader not assigned</Status>}
+        {isLeader && !hasLeader && (
+          <div>
+            <Status tone="warning">Worship leader not assigned</Status>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         <SetTeam setId={entry.id} members={entry.setTeamMembers} teamMembers={members} isLeader={isLeader} />
