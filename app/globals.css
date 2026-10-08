@@ -11,11 +11,11 @@
      musical information.
    - Dark ("Stage"): graphite ground, warm-white text, brass primary, cool
      signal blue for musical information. Authored separately, not inverted.
-   Dark applies from the OS preference (unless the person chose Light) or
-   from data-theme="dark" — see lib/theme/use-theme.ts and the no-flash
-   script in app/layout.tsx. The @media block and the data-theme="dark"
-   block must stay identical; tests/design-tokens.test.ts enforces this and
-   checks WCAG contrast for every text/background pair.
+   Stage is a MANUAL choice: it applies only when the person turns it on
+   (data-theme="dark"), never from the OS setting — see
+   lib/theme/use-theme.ts and the no-flash script in app/layout.tsx.
+   tests/design-tokens.test.ts checks light/dark parity and WCAG contrast
+   for every text/background pair.
 
    Colour roles
    - primary        the one important action on a screen
@@ -46,7 +46,7 @@
   --musical-soft: #f1e7d2;
 
   --success: #2e6b45;
-  --warning: #b0451a;
+  --warning: #9e3f14;
   --danger: #a32d2d;
   --danger-foreground: #ffffff;
   --info: #3e5c74;
@@ -55,38 +55,6 @@
   --scrim: rgb(30 36 32 / 0.45);
 
   --shadow-float: 0 8px 24px rgb(30 36 32 / 0.14);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: #16181a;
-    --foreground: #ece7dc;
-    --surface: #1e2124;
-    --surface-elevated: #262a2e;
-    --surface-muted: #2d3237;
-    --border: #363c42;
-    --muted-foreground: #a39d90;
-
-    --primary: #d2a85a;
-    --primary-foreground: #1a1408;
-    --secondary: #3a424a;
-    --secondary-foreground: #ece7dc;
-
-    --musical: #86b2c8;
-    --musical-foreground: #10181d;
-    --musical-soft: #1f2a31;
-
-    --success: #82b592;
-    --warning: #e2924a;
-    --danger: #e08074;
-    --danger-foreground: #1a0e0c;
-    --info: #8fafc8;
-
-    --ring: #d2a85a;
-    --scrim: rgb(0 0 0 / 0.6);
-
-    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
-  }
 }
 
 :root[data-theme="dark"] {
@@ -230,6 +198,25 @@ body {
 
 .tap-target {
   min-height: 44px;
+}
+
+/* Sheet entrance: rises on phones, slides in from the right on iPad/desktop.
+   Reduced-motion collapses the duration (rule above). */
+@keyframes wf-rise {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes wf-slide {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.anim-sheet {
+  animation: wf-rise var(--duration-base) var(--ease-standard);
+}
+@media (min-width: 768px) {
+  .anim-sheet {
+    animation-name: wf-slide;
+  }
 }
 
 /* Section labels and musical data: caps label, and tabular figures so keys,

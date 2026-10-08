@@ -1,11 +1,18 @@
 import { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+// Panels separate by surface and border, not shadow. Pass `muted` for past
+// or inactive items so upcoming ones stay visually prominent.
+export function Card({
+  className,
+  muted,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { muted?: boolean }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-surface shadow-sm",
+        "rounded-xl border border-border",
+        muted ? "bg-surface-muted/60 text-muted-foreground" : "bg-surface",
         className,
       )}
       {...props}

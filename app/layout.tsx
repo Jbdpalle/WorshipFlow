@@ -26,10 +26,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3f0ea" },
-    { media: "(prefers-color-scheme: dark)", color: "#16181a" },
-  ],
+  themeColor: "#f3f0ea",
 };
 
 // Runs before first paint so an explicit light/dark choice (saved by the
@@ -41,7 +38,7 @@ const THEME_INIT_SCRIPT = `
 (function () {
   try {
     var t = localStorage.getItem("worshipflow-theme");
-    if (t === "light" || t === "dark") {
+    if (t === "dark") {
       document.documentElement.setAttribute("data-theme", t);
     }
   } catch (e) {}

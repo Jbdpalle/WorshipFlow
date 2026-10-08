@@ -1,35 +1,28 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft, Home } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
-// A consistent back/home affordance on every authenticated page, not just
-// the ones with their own in-page navigation. router.back() falls back to
-// browser history (works for both a deep link and a normal click-through),
-// Home always goes to the dashboard regardless of how deep the page is.
+// A back affordance on detail pages (e.g. /sets/123, /songs/45/chart). Top
+// level destinations already have the sidebar / bottom bar, so they get no
+// extra bar. router.back() falls back to browser history, which works for
+// both deep links and normal click-through.
 export function PageNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const isHome = pathname === "/dashboard";
+  const depth = (pathname ?? "").split("/").filter(Boolean).length;
 
-  if (isHome) return null;
+  if (depth < 2) return null;
 
   return (
-    <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-2 text-sm">
+    <div className="border-b border-border bg-surface px-4 text-sm md:px-6 lg:px-8">
       <button
         type="button"
         onClick={() => router.back()}
-        className="tap-target flex items-center gap-1 rounded-md px-1.5 font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground"
+        className="tap-target -ml-2 flex items-center gap-1 rounded-lg px-2 font-semibold text-muted-foreground hover:bg-surface-muted hover:text-foreground"
       >
-        <ChevronLeft className="h-4 w-4" /> Back
+        <ChevronLeft className="h-4 w-4" aria-hidden /> Back
       </button>
-      <Link
-        href="/dashboard"
-        className="tap-target flex items-center gap-1 rounded-md px-1.5 font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground"
-      >
-        <Home className="h-4 w-4" /> Home
-      </Link>
     </div>
   );
 }

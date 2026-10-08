@@ -15,7 +15,7 @@ Feel: a worship binder on a music stand. Calm, warm, clear. Not a SaaS dashboard
 | Primary | forest `#2c4a3e` | brass `#d2a85a` |
 | Musical | brass `#8a5a12` | signal blue `#86b2c8` |
 
-Stage is authored, not inverted. It follows the OS setting unless the person picks Light or Dark in Settings → Appearance (existing behaviour, unchanged). Future phases may offer Stage inside Rehearsal and Director Mode.
+Stage is authored, not inverted. It is a **manual toggle only** (sidebar/More menu and Settings → Appearance); the OS dark-mode setting is ignored and Light is always the default. A later phase may add a Stage shortcut inside Rehearsal and Director Mode.
 
 ## Colour roles
 

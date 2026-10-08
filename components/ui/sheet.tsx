@@ -5,9 +5,12 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useOverlay } from "@/components/ui/use-overlay";
 
-// Modal: one focused decision. For contextual editing use Sheet instead
-// (drawer on desktop/iPad, bottom sheet on phones).
-export function Dialog({
+// Contextual panel. One component, two presentations:
+//   phone (< md)  → bottom sheet that rises from the bottom edge
+//   iPad/desktop  → drawer docked to the right
+// Use for contextual editing and the mobile "More" menu. Use Dialog for a
+// single focused decision.
+export function Sheet({
   open,
   onClose,
   title,
@@ -27,7 +30,7 @@ export function Dialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end md:items-stretch md:justify-end">
       <div className="absolute inset-0 bg-scrim" onClick={onClose} aria-hidden />
       <div
         ref={panelRef}
@@ -36,11 +39,12 @@ export function Dialog({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          "relative z-10 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-elevated p-5 shadow-lg focus:outline-none",
+          "anim-sheet relative z-10 flex max-h-[85vh] w-full flex-col rounded-t-2xl border border-border bg-surface-elevated shadow-lg focus:outline-none md:max-h-none md:w-[28rem] md:rounded-none md:rounded-l-2xl",
           className,
         )}
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
           <h2 id={titleId} className="text-lg font-semibold">
             {title}
           </h2>
@@ -53,7 +57,7 @@ export function Dialog({
             <X className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        <div className="flex-1 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );

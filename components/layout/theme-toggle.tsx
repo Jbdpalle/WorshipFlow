@@ -1,18 +1,17 @@
 "use client";
 
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { useTheme, type ThemePreference } from "@/lib/theme/use-theme";
 import { cn } from "@/lib/utils/cn";
 
 const OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
+  { value: "dark", label: "Stage", icon: Moon },
 ];
 
 // A compact icon button for the sidebar / mobile menu — cycles
-// light → dark → system on each click, always showing the icon for the
-// CURRENT choice (clicking shows you what you'll get, not what you have).
+// Light ⇄ Stage on each click, always showing the icon for the CURRENT
+// choice. Stage is the dim, high-contrast theme for rehearsal and stage.
 export function ThemeToggleButton({
   className,
   showLabel,
@@ -22,7 +21,7 @@ export function ThemeToggleButton({
 }) {
   const [theme, setTheme] = useTheme();
   const index = OPTIONS.findIndex((o) => o.value === theme);
-  const current = OPTIONS[index] ?? OPTIONS[2];
+  const current = OPTIONS[index] ?? OPTIONS[0];
   const Icon = current.icon;
 
   return (
@@ -30,7 +29,7 @@ export function ThemeToggleButton({
       type="button"
       onClick={() => setTheme(OPTIONS[(index + 1) % OPTIONS.length].value)}
       className={cn(
-        "tap-target flex items-center gap-2 rounded-lg px-2 text-sm font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground",
+        "tap-target flex w-11 items-center justify-center gap-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground",
         className,
       )}
       aria-label={`Appearance: ${current.label}. Click to change.`}
@@ -65,7 +64,7 @@ export function ThemeSegmentedControl() {
             className={cn(
               "tap-target flex items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
               active
-                ? "bg-accent text-accent-foreground"
+                ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

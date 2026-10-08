@@ -23,7 +23,6 @@ function block(startMarker: string): Record<string, string> {
 
 const light = block(":root {");
 const dark = block(':root[data-theme="dark"]');
-const darkMedia = block(':root:not([data-theme="light"])');
 
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => {
@@ -43,11 +42,19 @@ it("parses every colour token from the stylesheet", () => {
   expect(Object.keys(dark).length).toBe(Object.keys(light).length);
 });
 
+// Blend a colour over a ground at the given opacity (how bg-success/15 etc.
+// actually render), so tinted status chips are checked as users see them.
+function blend(fg: string, bg: string, alpha: number): string {
+  const ch = (i: number) =>
+    Math.round(parseInt(fg.slice(i, i + 2), 16) * alpha + parseInt(bg.slice(i, i + 2), 16) * (1 - alpha));
+  return "#" + [1, 3, 5].map((i) => ch(i).toString(16).padStart(2, "0")).join("");
+}
+
 const themes = { light, dark } as const;
 
 describe("theme parity", () => {
-  it("the OS-preference dark block matches the explicit dark block", () => {
-    expect(darkMedia).toEqual(dark);
+  it("dark is manual-only: no prefers-color-scheme override in the stylesheet", () => {
+    expect(css).not.toContain("prefers-color-scheme");
   });
 
   it("light and dark define the same tokens", () => {
@@ -85,6 +92,15 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
   ] as const)("%s is AA on %s fill", (fg, bg) => {
     expect(contrast(t[fg], t[bg])).toBeGreaterThanOrEqual(4.5);
   });
+
+  // Badge / Status / banners use `bg-{tone}/15 text-{tone}`.
+  for (const c of ["success", "warning", "danger", "info"] as const) {
+    for (const g of ["background", "surface"] as const) {
+      it(`${c} text is AA on its 15% tint over ${g}`, () => {
+        expect(contrast(t[c], blend(t[c], t[g], 0.15))).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+  }
 
   it("musical text is AA on the soft musical tint", () => {
     expect(contrast(t.musical, t["musical-soft"])).toBeGreaterThanOrEqual(4.5);

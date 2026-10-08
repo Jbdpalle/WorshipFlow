@@ -38,7 +38,7 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Appearance</CardTitle>
           <CardDescription>
-            System matches your device&apos;s light/dark setting automatically.
+            Light is the default. Stage is a dim, high-contrast theme for rehearsal rooms and stages; switch it on whenever you like.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
