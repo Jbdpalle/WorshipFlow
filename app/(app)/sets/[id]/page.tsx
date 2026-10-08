@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { Badge } from "@/components/ui/badge";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SetlistBoard } from "@/components/setlist/setlist-board";
@@ -66,13 +67,15 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{set.title}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <SectionHeader
+        level={1}
+        label={set.archivedAt ? "Archived set" : "Set"}
+        title={set.title}
+        description={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
             {set.serviceDate && (
-              <span className="flex items-center gap-1">
-                <CalendarDays className="h-3.5 w-3.5" />
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4" aria-hidden />
                 {new Date(set.serviceDate).toLocaleDateString(undefined, {
                   weekday: "long",
                   month: "long",
@@ -80,33 +83,35 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
                 })}
               </span>
             )}
-            {set.theme && <Badge variant="accent">{set.theme}</Badge>}
+            {set.theme && <Badge variant="musical">{set.theme}</Badge>}
             {set.archivedAt && <Badge variant="outline">Archived</Badge>}
             {set.bibleRefs.map((ref) => (
               <Badge key={ref.id} variant="outline">
                 {ref.reference}
               </Badge>
             ))}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <Link href={`/rehearsal/${set.id}`}>
-            <Button>
-              <PlayCircle className="h-4 w-4" /> Start Rehearsal
-            </Button>
-          </Link>
-          <SetActions
-            setId={set.id}
-            setTitle={set.title}
-            isArchived={!!set.archivedAt}
-            isLeader={isLeader}
-          />
-        </div>
-      </div>
+          </span>
+        }
+        action={
+          <>
+            <Link href={`/rehearsal/${set.id}`}>
+              <Button>
+                <PlayCircle className="h-4 w-4" aria-hidden /> Start rehearsal
+              </Button>
+            </Link>
+            <SetActions
+              setId={set.id}
+              setTitle={set.title}
+              isArchived={!!set.archivedAt}
+              isLeader={isLeader}
+            />
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <Card className="p-4">
         <ServiceProgressPath stages={stages} />
-      </div>
+      </Card>
 
       <ServiceOrderStrip songs={songsWithFlowStatus} />
 
@@ -129,7 +134,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Setlist</h2>
+            <h2 className="text-xl font-bold tracking-tight">Setlist</h2>
             {isLeader && <AddFromLibraryDialog setId={set.id} librarySongs={librarySongsRaw} />}
           </div>
           <SetlistBoard

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
-import { Card, CardContent } from "@/components/ui/card";
+import { SectionHeader } from "@/components/ui/section-header";
+import { FilterChip } from "@/components/ui/filter-chip";
+import { TextLink } from "@/components/ui/text-link";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Plus, ListMusic } from "lucide-react";
 import { EVENT_TYPES } from "@/lib/songs/constants";
-import { cn } from "@/lib/utils/cn";
 import { getSetsPageData } from "@/lib/dashboard/data";
 import { SetsBoard } from "@/components/sets/sets-board";
 
@@ -30,82 +32,74 @@ export default async function SetsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
-          {showArchived ? "Archived Sets" : "Worship Sets & Events"}
-        </h1>
-        <Link href="/sets/new">
-          <Button>
-            <Plus className="h-4 w-4" /> New Event
-          </Button>
-        </Link>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5">
-          <Link
-            href="/sets"
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium",
-              !type && !showArchived ? "bg-accent text-accent-foreground" : "bg-surface-muted text-muted-foreground",
-            )}
-          >
-            All ({allSets.length})
+      <SectionHeader
+        level={1}
+        label="Sets"
+        title={showArchived ? "Archived sets" : "Worship sets & events"}
+        action={
+          <Link href="/sets/new">
+            <Button>
+              <Plus className="h-4 w-4" aria-hidden /> New event
+            </Button>
           </Link>
+        }
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <nav aria-label="Filter by event type" className="flex flex-wrap gap-2">
+          <FilterChip href="/sets" selected={!type && !showArchived}>
+            All ({allSets.length})
+          </FilterChip>
           {!showArchived &&
             EVENT_TYPES.map((t) => {
               const count = allSets.filter((s) => s.eventType === t.value).length;
               if (count === 0) return null;
               return (
-                <Link
-                  key={t.value}
-                  href={`/sets?type=${t.value}`}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium",
-                    type === t.value
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-surface-muted text-muted-foreground",
-                  )}
-                >
+                <FilterChip key={t.value} href={`/sets?type=${t.value}`} selected={type === t.value}>
                   {t.label} ({count})
-                </Link>
+                </FilterChip>
               );
             })}
-        </div>
+        </nav>
         {archivedCount > 0 && (
-          <Link
-            href={showArchived ? "/sets" : "/sets?archived=1"}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
-          >
+          <TextLink href={showArchived ? "/sets" : "/sets?archived=1"} className="text-muted-foreground">
             {showArchived ? "← Back to active sets" : `Archived (${archivedCount})`}
-          </Link>
+          </TextLink>
         )}
       </div>
 
       {sets.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-            <ListMusic className="h-8 w-8 text-muted-foreground" aria-hidden />
-            {showArchived ? (
-              <p className="text-muted-foreground">No archived sets.</p>
-            ) : allSets.length === 0 ? (
-              <>
-                <h2 className="font-semibold text-foreground">No worship sets yet</h2>
-                <p className="max-w-sm text-sm text-muted-foreground">
-                  Create a service and you&apos;ll be able to build its setlist, add song flow
-                  details, assign the team, and rehearse — all from that one service.
-                </p>
-                <Link href="/sets/new" className="mt-2">
-                  <Button>
-                    <Plus className="h-4 w-4" /> New Event
-                  </Button>
-                </Link>
-              </>
-            ) : (
-              <p className="text-muted-foreground">No events of this type yet.</p>
-            )}
-          </CardContent>
-        </Card>
+        showArchived ? (
+          <EmptyState
+            icon={ListMusic}
+            title="No archived sets"
+            description="Sets you archive are kept here so you can find them later."
+          />
+        ) : allSets.length === 0 ? (
+          <EmptyState
+            icon={ListMusic}
+            title="No worship sets yet"
+            description="Create a service to build its setlist, add song flow, assign the team and rehearse, all in one place."
+            action={
+              <Link href="/sets/new">
+                <Button size="lg">
+                  <Plus className="h-4 w-4" aria-hidden /> Create your first set
+                </Button>
+              </Link>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={ListMusic}
+            title="No events of this type"
+            description="Try another filter, or create a new event."
+            action={
+              <Link href="/sets">
+                <Button variant="outline">Show all sets</Button>
+              </Link>
+            }
+          />
+        )
       ) : (
         <SetsBoard entries={sets} members={members} />
       )}

@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useMemo } from "react";
 import Link from "next/link";
-import { ListMusic, CalendarDays, MapPin } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SetCard } from "@/components/sets/set-card";
+import { CalendarX } from "lucide-react";
 import { eventTypeLabel } from "@/lib/songs/constants";
 import { groupMembersByName, normalizeMemberName } from "@/lib/songs/member-name";
 import type { SetsPageEntry } from "@/lib/dashboard/data";
-import { cn } from "@/lib/utils/cn";
 
 type TeamMemberOption = { id: string; name: string; role: string };
 type View = "date" | "leader" | "member";
@@ -21,44 +21,12 @@ function formatDate(date: Date | null) {
     : "No date set";
 }
 
-function SetCard({ entry, muted }: { entry: SetsPageEntry; muted?: boolean }) {
-  return (
-    <Link href={`/sets/${entry.id}`}>
-      <Card className={cn("h-full transition-shadow hover:shadow-md", muted && "border-dashed bg-surface-muted/60 shadow-none hover:shadow-none")}>
-        <CardContent className="space-y-3 pt-4">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className={cn("font-semibold", muted && "text-muted-foreground")}>{entry.title}</h3>
-            {entry.theme && <Badge variant={muted ? "default" : "accent"}>{entry.theme}</Badge>}
-          </div>
-          <Badge variant="outline">{eventTypeLabel(entry.eventType)}</Badge>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <CalendarDays className="h-3.5 w-3.5" />
-              {formatDate(entry.serviceDate)}
-            </span>
-            <span className="flex items-center gap-1">
-              <ListMusic className="h-3.5 w-3.5" />
-              {entry.songCount} song{entry.songCount === 1 ? "" : "s"}
-            </span>
-            {entry.location && (
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" />
-                {entry.location}
-              </span>
-            )}
-          </div>
-          {entry.roster.length > 0 && (
-            <p className="truncate text-xs text-muted-foreground">
-              {entry.roster.map((r) => r.name).join(", ")}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
-  );
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <h2 className="label-caps">{children}</h2>;
 }
 
 function DateView({ entries }: { entries: SetsPageEntry[] }) {
+  const now = new Date();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -70,40 +38,39 @@ function DateView({ entries }: { entries: SetsPageEntry[] }) {
     .filter((e) => e.serviceDate && e.serviceDate < today)
     .sort((a, b) => b.serviceDate!.getTime() - a.serviceDate!.getTime());
 
+  const grid = "grid gap-4 md:grid-cols-2";
+
   return (
     <div className="space-y-8">
       {upcoming.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {upcoming.map((e) => (
-              <SetCard key={e.id} entry={e} />
+          <SectionLabel>Upcoming</SectionLabel>
+          <div className={grid}>
+            {upcoming.map((e, i) => (
+              <SetCard key={e.id} entry={e} now={now} highlight={i === 0} />
             ))}
           </div>
         </section>
       )}
       {undated.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">No Date Set</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SectionLabel>No date set</SectionLabel>
+          <div className={grid}>
             {undated.map((e) => (
-              <SetCard key={e.id} entry={e} />
+              <SetCard key={e.id} entry={e} now={now} />
             ))}
           </div>
         </section>
       )}
       {past.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Past</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SectionLabel>Past</SectionLabel>
+          <div className={grid}>
             {past.map((e) => (
-              <SetCard key={e.id} entry={e} muted />
+              <SetCard key={e.id} entry={e} now={now} muted />
             ))}
           </div>
         </section>
-      )}
-      {upcoming.length === 0 && undated.length === 0 && past.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nothing here yet.</p>
       )}
     </div>
   );
@@ -148,13 +115,13 @@ function ByLeaderView({ entries }: { entries: SetsPageEntry[] }) {
     <div className="space-y-4">
       {[...byLeader.entries()].map(([key, group]) => (
         <section key={key}>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="label-caps">
             Worship Leader: {group.displayName}
           </h3>
-          <ul className="mt-2 space-y-1.5">
+          <ul className="mt-1 divide-y divide-border">
             {group.list.map((e) => (
               <li key={e.id} className="text-sm">
-                <Link href={`/sets/${e.id}`} className="hover:text-accent">
+                <Link href={`/sets/${e.id}`} className="inline-flex min-h-11 items-center hover:text-primary hover:underline">
                   {entryLabel(e)}
                 </Link>
               </li>
@@ -164,11 +131,11 @@ function ByLeaderView({ entries }: { entries: SetsPageEntry[] }) {
       ))}
       {unassigned.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">No leader assigned</h3>
-          <ul className="mt-2 space-y-1.5">
+          <h3 className="label-caps">No leader assigned</h3>
+          <ul className="mt-1 divide-y divide-border">
             {unassigned.map((e) => (
               <li key={e.id} className="text-sm">
-                <Link href={`/sets/${e.id}`} className="hover:text-accent">
+                <Link href={`/sets/${e.id}`} className="inline-flex min-h-11 items-center hover:text-primary hover:underline">
                   {entryLabel(e)}
                 </Link>
               </li>
@@ -212,15 +179,15 @@ function ByMemberView({ entries, members }: { entries: SetsPageEntry[]; members:
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No sets scheduled for this person.</p>
       ) : (
-        <ul className="space-y-1.5">
+        <ul className="divide-y divide-border">
           {rows.map(({ entry, roles }) => (
-            <li key={entry.id} className="flex items-baseline justify-between gap-2 text-sm">
-              <Link href={`/sets/${entry.id}`} className="hover:text-accent">
+            <li key={entry.id} className="flex items-center justify-between gap-2 text-sm">
+              <Link href={`/sets/${entry.id}`} className="inline-flex min-h-11 items-center hover:text-primary hover:underline">
                 {entryLabel(entry)}
               </Link>
               <span className="flex shrink-0 gap-1">
                 {roles.map((role) => (
-                  <Badge key={role} variant="accent">
+                  <Badge key={role} variant="musical">
                     {role}
                   </Badge>
                 ))}
@@ -235,30 +202,26 @@ function ByMemberView({ entries, members }: { entries: SetsPageEntry[]; members:
 
 export function SetsBoard({ entries, members }: { entries: SetsPageEntry[]; members: TeamMemberOption[] }) {
   const [view, setView] = useState<View>("date");
-  const views = useMemo(() => ["date", "leader", "member"] as View[], []);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <div className="flex gap-1 rounded-lg bg-surface-muted p-1">
-          {views.map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={cn(
-                "tap-target rounded-md px-3 text-xs font-medium",
-                view === v ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              {v === "date" ? "By Date" : v === "leader" ? "By Leader" : "By Member"}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="space-y-5">
+      <SegmentedControl
+        label="Group sets"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: "date", label: "By date" },
+          { value: "leader", label: "By leader" },
+          { value: "member", label: "By member" },
+        ]}
+      />
 
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nothing here yet.</p>
+        <EmptyState
+          icon={CalendarX}
+          title="Nothing here yet"
+          description="Sets you create will appear here, grouped the way you choose above."
+        />
       ) : view === "date" ? (
         <DateView entries={entries} />
       ) : view === "leader" ? (
