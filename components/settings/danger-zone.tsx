@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { deleteChurch } from "@/lib/actions/church";
 
@@ -21,16 +22,17 @@ export function DangerZone({ churchName }: { churchName: string }) {
         is no undo.
       </p>
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">
+        <Label htmlFor="confirm-church-name">
           Type <strong>{churchName}</strong> to confirm
-        </label>
+        </Label>
         <Input
+          id="confirm-church-name"
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
           placeholder={churchName}
         />
       </div>
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <Button
         variant="danger"
         disabled={!matches || busy}

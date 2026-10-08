@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/guard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SectionHeader } from "@/components/ui/section-header";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { RestartTourButton } from "@/components/demo/demo-tour-banner";
 import { ThemeSegmentedControl } from "@/components/layout/theme-toggle";
@@ -14,11 +15,13 @@ export default async function SettingsPage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">Your name and church, as everyone on the team sees them.</p>
-      </div>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <SectionHeader
+        level={1}
+        label="Settings"
+        title="Your account"
+        description="Your name and church, as everyone on the team sees them."
+      />
 
       {user.isDemo && (
         <Card>
