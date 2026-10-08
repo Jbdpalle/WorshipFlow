@@ -34,7 +34,7 @@ export default async function SetsPage({
   return (
     <div className="space-y-6">
       <SectionHeader
-        level={1}
+        level={1} icon={ListMusic} stage="plan"
         label="Sets"
         title={showArchived ? "Archived sets" : "Worship sets & events"}
         action={
@@ -70,13 +70,13 @@ export default async function SetsPage({
       {sets.length === 0 ? (
         showArchived ? (
           <EmptyState
-            icon={ListMusic}
+            icon={ListMusic} stage="plan"
             title="No archived sets"
             description="Sets you archive are kept here so you can find them later."
           />
         ) : allSets.length === 0 ? (
           <EmptyState
-            icon={ListMusic}
+            icon={ListMusic} stage="plan"
             title="No worship sets yet"
             description="Create a service to build its setlist, add song flow, assign the team and rehearse, all in one place."
             action={
@@ -90,7 +90,7 @@ export default async function SetsPage({
           />
         ) : (
           <EmptyState
-            icon={ListMusic}
+            icon={ListMusic} stage="plan"
             title="No events of this type"
             description="Try another filter, or create a new event."
             action={

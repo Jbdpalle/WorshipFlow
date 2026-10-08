@@ -27,7 +27,7 @@ export default async function RosterPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        level={1}
+        level={1} icon={ClipboardList} stage="assign"
         label="Roster"
         title="Who's serving, and when"
         description="Plan ahead, or import a schedule and it shows up here."
@@ -36,7 +36,7 @@ export default async function RosterPage() {
 
       {entries.length === 0 && !isLeader ? (
         <EmptyState
-          icon={ClipboardList}
+          icon={ClipboardList} stage="assign"
           title="No roster yet"
           description="Your worship leader hasn't scheduled anything yet. Check back soon."
         />

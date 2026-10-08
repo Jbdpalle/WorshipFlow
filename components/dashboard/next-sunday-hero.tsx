@@ -22,7 +22,7 @@ export function NextSundayHero({
   if (!nextSunday) {
     return (
       <EmptyState
-        icon={CalendarHeart}
+        icon={CalendarHeart} stage="plan"
         title="No upcoming service"
         description={
           isLeaderView

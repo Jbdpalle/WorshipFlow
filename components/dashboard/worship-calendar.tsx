@@ -108,7 +108,7 @@ export function WorshipCalendar({
     <Card id="worship-calendar">
       <CardHeader className="flex items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-4 w-4 text-primary" aria-hidden /> Worship calendar
+          <CalendarDays className="h-4 w-4 text-stage-plan" aria-hidden /> Worship calendar
         </CardTitle>
         <div className="flex items-center gap-1">
           <IconButton label="Previous month" onClick={goPrevMonth}>

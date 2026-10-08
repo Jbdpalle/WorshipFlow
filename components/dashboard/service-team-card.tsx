@@ -30,7 +30,7 @@ export function ServiceTeamCard({
               return (
                 <div key={row.key} className="flex items-center justify-between gap-2 text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
-                    <Icon className="h-4 w-4" aria-hidden /> {row.label}
+                    <Icon className="h-4 w-4 text-stage-assign" aria-hidden /> {row.label}
                   </span>
                   <Tooltip
                     content={`${row.confirmed} of ${row.total} ${row.label.toLowerCase()} confirmed for this service`}

@@ -368,7 +368,7 @@ export function RosterBoard({
 
       {entries.length === 0 ? (
         <EmptyState
-          icon={ClipboardList}
+          icon={ClipboardList} stage="assign"
           title="No upcoming services"
           description={isLeader ? "Use Plan roster to create a service for every Sunday in a range, then assign who is serving." : "Your worship leader hasn't scheduled anything yet. Check back soon."}
         />
