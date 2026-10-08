@@ -24,6 +24,9 @@ import { Select } from "@/components/ui/select";
 import { Metronome } from "@/components/metronome/metronome";
 import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { LastTimeCallout } from "@/components/songs/last-time-callout";
+import { DynamicIndicator } from "@/components/songs/dynamic-indicator";
+import { SongFlowRibbon } from "@/components/songs/song-flow-ribbon";
+import { ThemeToggleButton } from "@/components/layout/theme-toggle";
 import { ROLES, REHEARSAL_CHECK_STATUSES } from "@/lib/songs/constants";
 import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 import {
@@ -180,56 +183,60 @@ export function RehearsalMode({
   return (
     <div className="space-y-5">
       {isLeaderView ? (
-        <div className="flex items-center justify-between gap-2 rounded-xl bg-accent px-4 py-2.5 text-accent-foreground">
-          <p className="flex items-center gap-1.5 text-sm font-semibold">
-            <Radio className="h-4 w-4 animate-pulse" /> Directing live
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-primary px-4 py-2 text-primary-foreground">
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <Radio className="h-4 w-4 animate-pulse" aria-hidden /> Directing live
           </p>
           <AnnounceControl setId={setId} />
         </div>
       ) : (
         <>
           {followBanner && (
-            <p className="rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
+            <p role="status" className="rounded-lg bg-info/10 px-4 py-2 text-sm font-semibold text-info">
               {followBanner}
             </p>
           )}
           {announcement && (
-            <div className="flex items-center gap-3 rounded-xl bg-accent px-4 py-3 text-accent-foreground shadow-sm">
-              <Megaphone className="h-5 w-5 shrink-0" />
-              <p className="flex-1 text-base font-semibold">{announcement}</p>
+            <div role="alert" className="flex items-center gap-3 rounded-xl bg-primary px-5 py-4 text-primary-foreground">
+              <Megaphone className="h-6 w-6 shrink-0" aria-hidden />
+              <p className="flex-1 text-xl font-extrabold">{announcement}</p>
               <button
                 onClick={() => setAnnouncement(null)}
-                className="shrink-0 rounded-md p-1 hover:bg-black/10"
+                className="tap-target flex w-11 shrink-0 items-center justify-center rounded-lg hover:bg-black/10"
                 aria-label="Dismiss announcement"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           )}
         </>
       )}
 
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {songs.map((s, i) => (
-          <button
-            key={s.id}
-            onClick={() => {
-              setSongIndex(i);
-              if (isLeaderView) {
-                setLivePosition(setId, s.id, s.song.sections[0]?.id ?? null);
-              }
-            }}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium tap-target",
-              i === songIndex
-                ? "bg-accent text-accent-foreground"
-                : "bg-surface-muted text-muted-foreground",
-            )}
-          >
-            {String(i + 1).padStart(2, "0")}. {s.song.title}
-          </button>
-        ))}
-      </div>
+      <nav aria-label="Set order">
+        <ol className="flex gap-2 overflow-x-auto pb-1">
+          {songs.map((s, i) => (
+            <li key={s.id} className="shrink-0">
+              <button
+                onClick={() => {
+                  setSongIndex(i);
+                  if (isLeaderView) {
+                    setLivePosition(setId, s.id, s.song.sections[0]?.id ?? null);
+                  }
+                }}
+                aria-current={i === songIndex ? "true" : undefined}
+                className={cn(
+                  "tap-target rounded-full px-4 text-sm font-semibold transition-colors duration-[var(--duration-fast)]",
+                  i === songIndex
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-muted text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span className="tnum">{String(i + 1).padStart(2, "0")}</span> {s.song.title}
+              </button>
+            </li>
+          ))}
+        </ol>
+      </nav>
 
       <SongRehearsalPanel
         key={setSong.id}
@@ -339,16 +346,29 @@ function SongRehearsalPanel({
     : undefined;
   const myPartNote = myRole && current ? selectRoleNoteForViewer(current.roleNotes, myRole, viewerTeamMemberId) : undefined;
 
+  const nextMyPartNote =
+    myRole && next ? selectRoleNoteForViewer(next.roleNotes, myRole, viewerTeamMemberId) : undefined;
+  const isFreeform = !!current?.isFreeform;
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground">{setTitle}</p>
-          <h1 className="text-xl font-semibold">{song.title}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="label-caps">{setTitle}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">{song.title}</h1>
         </div>
-        <div className="flex gap-1.5">
-          {song.key && <Badge variant="outline">Key {song.key}</Badge>}
-          {song.bpm && <Badge variant="outline">{song.bpm} BPM</Badge>}
+        <div className="flex flex-wrap items-center gap-2">
+          {song.key && (
+            <Badge variant="musical" className="tnum px-3 py-1 text-sm">
+              Key {song.key}
+            </Badge>
+          )}
+          {song.bpm && (
+            <Badge variant="musical" className="tnum px-3 py-1 text-sm">
+              {song.bpm} BPM
+            </Badge>
+          )}
+          <ThemeToggleButton showLabel className="w-auto px-3" />
         </div>
       </div>
 
@@ -358,230 +378,242 @@ function SongRehearsalPanel({
         <p className="text-muted-foreground">This song has no arrangement yet.</p>
       ) : (
         <>
-          <div
-            className={cn(
-              "rounded-2xl p-5 text-center",
-              current?.isFreeform
-                ? "border border-dashed border-border bg-surface-muted"
-                : "border-2 border-accent bg-accent/10",
-            )}
-          >
-            <p
+          <SongFlowRibbon
+            sections={sections}
+            selectedId={current?.id ?? null}
+            onSelect={(id) => {
+              const i = sections.findIndex((x) => x.id === id);
+              if (i !== -1) goTo(i);
+            }}
+          />
+
+          {/* One screen, nothing to tap through. Phone: now, my part, next,
+              then everything else. iPad landscape / laptop: now and my
+              part on the left, next and tools on the right. */}
+          <div className="grid gap-5 lg:grid-flow-dense lg:grid-cols-5 lg:items-start">
+            <section
+              aria-label="Current section"
               className={cn(
-                "flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wide",
-                current?.isFreeform ? "text-muted-foreground" : "text-accent",
+                "rounded-2xl p-6 sm:p-8 lg:col-span-3",
+                isFreeform
+                  ? "border border-dashed border-border bg-surface-muted"
+                  : "border-2 border-primary bg-surface",
               )}
             >
-              {current?.isFreeform && <Wind className="h-3.5 w-3.5" />}
-              {current?.isFreeform ? "Spontaneous — follow as led" : "Current Section"}
-            </p>
-            <h2 className="mt-1 text-3xl font-bold">
-              {current?.label}
-              {!current?.isFreeform && current?.repeatCount && current.repeatCount > 1 ? ` ×${current.repeatCount}` : ""}
-            </h2>
-            {current?.dynamics && (
-              <Badge variant="outline" className="mt-1.5">
-                {current.dynamics}
-              </Badge>
-            )}
-            <div className="mt-4 flex justify-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={sectionIndex === 0}
-                onClick={() => goTo(Math.max(0, sectionIndex - 1))}
+              <p
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.1em]",
+                  isFreeform ? "text-muted-foreground" : "text-primary",
+                )}
               >
-                <ChevronLeft className="h-4 w-4" /> Prev
-              </Button>
-              {!isLeaderView && (
+                {isFreeform && <Wind className="h-3.5 w-3.5" aria-hidden />}
+                {isFreeform ? "Spontaneous: follow as led" : "Now"}
+              </p>
+              <h2 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl">
+                {current?.label}
+                {!isFreeform && current?.repeatCount && current.repeatCount > 1 ? ` ×${current.repeatCount}` : ""}
+              </h2>
+              {current?.dynamics && <DynamicIndicator dynamics={current.dynamics} className="mt-4" />}
+              <div className="mt-5 flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
-                  size="sm"
+                  disabled={sectionIndex === 0}
+                  onClick={() => goTo(Math.max(0, sectionIndex - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden /> Previous
+                </Button>
+                {!isLeaderView && (
+                  <Button
+                    variant="secondary"
+                    disabled={sectionIndex >= sections.length - 1}
+                    onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
+                  >
+                    Next <ChevronRight className="h-4 w-4" aria-hidden />
+                  </Button>
+                )}
+              </div>
+            </section>
+
+            {!isLeaderView && myRole && (
+              <section aria-label="My part" className="rounded-2xl border border-border bg-musical-soft p-5 sm:p-6 lg:col-span-3">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-musical">My part · {myRole}</p>
+                <p className="mt-2 text-xl font-semibold leading-snug sm:text-2xl">
+                  {myPartNote?.content.trim() ? myPartNote.content : "Nothing specific for you here. Play it as written."}
+                </p>
+              </section>
+            )}
+
+            <section
+              aria-label="Next section"
+              className="rounded-2xl border border-border bg-surface-muted/60 p-5 sm:p-6 lg:col-span-2 lg:col-start-4 lg:row-start-1"
+            >
+              <p className="label-caps">Next</p>
+              {next ? (
+                <>
+                  <h3 className="mt-1 text-2xl font-extrabold tracking-tight">
+                    {next.label}
+                    {next.repeatCount && next.repeatCount > 1 ? ` ×${next.repeatCount}` : ""}
+                  </h3>
+                  {next.dynamics && <DynamicIndicator dynamics={next.dynamics} className="mt-2" />}
+                  {!isLeaderView && myRole && (
+                    <p className="mt-3 text-base">
+                      <span className="font-bold text-musical">Me: </span>
+                      {nextMyPartNote?.content.trim() ? nextMyPartNote.content : "Nothing specific. Play it as written."}
+                    </p>
+                  )}
+                  {next.lyricsChords?.trim() && (
+                    <div className="mt-3 rounded-lg bg-surface p-2">
+                      <LyricsChordsView content={next.lyricsChords} size="sm" />
+                    </div>
+                  )}
+                  <div className="mt-4 space-y-2">
+                    <h4 className="label-caps">Directions (next)</h4>
+                    {nextInstructionsByRole.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No specific instructions yet.</p>
+                    ) : (
+                      nextInstructionsByRole.map((n) => (
+                        <div key={n.id} className="rounded-lg bg-surface px-3 py-2">
+                          <span className="label-caps">{n.role}</span>
+                          <p className="text-sm">{n.content}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="mt-1 text-lg font-semibold">End of the song.</p>
+              )}
+            </section>
+
+            <section aria-label="Directions" className="space-y-2 lg:col-span-3">
+              <h3 className="label-caps">{isLeaderView ? "Directions for every role" : "Directions for everyone"}</h3>
+              {instructionsByRole.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No specific instructions for this section.</p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {instructionsByRole.map((n) => (
+                    <div key={n.id} className="rounded-xl border border-border bg-surface px-4 py-3">
+                      <span className="label-caps">{n.role}</span>
+                      <p className="mt-0.5 text-base">{n.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {current?.lyricsChords?.trim() && (
+              <section aria-label="Lyrics and chords" className="space-y-1 rounded-xl bg-surface-muted p-4 lg:col-span-3">
+                <h3 className="label-caps">Lyrics &amp; chords</h3>
+                <LyricsChordsView content={current.lyricsChords} size="sm" />
+              </section>
+            )}
+
+            <div className="space-y-5 lg:col-span-2 lg:col-start-4">
+              {current && (
+                <ExperimentPanel
+                  key={current.id}
+                  sectionId={current.id}
+                  rehearsalId={rehearsalId}
+                  changes={current.arrangementChanges}
+                  isLeaderView={isLeaderView}
+                  onChanged={() => router.refresh()}
+                />
+              )}
+              <details className="rounded-xl border border-border bg-surface p-4">
+                <summary className="tap-target flex cursor-pointer items-center gap-2 text-sm font-semibold">
+                  <Timer className="h-4 w-4" /> Metronome
+                </summary>
+                <div className="mt-4 flex justify-center">
+                  <Metronome initialBpm={song.bpm ?? 80} />
+                </div>
+              </details>
+
+              <div className="space-y-2">
+                <h3 className="label-caps">Mark this rehearsal</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {REHEARSAL_CHECK_STATUSES.map((s) => (
+                    <Button
+                      key={s.value}
+                      variant={activeStatus === s.value ? "primary" : "outline"}
+                      disabled={!rehearsalId}
+                      onClick={async () => {
+                        if (!rehearsalId) return;
+                        setError(null);
+                        const result = await setRehearsalCheck(rehearsalId, s.value);
+                        if (!result.ok) {
+                          setError(result.error);
+                          return;
+                        }
+                        setActiveStatus(s.value);
+                      }}
+                    >
+                      {s.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="label-caps">Record rehearsal notes</h3>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => {
+                    setNotes(e.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder={"One note per line, e.g.\nChorus was too loud.\nBass enters too early."}
+                  rows={4}
+                />
+                <Button
+                  disabled={!rehearsalId || !notes.trim()}
+                  onClick={async () => {
+                    if (!rehearsalId) return;
+                    setError(null);
+                    const result = await saveRehearsalNotes(rehearsalId, notes.split("\n"));
+                    if (!result.ok) {
+                      setError(result.error);
+                      return;
+                    }
+                    setNotes("");
+                    setSaved(true);
+                  }}
+                >
+                  <Save className="h-4 w-4" /> Save
+                </Button>
+                {saved && <p role="status" className="text-sm text-success">Saved to rehearsal history.</p>}
+                {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+              </div>
+            </div>
+
+            {isLeaderView && (
+              <div className="sticky bottom-20 z-10 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface-elevated p-2 shadow-lg md:bottom-3 lg:col-span-5">
+                <LeaderCueButton
+                  icon={Pause}
+                  label="Hold"
+                  sublabel="Stay on this section"
+                  variant="secondary"
+                  onClick={() => announceToTeam(setId, "Hold")}
+                />
+                <LeaderCueButton
+                  icon={BarChart3}
+                  label="Build"
+                  sublabel="Increase intensity"
+                  variant="outline"
+                  onClick={() => announceToTeam(setId, "Build")}
+                />
+                <LeaderCueButton
+                  icon={PlayCircle}
+                  label="Go Next"
+                  sublabel={next ? `Jump to ${next.label}` : "End of set"}
+                  variant="primary"
                   disabled={sectionIndex >= sections.length - 1}
                   onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
-                >
-                  Next <ChevronRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {current?.lyricsChords?.trim() && (
-            <div className="space-y-1 rounded-lg bg-surface-muted p-3">
-              <h3 className="label-caps">
-                Lyrics &amp; Chords
-              </h3>
-              <LyricsChordsView content={current.lyricsChords} size="sm" />
-            </div>
-          )}
-
-          {!isLeaderView && myRole && (
-            <div className="space-y-1 rounded-xl border-2 border-accent bg-accent/10 p-3">
-              <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent">
-                My Part — {myRole}
-              </h3>
-              <p className="text-sm">
-                {myPartNote?.content.trim() ? myPartNote.content : "Nothing specific for you here — play it as written."}
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">Current Directions</h3>
-            {instructionsByRole.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No specific instructions for this section.
-              </p>
-            ) : (
-              instructionsByRole.map((n) => (
-                <div key={n.id} className="rounded-lg bg-surface-muted px-3 py-2">
-                  <span className="label-caps">
-                    {n.role}
-                  </span>
-                  <p className="text-sm">{n.content}</p>
-                </div>
-              ))
+                />
+              </div>
             )}
           </div>
-
-          {next && (
-            <div className="space-y-2 rounded-lg border border-dashed border-border p-3 opacity-80">
-              <h3 className="label-caps">
-                Next Section
-              </h3>
-              <p className="text-sm font-semibold text-foreground">
-                {next.label}
-                {next.repeatCount && next.repeatCount > 1 ? ` ×${next.repeatCount}` : ""}
-              </p>
-              {next.lyricsChords?.trim() && (
-                <div className="rounded-lg bg-surface-muted p-2">
-                  <LyricsChordsView content={next.lyricsChords} size="sm" />
-                </div>
-              )}
-              <h4 className="pt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Role Directions (Next)
-              </h4>
-              {nextInstructionsByRole.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No specific instructions yet.</p>
-              ) : (
-                nextInstructionsByRole.map((n) => (
-                  <div key={n.id} className="rounded-lg bg-surface-muted px-3 py-1.5">
-                    <span className="label-caps">
-                      {n.role}
-                    </span>
-                    <p className="text-xs">{n.content}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {isLeaderView && (
-            <div className="sticky bottom-20 z-10 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface p-2 shadow-lg md:bottom-3">
-              <LeaderCueButton
-                icon={Pause}
-                label="Hold"
-                sublabel="Stay on this section"
-                variant="secondary"
-                onClick={() => announceToTeam(setId, "Hold")}
-              />
-              <LeaderCueButton
-                icon={BarChart3}
-                label="Build"
-                sublabel="Increase intensity"
-                variant="outline"
-                onClick={() => announceToTeam(setId, "Build")}
-              />
-              <LeaderCueButton
-                icon={PlayCircle}
-                label="Go Next"
-                sublabel={next ? `Jump to ${next.label}` : "End of set"}
-                variant="primary"
-                disabled={sectionIndex >= sections.length - 1}
-                onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
-              />
-            </div>
-          )}
-
-          {current && (
-            <ExperimentPanel
-              key={current.id}
-              sectionId={current.id}
-              rehearsalId={rehearsalId}
-              changes={current.arrangementChanges}
-              isLeaderView={isLeaderView}
-              onChanged={() => router.refresh()}
-            />
-          )}
         </>
       )}
-
-      <details className="rounded-lg border border-border p-3">
-        <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-          <Timer className="h-4 w-4" /> Metronome
-        </summary>
-        <div className="mt-4 flex justify-center">
-          <Metronome initialBpm={song.bpm ?? 80} />
-        </div>
-      </details>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">Mark this rehearsal</h3>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {REHEARSAL_CHECK_STATUSES.map((s) => (
-            <Button
-              key={s.value}
-              variant={activeStatus === s.value ? "primary" : "outline"}
-              size="sm"
-              disabled={!rehearsalId}
-              onClick={async () => {
-                if (!rehearsalId) return;
-                setError(null);
-                const result = await setRehearsalCheck(rehearsalId, s.value);
-                if (!result.ok) {
-                  setError(result.error);
-                  return;
-                }
-                setActiveStatus(s.value);
-              }}
-            >
-              {s.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">Record Rehearsal Notes</h3>
-        <Textarea
-          value={notes}
-          onChange={(e) => {
-            setNotes(e.target.value);
-            setSaved(false);
-          }}
-          placeholder={"One note per line, e.g.\nChorus was too loud.\nBass enters too early."}
-          rows={4}
-        />
-        <Button
-          size="sm"
-          disabled={!rehearsalId || !notes.trim()}
-          onClick={async () => {
-            if (!rehearsalId) return;
-            setError(null);
-            const result = await saveRehearsalNotes(rehearsalId, notes.split("\n"));
-            if (!result.ok) {
-              setError(result.error);
-              return;
-            }
-            setNotes("");
-            setSaved(true);
-          }}
-        >
-          <Save className="h-4 w-4" /> Save
-        </Button>
-        {saved && <p className="text-xs text-success">Saved to rehearsal history.</p>}
-        {error && <p className="text-xs text-danger">{error}</p>}
-      </div>
     </div>
   );
 }
@@ -611,7 +643,7 @@ function LeaderCueButton({
       type="button"
       variant={variant}
       disabled={disabled || busy}
-      className="h-auto flex-col gap-0.5 py-2.5"
+      className="h-auto min-h-14 flex-col gap-0.5 py-2.5"
       onClick={async () => {
         setBusy(true);
         await onClick();
@@ -646,13 +678,13 @@ function ExperimentPanel({
   const [busy, setBusy] = useState(false);
 
   return (
-    <div className="space-y-2 rounded-lg border border-dashed border-border p-3">
+    <div className="space-y-2 rounded-xl border border-dashed border-border p-4">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
           <FlaskConical className="h-4 w-4" /> Try something different
         </h3>
         {!open && (
-          <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
+          <Button type="button" variant="ghost" onClick={() => setOpen(true)}>
             Propose a change
           </Button>
         )}
@@ -661,9 +693,9 @@ function ExperimentPanel({
       {changes.length > 0 && (
         <div className="space-y-2">
           {changes.map((c) => (
-            <div key={c.id} className="rounded-lg bg-accent/10 p-2.5">
+            <div key={c.id} className="rounded-lg bg-musical-soft p-3">
               <div className="flex items-center justify-between gap-2">
-                <Badge variant="accent">EXPERIMENT</Badge>
+                <Badge variant="musical">Experiment</Badge>
                 <span className="label-caps">
                   {c.role}
                 </span>
@@ -672,7 +704,6 @@ function ExperimentPanel({
               {isLeaderView && (
                 <div className="mt-2 flex gap-2">
                   <Button
-                    size="sm"
                     disabled={busy}
                     onClick={async () => {
                       setBusy(true);
@@ -685,7 +716,6 @@ function ExperimentPanel({
                     Keep Change
                   </Button>
                   <Button
-                    size="sm"
                     variant="outline"
                     disabled={busy}
                     onClick={async () => {
@@ -708,7 +738,7 @@ function ExperimentPanel({
       {open && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Select value={role} onChange={(e) => setRole(e.target.value)} className="h-8 w-36 text-xs">
+            <Select value={role} onChange={(e) => setRole(e.target.value)} className="h-11 w-44 text-sm">
               {ROLES.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -724,7 +754,6 @@ function ExperimentPanel({
           />
           <div className="flex gap-2">
             <Button
-              size="sm"
               disabled={busy || !content.trim()}
               onClick={async () => {
                 setBusy(true);
@@ -747,13 +776,13 @@ function ExperimentPanel({
             >
               Propose (Experiment)
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
           </div>
         </div>
       )}
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     </div>
   );
 }
@@ -785,7 +814,7 @@ function AnnounceControl({ setId }: { setId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-accent-foreground/90 hover:bg-black/10"
+        className="tap-target flex items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-primary-foreground hover:bg-black/10"
       >
         <MoreHorizontal className="h-4 w-4" /> More cues
       </button>
@@ -801,7 +830,7 @@ function AnnounceControl({ setId }: { setId: string }) {
             type="button"
             disabled={!!sending}
             onClick={() => send(label)}
-            className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium hover:bg-surface-muted disabled:opacity-50"
+            className="min-h-11 rounded-full border border-border bg-surface px-4 text-sm font-semibold text-foreground hover:bg-surface-muted disabled:opacity-50"
           >
             {label}
           </button>
@@ -809,14 +838,14 @@ function AnnounceControl({ setId }: { setId: string }) {
         <button
           type="button"
           onClick={() => setCustomOpen((v) => !v)}
-          className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-muted"
+          className="min-h-11 rounded-full border border-dashed border-border bg-surface px-4 text-sm font-semibold text-muted-foreground hover:bg-surface-muted"
         >
           Custom…
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-muted-foreground hover:text-foreground"
+          className="tap-target flex w-11 items-center justify-center rounded-lg text-primary-foreground hover:bg-black/10"
           aria-label="Close announce"
         >
           <X className="h-4 w-4" />
@@ -831,12 +860,11 @@ function AnnounceControl({ setId }: { setId: string }) {
               setSent(null);
             }}
             placeholder="e.g. Hold here, we're praying first"
-            className="h-8 w-48 rounded-lg border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:w-64"
+            className="h-11 w-48 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-64"
           />
           <Button
             type="button"
             size="sm"
-            className="h-8 px-2 text-xs"
             disabled={!!sending || !message.trim()}
             onClick={async () => {
               await send(message);
@@ -847,7 +875,7 @@ function AnnounceControl({ setId }: { setId: string }) {
           </Button>
         </div>
       )}
-      {sent && !customOpen && <p className="text-xs text-success">Sent &quot;{sent}&quot;</p>}
+      {sent && !customOpen && <p role="status" className="text-sm font-semibold text-primary-foreground">Sent &quot;{sent}&quot;</p>}
     </div>
   );
 }

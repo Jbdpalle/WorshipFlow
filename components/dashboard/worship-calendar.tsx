@@ -106,7 +106,7 @@ export function WorshipCalendar({
 
   return (
     <Card id="worship-calendar">
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarDays className="h-4 w-4 text-accent" /> Worship Calendar
         </CardTitle>

@@ -40,7 +40,7 @@ export default async function FeedbackPage() {
           )}
           {inbox.map((f) => (
             <Card key={f.id}>
-              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex items-center justify-between gap-3 pb-2">
                 <Badge variant={f.type === "bug" ? "danger" : "outline"}>{f.type}</Badge>
                 <span className="text-xs text-muted-foreground">
                   {new Date(f.createdAt).toLocaleString()}

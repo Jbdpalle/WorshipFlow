@@ -60,7 +60,7 @@ export function PrepareMeCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex items-center justify-between gap-3">
         <div>
           <CardTitle className="text-base">Get ready: {setTitle}</CardTitle>
           <p className="text-xs text-muted-foreground">

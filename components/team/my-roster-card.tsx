@@ -19,7 +19,7 @@ export function MyRosterCard({ data, memberName }: { data: MyRosterData; memberN
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center gap-2 space-y-0">
+      <CardHeader className="flex items-center gap-2">
         <CalendarCheck className="h-4 w-4 text-primary" aria-hidden />
         <CardTitle className="text-base">When I&apos;m serving</CardTitle>
       </CardHeader>

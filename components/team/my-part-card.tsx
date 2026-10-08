@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { DynamicIndicator } from "@/components/songs/dynamic-indicator";
 import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
-import { cn } from "@/lib/utils/cn";
 
 type RoleNote = {
   id: string;
@@ -59,6 +58,24 @@ export function MyPartCard({
   }));
   const hasAnyDirection = rows.some((r) => r.note);
 
+  // Consecutive sections with no direction for this person collapse into
+  // one quiet row ("Verse 2 · Chorus: follow the flow") so the sections
+  // that matter to them stand out instead of drowning in repeats.
+  type Entry =
+    | { kind: "note"; section: (typeof rows)[number]["section"]; content: string }
+    | { kind: "quiet"; labels: string[]; key: string };
+  const entries: Entry[] = [];
+  for (const { section, note } of rows) {
+    const label = `${section.label}${section.repeatCount && section.repeatCount > 1 ? ` ×${section.repeatCount}` : ""}`;
+    if (note) {
+      entries.push({ kind: "note", section, content: note.content });
+    } else {
+      const last = entries[entries.length - 1];
+      if (last?.kind === "quiet") last.labels.push(label);
+      else entries.push({ kind: "quiet", labels: [label], key: section.id });
+    }
+  }
+
   return (
     <Card muted={muted} className="overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border p-4 sm:p-5">
@@ -94,28 +111,31 @@ export function MyPartCard({
 
       {hasAnyDirection ? (
         <ol>
-          {rows.map(({ section, note }) => (
-            <li
-              key={section.id}
-              className={cn(
-                "grid gap-x-6 gap-y-1 border-t border-border px-4 py-3 first:border-t-0 sm:grid-cols-[11rem_1fr] sm:px-5",
-                !note && "py-2",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start sm:justify-start">
-                <span className={cn("text-sm font-bold", note ? "text-foreground" : "text-muted-foreground")}>
-                  {section.label}
-                  {section.repeatCount && section.repeatCount > 1 ? ` ×${section.repeatCount}` : ""}
-                </span>
-                <DynamicIndicator dynamics={section.dynamics} />
-              </div>
-              {note ? (
-                <p className="text-base font-medium leading-snug text-foreground">{note.content}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">No direction for you here. Follow the flow.</p>
-              )}
-            </li>
-          ))}
+          {entries.map((entry) =>
+            entry.kind === "note" ? (
+              <li
+                key={entry.section.id}
+                className="grid gap-x-6 gap-y-1 border-t border-border px-4 py-3 first:border-t-0 sm:grid-cols-[11rem_1fr] sm:px-5"
+              >
+                <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-start sm:justify-start">
+                  <span className="text-sm font-bold text-foreground">
+                    {entry.section.label}
+                    {entry.section.repeatCount && entry.section.repeatCount > 1 ? ` ×${entry.section.repeatCount}` : ""}
+                  </span>
+                  <DynamicIndicator dynamics={entry.section.dynamics} />
+                </div>
+                <p className="text-base font-medium leading-snug text-foreground">{entry.content}</p>
+              </li>
+            ) : (
+              <li
+                key={entry.key}
+                className="grid gap-x-6 gap-y-0.5 border-t border-border px-4 py-2 first:border-t-0 sm:grid-cols-[11rem_1fr] sm:px-5"
+              >
+                <span className="text-sm font-semibold text-muted-foreground">{entry.labels.join(" · ")}</span>
+                <p className="text-sm text-muted-foreground">No direction for you. Follow the flow.</p>
+              </li>
+            ),
+          )}
         </ol>
       ) : (
         <p className="p-4 text-sm text-muted-foreground sm:p-5">
