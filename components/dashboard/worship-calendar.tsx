@@ -229,7 +229,7 @@ export function WorshipCalendar({
                 <p className="text-sm text-muted-foreground">No service scheduled.</p>
                 {isLeaderView && (
                   <Button loading={creating} disabled={creating} onClick={handleCreateService}>
-                    {creating ? "Creating…" : "Schedule service"}
+                    {creating ? "Creating…" : "Create set"}
                   </Button>
                 )}
               </div>

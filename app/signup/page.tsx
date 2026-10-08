@@ -50,7 +50,7 @@ export default function SignupPage() {
           </span>
           <h1 className="text-xl font-semibold">Create your worship team</h1>
           <p className="text-sm text-muted-foreground">
-            We&apos;ll set you up with an example set so you can see how it works right away.
+            Add your own songs, or explore a ready-made sample set first — your choice, right after you sign in.
           </p>
         </div>
 

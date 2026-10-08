@@ -7,7 +7,7 @@ export default function NewSetPage() {
       <SectionHeader
         level={1}
         label="Sets"
-        title="New service"
+        title="New set"
         description="Give it a title to get started. Add date, team, theme and scripture whenever you're ready."
       />
       <NewSetForm />

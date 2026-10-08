@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Library, Music2, PlayCircle, Search, SearchX, Sparkles } from "lucide-react";
+import { Library, Music2, PlayCircle, Search, SearchX } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { loadSampleData } from "@/lib/actions/sample-data";
+import { LoadSampleDataButton } from "@/components/songs/load-sample-data-button";
 import { cn } from "@/lib/utils/cn";
 
 type LibrarySong = {
@@ -30,13 +29,10 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 // letter, then read one scannable row per song (title, artist, key, tempo,
 // theme). The whole row opens the song; reference links sit on top of it.
 export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
   const [keyFilter, setKeyFilter] = useState("");
   const [themeFilter, setThemeFilter] = useState("");
-  const [loadingSample, setLoadingSample] = useState(false);
-  const [sampleError, setSampleError] = useState<string | null>(null);
 
   const availableLetters = useMemo(() => {
     const set = new Set<string>();
@@ -84,28 +80,7 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
         icon={Library}
         title="Your song library is empty"
         description="Songs are the heart of every set. Add your first song, import from a PDF, or explore with sample songs and a sample roster first."
-        action={
-          <div className="space-y-2">
-            <Button type="button" variant="outline" loading={loadingSample} onClick={async () => {
-              setLoadingSample(true);
-              setSampleError(null);
-              const result = await loadSampleData();
-              setLoadingSample(false);
-              if (!result.ok) {
-                setSampleError(result.error);
-                return;
-              }
-              router.refresh();
-            }}>
-              <Sparkles className="h-4 w-4" aria-hidden /> {loadingSample ? "Loading sample songs…" : "Load sample songs to explore"}
-            </Button>
-            {sampleError && (
-              <p role="alert" className="text-sm text-danger">
-                {sampleError}
-              </p>
-            )}
-          </div>
-        }
+        action={<LoadSampleDataButton redirectToSets={false} />}
         className="py-14"
       />
     );

@@ -142,7 +142,7 @@ export function ArrangementEditor({
       />
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr] lg:items-start">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext id="song-sections" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <div className="flex gap-2 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible lg:pb-0">
               {sections.map((section, i) => (
@@ -441,7 +441,15 @@ function FocusedSectionEditor({
               <button
                 type="button"
                 onClick={async () => {
-                  setDynamicsIsCustom(false);
+                  // A chip's value is only one of the 5 preset levels for
+                  // "Full" — "Build"/"Drop"/"Hold" are quick custom values,
+                  // same as if the leader had typed them into the custom
+                  // field. Route into whichever display can actually show
+                  // the value, so the dropdown never silently looks empty
+                  // for a value it has no matching option for.
+                  const isPresetChip = (DYNAMICS_LEVELS as readonly string[]).includes(chip);
+                  setDynamicsIsCustom(!isPresetChip);
+                  setCustomDynamics(isPresetChip ? "" : chip);
                   setDynamics(chip);
                   setDynamicsSave("saving");
                   const result = await updateSectionDynamics(section.id, chip);
