@@ -35,7 +35,11 @@ export default async function MyPartPage({
   });
 
   const ownMember = members.find((m) => m.userId === user.id);
-  const activeMember = members.find((m) => m.id === memberIdParam) ?? ownMember ?? members[0];
+  // A leader who isn't themselves on the roster, and hasn't picked anyone
+  // via the picker yet, gets no active member at all — never a silent
+  // default to whichever person happens to sort first, which looked like
+  // that person had been deliberately chosen.
+  const activeMember = members.find((m) => m.id === memberIdParam) ?? ownMember;
   const isOwnView = !!activeMember && activeMember.id === ownMember?.id;
 
   // Two TeamMember rows can share one real person's name (see
@@ -117,14 +121,36 @@ export default async function MyPartPage({
   const otherAssignments = assignments.filter((a) => !prepareAssignments.includes(a));
   const firstName = activeMember?.name.split(" ")[0] ?? "this person";
 
+  // A leader who isn't themselves on the roster and hasn't picked anyone
+  // yet — show the picker and a plain prompt, never another person's part
+  // by silent default.
+  if (!activeMember) {
+    return (
+      <div className="space-y-8">
+        <SectionHeader
+          level={1} icon={UserCircle} stage="mypart"
+          label="My Part"
+          title="Preview a musician's part"
+          description="Pick someone from the team to see exactly what they'll see."
+          action={<MyPartMemberPicker members={members} activeId={undefined} isOwnView={false} />}
+        />
+        <EmptyState
+          icon={Music2} stage="mypart"
+          title="No one selected yet"
+          description="Choose a team member above to preview their part — what they play, their directions, nothing else."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <SectionHeader
         level={1} icon={UserCircle} stage="mypart"
-        label="My Part"
         title={isOwnView ? "What I play" : `${firstName}'s part`}
-        description={`Only what ${activeMember?.name ?? "this person"} needs to know. Nothing else.`}
-        action={<MyPartMemberPicker members={members} activeId={activeMember?.id} isOwnView={isOwnView} />}
+        label="My Part"
+        description={`Only what ${activeMember.name} needs to know. Nothing else.`}
+        action={<MyPartMemberPicker members={members} activeId={activeMember.id} isOwnView={isOwnView} />}
       />
 
       {activeMember && <MyRosterCard data={myRoster} memberName={activeMember.name} />}
