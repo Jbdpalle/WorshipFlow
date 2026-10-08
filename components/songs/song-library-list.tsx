@@ -119,7 +119,7 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
               onClick={() => handleLetterClick(letter)}
               className={`flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors ${
                 active
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-primary text-primary-foreground"
                   : hasMatch
                     ? "bg-surface-muted text-foreground hover:bg-surface-muted/70"
                     : "text-muted-foreground/30"
@@ -182,7 +182,7 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
                   <div className="flex flex-wrap gap-1.5">
                     {song.key && <Badge variant="outline">Key {song.key}</Badge>}
                     {song.bpm && <Badge variant="outline">{song.bpm} BPM</Badge>}
-                    {song.themeCategory && <Badge variant="accent">{song.themeCategory}</Badge>}
+                    {song.themeCategory && <Badge variant="musical">{song.themeCategory}</Badge>}
                   </div>
                 </CardContent>
               </Card>

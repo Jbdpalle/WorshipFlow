@@ -54,7 +54,7 @@ export function ThemeCategoryPicker({
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                 active
-                  ? "border-accent bg-accent text-accent-foreground"
+                  ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-surface text-muted-foreground hover:bg-surface-muted",
               )}
             >

@@ -5,6 +5,9 @@ import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { SectionHeader } from "@/components/ui/section-header";
+import { SongDetailsSheet } from "@/components/songs/song-details-sheet";
 import { SongHeaderEditor } from "@/components/songs/song-header-editor";
 import { DeleteSongButton } from "@/components/songs/delete-song-button";
 import { TagEditor } from "@/components/songs/tag-editor";
@@ -51,30 +54,58 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
   if (!song || song.teamId !== team.id) notFound();
   await advanceTourIfNeeded(user.id, team.id, 3);
 
+  const facts = [
+    song.key && { label: "Key", value: song.key, musical: true },
+    song.bpm && { label: "Tempo", value: `${song.bpm} BPM` },
+    song.timeSignature && { label: "Time", value: song.timeSignature },
+    song.energy && { label: "Energy", value: song.energy.charAt(0).toUpperCase() + song.energy.slice(1) },
+    song.worshipType && { label: "Type", value: song.worshipType },
+  ].filter(Boolean) as { label: string; value: string; musical?: boolean }[];
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Song</CardTitle>
-          <div className="flex items-center gap-2">
+      <SectionHeader
+        level={1}
+        label="Song"
+        title={song.title}
+        description={song.artist ?? undefined}
+        action={
+          <>
             <Link href={`/songs/${song.id}/chart`}>
-              <Button variant="secondary" size="sm">
-                <BookOpenText className="h-4 w-4" /> View Chart
+              <Button variant="outline">
+                <BookOpenText className="h-4 w-4" aria-hidden /> View chart
               </Button>
             </Link>
-            <DeleteSongButton songId={song.id} songTitle={song.title} />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <SongHeaderEditor
-            songId={song.id}
-            song={song}
-            themeCategories={song.themeCategories.map((c) => c.label)}
-          />
-          <TagEditor songId={song.id} tags={song.tags} />
-          <ThemeVerseSuggestion songId={song.id} />
-        </CardContent>
-      </Card>
+            <SongDetailsSheet>
+              <SongHeaderEditor
+                songId={song.id}
+                song={song}
+                themeCategories={song.themeCategories.map((c) => c.label)}
+              />
+              <TagEditor songId={song.id} tags={song.tags} />
+              <ThemeVerseSuggestion songId={song.id} />
+              <div className="border-t border-border pt-4">
+                <DeleteSongButton songId={song.id} songTitle={song.title} />
+              </div>
+            </SongDetailsSheet>
+          </>
+        }
+      />
+
+      {(facts.length > 0 || song.tags.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {facts.map((f) => (
+            <Badge key={f.label} variant={f.musical ? "musical" : "default"} className="tnum gap-1.5 px-3 py-1 text-sm">
+              <span className="text-xs font-medium opacity-70">{f.label}</span> {f.value}
+            </Badge>
+          ))}
+          {song.tags.map((t) => (
+            <Badge key={t.id} variant="outline" className="px-3 py-1 text-sm">
+              {t.label}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       <LastTimeCallout lastRehearsal={song.rehearsals[0] ?? null} recentChanges={song.changeLogs.slice(0, 3)} />
 

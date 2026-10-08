@@ -102,7 +102,7 @@ export function QuickDirectionPicker({
   return (
     <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h4 className="label-caps">
           Quick Direction
         </h4>
         <button type="button" onClick={reset} className="text-muted-foreground hover:text-foreground" aria-label="Cancel">
@@ -179,7 +179,7 @@ export function QuickDirectionPicker({
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                 selectedChips.includes(chip)
-                  ? "border-accent bg-accent text-accent-foreground"
+                  ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-surface text-foreground hover:bg-surface-muted",
               )}
             >
@@ -191,7 +191,7 @@ export function QuickDirectionPicker({
             onClick={() => setShowExtra((v) => !v)}
             className={cn(
               "rounded-full border border-dashed px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-muted",
-              showExtra && "border-accent text-accent",
+              showExtra && "border-primary text-primary",
             )}
           >
             More…
@@ -221,7 +221,7 @@ export function QuickDirectionPicker({
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold",
                     intensity !== null && n <= intensity
-                      ? "border-accent bg-accent text-accent-foreground"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-surface text-muted-foreground hover:bg-surface-muted",
                   )}
                 >

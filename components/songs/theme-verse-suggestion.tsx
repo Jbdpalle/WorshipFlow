@@ -68,7 +68,7 @@ export function ThemeVerseSuggestion({ songId }: { songId: string }) {
   }
 
   return (
-    <div className="space-y-2 rounded-lg bg-accent/5 p-3 text-sm">
+    <div className="space-y-2 rounded-lg bg-musical-soft p-3 text-sm">
       <div>
         <span className="font-medium">Theme:</span> {suggestion.theme}
       </div>

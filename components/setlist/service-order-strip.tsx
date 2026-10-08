@@ -14,8 +14,8 @@ export type ServiceOrderSong = {
 
 const FLOW_ICON: Record<SongFlowStatus, { icon: typeof CheckCircle2; className: string }> = {
   ready: { icon: CheckCircle2, className: "text-success" },
-  needs_work: { icon: AlertCircle, className: "text-accent" },
-  not_started: { icon: Circle, className: "text-muted-foreground/50" },
+  needs_work: { icon: AlertCircle, className: "text-warning" },
+  not_started: { icon: Circle, className: "text-muted-foreground" },
 };
 
 const TRANSITION_LABELS: Record<string, string> = {
@@ -46,7 +46,7 @@ export function ServiceOrderStrip({ songs }: { songs: ServiceOrderSong[] }) {
             <Link
               href={`/songs/${s.song.id}`}
               className={cn(
-                "flex w-36 shrink-0 flex-col gap-1 rounded-xl border border-border bg-surface p-2.5 text-left transition-colors hover:border-accent/50 hover:bg-surface-muted",
+                "flex w-36 shrink-0 flex-col gap-1 rounded-xl border border-border bg-surface p-2.5 text-left transition-colors hover:border-primary/50 hover:bg-surface-muted",
               )}
             >
               <div className="flex items-center justify-between gap-1">

@@ -45,7 +45,7 @@ export function LyricsChordsView({
     <div className={cn("font-mono leading-relaxed whitespace-pre-wrap", sizeClass)}>
       {displayLines.map((line, i) =>
         isChordLine(lines[i]) ? (
-          <div key={i} className="font-bold text-accent">
+          <div key={i} className="font-bold text-musical">
             {line || " "}
           </div>
         ) : (

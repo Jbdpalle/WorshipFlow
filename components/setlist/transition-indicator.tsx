@@ -61,19 +61,26 @@ export function TransitionIndicator({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={cn(
-          "group flex w-full items-center gap-2 py-1 text-xs text-muted-foreground hover:text-foreground",
-        )}
+        aria-label={`Edit transition: ${typeLabel}${transition?.direction ? `, ${transition.direction}` : ""}`}
+        className="group flex min-h-11 w-full items-center gap-3 rounded-lg px-1 text-left text-sm text-muted-foreground hover:bg-surface-muted"
       >
-        <ArrowDown className="h-3.5 w-3.5 shrink-0" />
-        <span className={cn("font-medium", transition && "text-accent")}>{typeLabel}</span>
-        {transition?.direction && <span className="truncate">— {transition.direction}</span>}
+        <span
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+            transition ? "bg-musical-soft text-musical" : "bg-surface-muted text-muted-foreground",
+          )}
+          aria-hidden
+        >
+          <ArrowDown className="h-4 w-4" />
+        </span>
+        <span className={cn("font-semibold", transition ? "text-musical" : "text-muted-foreground")}>{typeLabel}</span>
+        {transition?.direction && <span className="min-w-0 truncate">{transition.direction}</span>}
         {keyChange && (
-          <span className="ml-auto shrink-0 rounded-full bg-accent/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-accent">
+          <span className="tnum ml-auto shrink-0 rounded-full bg-musical-soft px-2.5 py-0.5 text-xs font-bold text-musical">
             {keyChange}
           </span>
         )}
-        <Pencil className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100" />
+        <Pencil className="h-3.5 w-3.5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden />
       </button>
     );
   }
@@ -81,8 +88,8 @@ export function TransitionIndicator({
   return (
     <div className="space-y-2 rounded-lg border border-dashed border-border bg-surface-muted p-2.5">
       {keyChange && (
-        <p className="flex items-center gap-1.5 text-xs font-medium text-accent">
-          Key change: <span className="font-mono">{keyChange}</span>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-musical">
+          Key change: <span className="tnum">{keyChange}</span>
         </p>
       )}
       <div className="flex items-center gap-2">
@@ -90,7 +97,7 @@ export function TransitionIndicator({
         <Select
           value={type}
           onChange={(e) => setType(e.target.value as TransitionTypeValue)}
-          className="h-7 w-36 text-xs"
+          className="h-10 w-40 text-sm"
         >
           {TRANSITION_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -98,8 +105,13 @@ export function TransitionIndicator({
             </option>
           ))}
         </Select>
-        <button type="button" onClick={() => setOpen(false)} className="ml-auto text-muted-foreground hover:text-foreground">
-          <X className="h-3.5 w-3.5" />
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Close transition editor"
+          className="tap-target ml-auto flex w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
         </button>
       </div>
       <Textarea
@@ -118,7 +130,7 @@ export function TransitionIndicator({
         <Button
           type="button"
           size="sm"
-          className="h-7 px-2 text-xs"
+          className="h-10 px-3 text-sm"
           disabled={saving}
           onClick={async () => {
             setSaving(true);
@@ -140,7 +152,7 @@ export function TransitionIndicator({
             type="button"
             size="sm"
             variant="ghost"
-            className="h-7 px-2 text-xs text-danger"
+            className="h-10 px-3 text-sm text-danger"
             disabled={saving}
             onClick={async () => {
               setSaving(true);

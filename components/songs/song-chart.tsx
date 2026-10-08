@@ -115,7 +115,7 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
                 </Select>
               </Tooltip>
               {displayKey && displayKey !== song.key && (
-                <Badge variant="accent">transposed from {song.key}</Badge>
+                <Badge variant="musical">transposed from {song.key}</Badge>
               )}
             </div>
           ) : (
@@ -131,7 +131,7 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                   mode === m.value
-                    ? "bg-accent text-accent-foreground"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

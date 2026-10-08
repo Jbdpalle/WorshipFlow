@@ -37,7 +37,7 @@ export default async function RosterPage() {
       {entries.length === 0 && !isLeader ? (
         <section className="rounded-2xl border border-border bg-surface p-8 text-center shadow-sm sm:p-12">
           <ClipboardList className="mx-auto h-9 w-9 text-accent" aria-hidden />
-          <h2 className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="mt-3 label-caps">
             No roster yet
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">

@@ -211,7 +211,7 @@ function ByLeaderView({ entries }: { entries: RosterPageEntry[] }) {
     <div className="space-y-4">
       {[...byLeader.entries()].map(([key, group]) => (
         <section key={key}>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="label-caps">
             Worship Leader: {group.displayName}
           </h3>
           <ul className="mt-2 space-y-1.5">
@@ -227,7 +227,7 @@ function ByLeaderView({ entries }: { entries: RosterPageEntry[] }) {
       ))}
       {unassigned.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">No leader assigned</h3>
+          <h3 className="label-caps">No leader assigned</h3>
           <ul className="mt-2 space-y-1.5">
             {unassigned.map((e) => (
               <li key={e.id} className="text-sm">

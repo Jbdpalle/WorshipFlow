@@ -95,7 +95,7 @@ export function ImportSongMetadataDialog() {
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-accent"
+              className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary"
             >
               <Sparkles className="h-6 w-6 text-muted-foreground" />
               <span className="text-sm">{file ? file.name : "Click to choose a spreadsheet"}</span>

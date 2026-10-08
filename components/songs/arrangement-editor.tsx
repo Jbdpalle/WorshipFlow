@@ -37,6 +37,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { SaveStatus, type SaveState } from "@/components/ui/save-status";
 import { Tooltip } from "@/components/ui/tooltip";
+import { DynamicIndicator } from "@/components/songs/dynamic-indicator";
+import { SongFlowRibbon } from "@/components/songs/song-flow-ribbon";
 import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker";
 import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
 import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
@@ -129,8 +131,16 @@ export function ArrangementEditor({
   const selected = sections[selectedIndex];
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[14rem_1fr] lg:items-start">
+    <div className="space-y-5">
+      <SongVisionGroup songId={songId} initialVision={initialVisionNote} />
+
+      <SongFlowRibbon
+        sections={sections}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[16rem_1fr] lg:items-start">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <div className="flex gap-2 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible lg:pb-0">
@@ -192,7 +202,6 @@ export function ArrangementEditor({
             section={selected}
             sectionNumber={selectedIndex + 1}
             sectionCount={sections.length}
-            initialVisionNote={initialVisionNote}
             teamMembers={teamMembers}
             onDeleted={() => {
               setSections((prev) => prev.filter((s) => s.id !== selected.id));
@@ -249,16 +258,16 @@ function SectionOutlineRow({
       style={style}
       data-testid="section-outline-item"
       className={cn(
-        "flex w-40 shrink-0 items-center gap-1.5 rounded-lg border px-2 py-2 lg:w-full",
+        "flex w-44 shrink-0 items-center gap-1 rounded-lg border px-1.5 py-1 lg:w-full",
         active
-          ? "border-accent bg-accent/10"
+          ? "border-primary bg-primary/10"
           : "border-border bg-surface hover:bg-surface-muted",
       )}
     >
       <button
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing"
+        className="flex h-9 w-7 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
         aria-label={`Drag to reorder ${section.label}`}
       >
         <GripVertical className="h-4 w-4" />
@@ -272,15 +281,16 @@ function SectionOutlineRow({
         <span
           className={cn(
             "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
-            active ? "bg-accent text-accent-foreground" : "bg-surface-muted text-muted-foreground",
+            active ? "bg-primary text-primary-foreground" : "bg-surface-muted text-muted-foreground",
           )}
         >
           {index + 1}
         </span>
         <span className={cn("truncate text-sm", active ? "font-semibold text-foreground" : "text-foreground")}>
           {section.label}
-          {section.isFreeform && <Wind className="ml-1 inline h-3 w-3 text-accent" aria-label="Freeform" />}
+          {section.isFreeform && <Wind className="ml-1 inline h-3 w-3 text-musical" aria-label="Freeform" />}
         </span>
+        <DynamicIndicator dynamics={section.dynamics} showLabel={false} className="ml-auto shrink-0" />
       </button>
     </div>
   );
@@ -291,7 +301,6 @@ function FocusedSectionEditor({
   section,
   sectionNumber,
   sectionCount,
-  initialVisionNote,
   teamMembers,
   onDeleted,
   onDuplicated,
@@ -303,7 +312,6 @@ function FocusedSectionEditor({
   section: Section;
   sectionNumber: number;
   sectionCount: number;
-  initialVisionNote: string;
   teamMembers: TeamMemberOption[];
   onDeleted: () => void;
   onDuplicated: () => void;
@@ -375,7 +383,7 @@ function FocusedSectionEditor({
             }}
             className={cn(
               "rounded-md p-2.5 text-muted-foreground hover:bg-surface-muted",
-              isFreeform && "bg-accent/15 text-accent hover:bg-accent/20",
+              isFreeform && "bg-musical-soft text-musical hover:bg-musical-soft",
             )}
             aria-label="Toggle spontaneous / freeform section"
           >
@@ -422,7 +430,7 @@ function FocusedSectionEditor({
 
       {/* Dynamics and repeat count */}
       <div className="rounded-lg bg-surface-muted p-3">
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="flex items-center gap-1.5 label-caps">
           <SlidersHorizontal className="h-3.5 w-3.5" /> Dynamics
         </h3>
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -444,9 +452,9 @@ function FocusedSectionEditor({
                   setTimeout(() => setDynamicsSave("idle"), 1800);
                 }}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  "min-h-9 rounded-full border px-3.5 text-sm font-semibold transition-colors",
                   dynamics === chip
-                    ? "border-accent bg-accent text-accent-foreground"
+                    ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-surface text-foreground hover:bg-surface-muted",
                 )}
               >
@@ -563,16 +571,13 @@ function FocusedSectionEditor({
         </div>
       </div>
 
-      {/* Song vision / arrangement intent */}
-      <SongVisionGroup songId={songId} initialVision={initialVisionNote} />
-
       {/* Lyrics and chords */}
       <LyricsChordsBlock sectionId={section.id} initialContent={section.lyricsChords ?? ""} />
 
       {/* Role-specific and group directions */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="label-caps">
             Role Directions
           </h3>
           {hasPreviousSection && (
@@ -637,7 +642,7 @@ function SongVisionGroup({ songId, initialVision }: { songId: string; initialVis
   return (
     <div className="rounded-lg bg-surface-muted p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="flex items-center gap-1.5 label-caps">
           <Compass className="h-3.5 w-3.5" /> Song Vision
         </h3>
         <SaveStatus state={status} />
@@ -689,7 +694,7 @@ function LyricsChordsBlock({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <label className="flex items-center gap-1.5 label-caps">
           <FileText className="h-3.5 w-3.5" /> Lyrics &amp; Chords
         </label>
         <SaveStatus state={status} />
@@ -818,7 +823,7 @@ function RoleNoteRow({
             </Select>
           </Tooltip>
         ) : (
-          <span className="mt-1.5 w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="mt-1.5 w-28 shrink-0 label-caps">
             {role}
           </span>
         )}

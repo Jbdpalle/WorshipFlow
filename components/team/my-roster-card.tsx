@@ -25,7 +25,7 @@ export function MyRosterCard({ data, memberName }: { data: MyRosterData; memberN
       </CardHeader>
       <CardContent className="space-y-4">
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming</h3>
+          <h3 className="label-caps">Upcoming</h3>
           {upcoming.length === 0 ? (
             <p className="mt-1.5 text-sm text-muted-foreground">
               No upcoming services yet for {memberName}.
@@ -55,7 +55,7 @@ export function MyRosterCard({ data, memberName }: { data: MyRosterData; memberN
 
         {recent.length > 0 && (
           <section className="border-t border-border pt-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent</h3>
+            <h3 className="label-caps">Recent</h3>
             <ul className="mt-1.5 space-y-1.5">
               {recent.map((row) => (
                 <li key={row.setId} className="flex items-baseline justify-between gap-2 text-sm text-muted-foreground">

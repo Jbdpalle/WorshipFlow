@@ -60,7 +60,7 @@ type TeamMemberOption = { id: string; name: string; role: string };
 
 const FLOW_STATUS: Record<SongFlowStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
   ready: { label: "Song Flow ready", icon: CheckCircle2, className: "text-success" },
-  needs_work: { label: "Song Flow needs work", icon: AlertCircle, className: "text-accent" },
+  needs_work: { label: "Song Flow needs work", icon: AlertCircle, className: "text-warning" },
   not_started: { label: "Song Flow not started", icon: Circle, className: "text-muted-foreground" },
 };
 
@@ -213,7 +213,7 @@ function SetSongCard({
                   <span className="text-xs font-mono text-muted-foreground">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <Link href={`/songs/${item.song.id}`} className="font-semibold hover:text-accent">
+                  <Link href={`/songs/${item.song.id}`} className="font-semibold hover:text-primary hover:underline">
                     {item.song.title}
                   </Link>
                   {isLeader ? (
@@ -227,8 +227,8 @@ function SetSongCard({
                       }}
                       aria-label={isAnchor ? "Remove as anchor song" : "Mark as anchor song"}
                       className={cn(
-                        "rounded-md p-0.5",
-                        isAnchor ? "text-accent" : "text-muted-foreground/40 hover:text-accent",
+                        "flex h-9 w-9 items-center justify-center rounded-md",
+                        isAnchor ? "text-musical" : "text-muted-foreground hover:text-musical",
                       )}
                     >
                       <Tooltip content="The anchor song sets the theme suggestions for the rest of the set">
@@ -238,7 +238,7 @@ function SetSongCard({
                   ) : (
                     isAnchor && (
                       <Tooltip content="This service's anchor song">
-                        <Star className="h-4 w-4 text-accent" fill="currentColor" />
+                        <Star className="h-4 w-4 text-musical" fill="currentColor" />
                       </Tooltip>
                     )
                   )}

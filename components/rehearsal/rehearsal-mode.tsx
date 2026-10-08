@@ -408,7 +408,7 @@ function SongRehearsalPanel({
 
           {current?.lyricsChords?.trim() && (
             <div className="space-y-1 rounded-lg bg-surface-muted p-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="label-caps">
                 Lyrics &amp; Chords
               </h3>
               <LyricsChordsView content={current.lyricsChords} size="sm" />
@@ -435,7 +435,7 @@ function SongRehearsalPanel({
             ) : (
               instructionsByRole.map((n) => (
                 <div key={n.id} className="rounded-lg bg-surface-muted px-3 py-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="label-caps">
                     {n.role}
                   </span>
                   <p className="text-sm">{n.content}</p>
@@ -446,7 +446,7 @@ function SongRehearsalPanel({
 
           {next && (
             <div className="space-y-2 rounded-lg border border-dashed border-border p-3 opacity-80">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="label-caps">
                 Next Section
               </h3>
               <p className="text-sm font-semibold text-foreground">
@@ -466,7 +466,7 @@ function SongRehearsalPanel({
               ) : (
                 nextInstructionsByRole.map((n) => (
                   <div key={n.id} className="rounded-lg bg-surface-muted px-3 py-1.5">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span className="label-caps">
                       {n.role}
                     </span>
                     <p className="text-xs">{n.content}</p>
@@ -664,7 +664,7 @@ function ExperimentPanel({
             <div key={c.id} className="rounded-lg bg-accent/10 p-2.5">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant="accent">EXPERIMENT</Badge>
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="label-caps">
                   {c.role}
                 </span>
               </div>
