@@ -17,6 +17,7 @@ import { ROLES } from "@/lib/songs/constants";
 import { addTeamMember, removeTeamMember, updateTeamMember } from "@/lib/actions/team";
 import { revokeInvite } from "@/lib/actions/invites";
 import { InviteDialog } from "@/components/team/invite-dialog";
+import { ResetPasswordDialog } from "@/components/team/reset-password-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 
 type Member = {
@@ -42,19 +43,34 @@ function MemberInviteStatus({
   invite,
   isLeader,
   isAdmin,
+  viewerUserId,
 }: {
   member: Member;
   invite: PendingInvite | undefined;
   isLeader: boolean;
   isAdmin: boolean;
+  viewerUserId: string;
 }) {
   if (member.userId) {
     return (
-      <Tooltip content="This person has logged in and linked their own account">
-        <span tabIndex={0}>
-          <Status tone="success">Account active</Status>
-        </span>
-      </Tooltip>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tooltip content="This person has logged in and linked their own account">
+          <span tabIndex={0}>
+            <Status tone="success">Account active</Status>
+          </span>
+        </Tooltip>
+        {isLeader && member.userId !== viewerUserId && (
+          <ResetPasswordDialog
+            teamMemberId={member.id}
+            teamMemberName={member.name}
+            trigger={
+              <button type="button" className="tap-target rounded-lg px-1 text-sm font-semibold text-primary hover:underline">
+                Reset password
+              </button>
+            }
+          />
+        )}
+      </div>
     );
   }
 
@@ -186,11 +202,13 @@ export function TeamRoster({
   pendingInvites,
   isLeader,
   isAdmin,
+  viewerUserId,
 }: {
   members: Member[];
   pendingInvites: PendingInvite[];
   isLeader: boolean;
   isAdmin: boolean;
+  viewerUserId: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -272,6 +290,7 @@ export function TeamRoster({
                     invite={inviteByMemberId.get(m.id)}
                     isLeader={isLeader}
                     isAdmin={isAdmin}
+                    viewerUserId={viewerUserId}
                   />
                 </div>
               </div>

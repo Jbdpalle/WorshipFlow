@@ -29,6 +29,13 @@ export function MyPartMemberPicker({
   // the page below always resolves each person's actual, current
   // assignment, so showing a roster-default role next to their name in
   // this list would only suggest it's live when it isn't.
+  // No one is actively selected (e.g. a leader who isn't themselves on the
+  // roster, before they've picked anyone) — the select must show a real,
+  // neutral placeholder rather than silently resting on whichever name
+  // happens to be first alphabetically, which reads as if that person had
+  // been deliberately chosen.
+  const selectedValue = groups.find((g) => g.ids.includes(activeId ?? ""))?.ids[0] ?? "";
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {!isOwnView && (
@@ -37,11 +44,19 @@ export function MyPartMemberPicker({
         </Badge>
       )}
       <Select
-        value={groups.find((g) => g.ids.includes(activeId ?? ""))?.ids[0] ?? activeId}
-        onChange={(e) => router.push(`/my-part?member=${e.target.value}`)}
+        value={selectedValue}
+        onChange={(e) => {
+          if (!e.target.value) return;
+          router.push(`/my-part?member=${e.target.value}`);
+        }}
         className="w-full sm:w-56"
         aria-label={isOwnView ? "Viewing your own part" : "Preview another musician's part"}
       >
+        {!selectedValue && (
+          <option value="" disabled>
+            Select a team member…
+          </option>
+        )}
         {groups.map((g) => (
           <option key={g.ids[0]} value={g.ids[0]}>
             {g.name}

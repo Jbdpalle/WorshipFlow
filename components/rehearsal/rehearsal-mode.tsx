@@ -16,6 +16,7 @@ import {
   BarChart3,
   PlayCircle,
   MoreHorizontal,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +40,10 @@ import {
   setLivePosition,
   getLivePosition,
   announceToTeam,
+  recordSectionVisit,
 } from "@/lib/actions/rehearsal";
+import { finishPracticeSession, type PracticeSessionSummary } from "@/lib/actions/practice-sessions";
+import { finishLiveSet } from "@/lib/actions/live-set";
 import { cn } from "@/lib/utils/cn";
 import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
 
@@ -68,7 +72,7 @@ type Section = {
   arrangementChanges: ArrangementChange[];
 };
 type ChangeEntry = { id: string; field: string; fromValue: string | null; toValue: string | null };
-type SetSongData = {
+export type SetSongData = {
   id: string;
   order: number;
   assignments: { teamMemberId: string | null; role: string }[];
@@ -113,6 +117,9 @@ export function RehearsalMode({
   viewerTeamMemberId,
   initialLiveSetSongId,
   initialLiveSectionId,
+  mode,
+  practiceSessionId,
+  onFinished,
 }: {
   setId: string;
   setTitle: string;
@@ -122,7 +129,19 @@ export function RehearsalMode({
   viewerTeamMemberId: string | null;
   initialLiveSetSongId: string | null;
   initialLiveSectionId: string | null;
+  // Undefined = the original, undecorated Director Mode (/rehearsal/[setId])
+  // — no Finish control, behavior exactly as before. "practice"/"live" add
+  // the matching Finish control, reusing this same engine rather than a
+  // second one.
+  mode?: "practice" | "live";
+  practiceSessionId?: string | null;
+  // Called after a successful Finish — the page decides where that goes
+  // (e.g. the practice summary screen vs. back to the Live Set overview).
+  onFinished?: (summary?: PracticeSessionSummary) => void;
 }) {
+  const router = useRouter();
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
   // The default role(s) this viewer holds for the whole service — falls
   // back to here only when the current song has no per-song override (see
   // myRole in SongRehearsalPanel below). Never falls back to account role.
@@ -185,11 +204,52 @@ export function RehearsalMode({
       {isLeaderView ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-primary px-4 py-2 text-primary-foreground">
           <p className="flex items-center gap-2 text-sm font-bold">
-            <Radio className="h-4 w-4 animate-pulse" aria-hidden /> Director mode
+            <Radio className="h-4 w-4 animate-pulse" aria-hidden />
+            {mode === "live" ? "Live" : mode === "practice" ? "Practice" : "Director mode"}
           </p>
-          <p className="text-sm font-medium">Everyone follows your position and cues.</p>
+          <p className="hidden text-sm font-medium sm:block">Everyone follows your position and cues.</p>
+          {mode && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              loading={finishing}
+              disabled={finishing}
+              onClick={async () => {
+                setFinishing(true);
+                setFinishError(null);
+                if (mode === "practice" && practiceSessionId) {
+                  const result = await finishPracticeSession(practiceSessionId);
+                  setFinishing(false);
+                  if (!result.ok) {
+                    setFinishError(result.error);
+                    return;
+                  }
+                  onFinished?.(result.data);
+                } else {
+                  const result = await finishLiveSet(setId);
+                  setFinishing(false);
+                  if (!result.ok) {
+                    setFinishError(result.error);
+                    return;
+                  }
+                  onFinished?.();
+                }
+                router.refresh();
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" aria-hidden />
+              {mode === "practice" ? "Finish Practice" : "Finish Live Set"}
+            </Button>
+          )}
         </div>
-      ) : (
+      ) : null}
+      {finishError && (
+        <p role="alert" className="text-sm text-danger">
+          {finishError}
+        </p>
+      )}
+      {!isLeaderView && (
         <>
           {followBanner && (
             <p role="status" className="rounded-lg bg-info/10 px-4 py-2 text-sm font-semibold text-info">
@@ -247,6 +307,7 @@ export function RehearsalMode({
         isLeaderView={isLeaderView}
         viewerTeamMemberId={viewerTeamMemberId}
         initialLiveSectionId={setSong.id === initialLiveSetSongId ? initialLiveSectionId : null}
+        practiceSessionId={practiceSessionId ?? null}
       />
     </div>
   );
@@ -260,6 +321,7 @@ function SongRehearsalPanel({
   isLeaderView,
   viewerTeamMemberId,
   initialLiveSectionId,
+  practiceSessionId,
 }: {
   setId: string;
   setTitle: string;
@@ -268,6 +330,7 @@ function SongRehearsalPanel({
   isLeaderView: boolean;
   viewerTeamMemberId: string | null;
   initialLiveSectionId: string | null;
+  practiceSessionId: string | null;
 }) {
   const router = useRouter();
   const song = setSong.song;
@@ -286,7 +349,7 @@ function SongRehearsalPanel({
 
   useEffect(() => {
     let cancelled = false;
-    startRehearsal(song.id, setSong.id, song.bpm ?? undefined).then((result) => {
+    startRehearsal(song.id, setSong.id, song.bpm ?? undefined, practiceSessionId).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setRehearsalId(result.data.id);
@@ -298,7 +361,7 @@ function SongRehearsalPanel({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [song.id, setSong.id]);
+  }, [song.id, setSong.id, practiceSessionId]);
 
   // Follow the leader's section moves within the current song (the parent
   // dispatches this after each poll — see RehearsalMode above).
@@ -317,12 +380,26 @@ function SongRehearsalPanel({
   function goTo(nextIndex: number) {
     setSectionIndex(nextIndex);
     if (isLeaderView) {
-      setLivePosition(setId, setSong.id, sections[nextIndex]?.id ?? null);
+      const sectionId = sections[nextIndex]?.id ?? null;
+      setLivePosition(setId, setSong.id, sectionId);
+      if (practiceSessionId && rehearsalId && sectionId) {
+        recordSectionVisit(rehearsalId, sectionId);
+      }
     }
   }
 
   const current = sections[sectionIndex];
   const next = sections[sectionIndex + 1];
+
+  // goTo() only fires on a move — the section already current when this
+  // song's Rehearsal row is created (the very first one, or wherever a
+  // resumed session left off) needs recording too.
+  useEffect(() => {
+    if (isLeaderView && practiceSessionId && rehearsalId && current?.id) {
+      recordSectionVisit(rehearsalId, current.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLeaderView, practiceSessionId, rehearsalId]);
 
   const instructionsByRole = useMemo(
     () => resolveInstructionsForSection(current, isLeaderView, viewerTeamMemberId),

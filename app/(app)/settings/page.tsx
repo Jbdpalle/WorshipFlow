@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Settings } from "lucide-react";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { RestartTourButton } from "@/components/demo/demo-tour-banner";
 import { ThemeSegmentedControl } from "@/components/layout/theme-toggle";
 import { TooltipToggle } from "@/components/layout/tooltip-toggle";
@@ -72,6 +73,16 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <SettingsForm field="church" initialValue={church.name} disabled={!isOwner} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Password</CardTitle>
+          <CardDescription>Change the password you use to log in.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 

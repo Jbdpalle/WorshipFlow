@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { SectionHeader } from "@/components/ui/section-header";
 import { FilterChip } from "@/components/ui/filter-chip";
@@ -9,6 +9,7 @@ import { Plus, ListMusic } from "lucide-react";
 import { EVENT_TYPES } from "@/lib/songs/constants";
 import { getSetsPageData } from "@/lib/dashboard/data";
 import { SetsBoard } from "@/components/sets/sets-board";
+import { LoadSampleDataButton } from "@/components/songs/load-sample-data-button";
 
 export default async function SetsPage({
   searchParams,
@@ -16,7 +17,8 @@ export default async function SetsPage({
   searchParams: Promise<{ type?: string; archived?: string }>;
 }) {
   const { type, archived } = await searchParams;
-  const { team } = await requireUser();
+  const { team, membershipRole } = await requireUser();
+  const isLeader = isLeaderRole(membershipRole);
   const showArchived = archived === "1";
   const [allSets, members, archivedCount] = await Promise.all([
     getSetsPageData(team.id, showArchived),
@@ -37,7 +39,7 @@ export default async function SetsPage({
         title={showArchived ? "Archived sets" : "Worship sets & events"}
         action={
           <ButtonLink href="/sets/new">
-              <Plus className="h-4 w-4" aria-hidden /> New event
+              <Plus className="h-4 w-4" aria-hidden /> New set
             </ButtonLink>
         }
       />
@@ -78,9 +80,12 @@ export default async function SetsPage({
             title="No worship sets yet"
             description="Create a service to build its setlist, add song flow, assign the team and rehearse, all in one place."
             action={
-              <ButtonLink href="/sets/new" size="lg">
-                  <Plus className="h-4 w-4" aria-hidden /> Create your first set
-                </ButtonLink>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <ButtonLink href="/sets/new" size="lg">
+                    <Plus className="h-4 w-4" aria-hidden /> Create your first set
+                  </ButtonLink>
+                {isLeader && <LoadSampleDataButton />}
+              </div>
             }
           />
         ) : (

@@ -2,6 +2,7 @@ import { ArrowRight, CalendarHeart } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LoadSampleDataButton } from "@/components/songs/load-sample-data-button";
 import type { DashboardSet } from "@/lib/dashboard/data";
 import { ServiceProgressPath } from "@/components/dashboard/service-progress-path";
 
@@ -30,7 +31,10 @@ export function NextSundayHero({
         }
         action={
           isLeaderView ? (
-            <ButtonLink href="/sets/new" size="lg">Schedule service</ButtonLink>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <ButtonLink href="/sets/new" size="lg">New set</ButtonLink>
+              <LoadSampleDataButton />
+            </div>
           ) : undefined
         }
         className="py-14"

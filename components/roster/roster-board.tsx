@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CalendarPlus, Copy, ClipboardList } from "lucide-react";
+import { CalendarPlus, Copy, ClipboardList, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Status } from "@/components/ui/status";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SetTeam } from "@/components/setlist/set-team";
+import { ServiceRosterList } from "@/components/dashboard/service-roster-list";
 import { eventTypeLabel } from "@/lib/songs/constants";
 import { generateWeeklyServices, copyRosterToSet } from "@/lib/actions/roster";
 import { groupMembersByName, normalizeMemberName } from "@/lib/songs/member-name";
@@ -142,6 +143,11 @@ function DateCard({
   const router = useRouter();
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
+  // Collapsed by default: a plain name/role summary (same as every other
+  // Dashboard roster view), not the full assign/remove editor — a list of
+  // many upcoming services shouldn't force every card open into edit mode.
+  // Leaders expand the one card they actually need to change.
+  const [editing, setEditing] = useState(false);
   const hasLeader = entry.roster.some((r) => r.role === "Worship Leader");
 
   return (
@@ -167,7 +173,34 @@ function DateCard({
         )}
       </CardHeader>
       <CardContent className="space-y-3">
-        <SetTeam setId={entry.id} members={entry.setTeamMembers} teamMembers={members} isLeader={isLeader} />
+        {editing ? (
+          <div className="space-y-2">
+            <SetTeam setId={entry.id} members={entry.setTeamMembers} teamMembers={members} isLeader={isLeader} />
+            {isLeader && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
+                Done
+              </Button>
+            )}
+          </div>
+        ) : entry.roster.length > 0 ? (
+          <div className="space-y-2">
+            <ServiceRosterList roster={entry.roster} setId={entry.id} canManage={false} />
+            {isLeader && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit roster
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">No team assigned yet.</p>
+            {isLeader && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5" aria-hidden /> Assign team
+              </Button>
+            )}
+          </div>
+        )}
         {isLeader && entry.setTeamMembers.length > 0 && nextEntryId && (
           <div>
             <Button loading={copying}
