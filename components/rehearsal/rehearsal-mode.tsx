@@ -185,9 +185,9 @@ export function RehearsalMode({
       {isLeaderView ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-primary px-4 py-2 text-primary-foreground">
           <p className="flex items-center gap-2 text-sm font-bold">
-            <Radio className="h-4 w-4 animate-pulse" aria-hidden /> Directing live
+            <Radio className="h-4 w-4 animate-pulse" aria-hidden /> Director mode
           </p>
-          <AnnounceControl setId={setId} />
+          <p className="text-sm font-medium">Everyone follows your position and cues.</p>
         </div>
       ) : (
         <>
@@ -407,7 +407,7 @@ function SongRehearsalPanel({
                 )}
               >
                 {isFreeform && <Wind className="h-3.5 w-3.5" aria-hidden />}
-                {isFreeform ? "Spontaneous: follow as led" : "Now"}
+                {isFreeform ? "Spontaneous: follow as led" : isLeaderView ? "Current" : "Now"}
               </p>
               <h2 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl">
                 {current?.label}
@@ -433,6 +433,13 @@ function SongRehearsalPanel({
                 )}
               </div>
             </section>
+
+            {isLeaderView && (
+              <section aria-label="Announce" className="space-y-3 rounded-2xl border border-border bg-surface p-5 lg:col-span-3">
+                <h3 className="label-caps">Announce to the team</h3>
+                <AnnounceControl setId={setId} panel />
+              </section>
+            )}
 
             {!isLeaderView && myRole && (
               <section aria-label="My part" className="rounded-2xl border border-border bg-musical-soft p-5 sm:p-6 lg:col-span-3">
@@ -586,7 +593,7 @@ function SongRehearsalPanel({
             </div>
 
             {isLeaderView && (
-              <div className="sticky bottom-20 z-10 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface-elevated p-2 shadow-lg md:bottom-3 lg:col-span-5">
+              <div role="group" aria-label="Signal" className="sticky bottom-20 z-10 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface-elevated p-2 shadow-lg md:bottom-3 lg:col-span-5">
                 <LeaderCueButton
                   icon={Pause}
                   label="Hold"
@@ -794,9 +801,9 @@ function ExperimentPanel({
 // specific cue varies by church/team.
 const QUICK_ANNOUNCEMENTS = ["Repeat", "Stop", "Drop", "Wait", "Leader Signal"];
 
-function AnnounceControl({ setId }: { setId: string }) {
-  const [open, setOpen] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
+function AnnounceControl({ setId, panel = false }: { setId: string; panel?: boolean }) {
+  const [open, setOpen] = useState(panel);
+  const [customOpen, setCustomOpen] = useState(panel);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
@@ -822,8 +829,8 @@ function AnnounceControl({ setId }: { setId: string }) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
-      <div className="flex flex-wrap items-center justify-end gap-1">
+    <div className={cn("flex flex-col gap-2", panel ? "items-stretch" : "items-end")}>
+      <div className={cn("flex flex-wrap items-center gap-2", panel ? "justify-start" : "justify-end")}>
         {QUICK_ANNOUNCEMENTS.map((label) => (
           <button
             key={label}
@@ -835,6 +842,7 @@ function AnnounceControl({ setId }: { setId: string }) {
             {label}
           </button>
         ))}
+        {!panel && (
         <button
           type="button"
           onClick={() => setCustomOpen((v) => !v)}
@@ -842,6 +850,8 @@ function AnnounceControl({ setId }: { setId: string }) {
         >
           Custom…
         </button>
+        )}
+        {!panel && (
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -850,9 +860,10 @@ function AnnounceControl({ setId }: { setId: string }) {
         >
           <X className="h-4 w-4" />
         </button>
+        )}
       </div>
       {customOpen && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <input
             value={message}
             onChange={(e) => {
@@ -860,7 +871,7 @@ function AnnounceControl({ setId }: { setId: string }) {
               setSent(null);
             }}
             placeholder="e.g. Hold here, we're praying first"
-            className="h-11 w-48 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-64"
+            className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-w-md"
           />
           <Button
             type="button"
@@ -875,7 +886,7 @@ function AnnounceControl({ setId }: { setId: string }) {
           </Button>
         </div>
       )}
-      {sent && !customOpen && <p role="status" className="text-sm font-semibold text-primary-foreground">Sent &quot;{sent}&quot;</p>}
+      {sent && (panel || !customOpen) && <p role="status" className={cn("text-sm font-semibold", panel ? "text-success" : "text-primary-foreground")}>Sent &quot;{sent}&quot;</p>}
     </div>
   );
 }
