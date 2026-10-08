@@ -72,6 +72,30 @@ model User {
   changeLogs        ChangeLog[]
   acceptedInvites   Invite[]
   usabilityEvents   UsabilityEvent[]
+  passwordResets        PasswordReset[] @relation("PasswordResetUser")
+  passwordResetsCreated PasswordReset[] @relation("PasswordResetCreatedBy")
+}
+
+// A leader-generated, single-use link for resetting one team member's
+// password — the same "generate a token, copy and share the link
+// yourself" pattern as Invite, since WorshipFlow has no email-sending
+// capability to offer a self-serve "forgot password" flow instead.
+// createdByUserId is the leader who generated it, kept for an audit trail;
+// it's nullable (SetNull) so deleting that leader's account never blocks
+// deleting this row.
+model PasswordReset {
+  id              String    @id @default(cuid())
+  userId          String
+  token           String    @unique @default(cuid())
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdByUserId String?
+
+  user          User  @relation("PasswordResetUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("PasswordResetCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
 
 model Church {

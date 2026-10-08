@@ -2,6 +2,8 @@ import { describe, it, expect, afterEach } from "vitest";
 import { prisma } from "@/lib/db/prisma";
 import { registerUser } from "@/lib/auth/actions";
 import { updateSong } from "@/lib/actions/songs";
+import { createPasswordReset } from "@/lib/actions/password-reset";
+import { hashPassword } from "@/lib/auth/password";
 import { createTestTeam, loginAs, cleanupTeam } from "./helpers";
 
 describe("tenant isolation", () => {
@@ -64,5 +66,36 @@ describe("tenant isolation", () => {
 
     const unchanged = await prisma.song.findUnique({ where: { id: song.id } });
     expect(unchanged?.title).toBe("Owner's Song");
+  });
+
+  it("rejects a password-reset link for a team member on a different team, even as a real leader", async () => {
+    const owner = await createTestTeam("reset-owner");
+    const attacker = await createTestTeam("reset-attacker");
+    cleanup.push({ teamId: owner.team.id, churchId: owner.church.id });
+    cleanup.push({ teamId: attacker.team.id, churchId: attacker.church.id });
+
+    // A real team member on the OWNER's team, with an active account
+    // (userId set) — exactly the shape createPasswordReset requires to do
+    // anything at all.
+    const stamp = `reset-member-${Date.now()}`;
+    const memberUser = await prisma.user.create({
+      data: { name: "Reset Target", email: `${stamp}@test.invalid`, passwordHash: await hashPassword("irrelevant") },
+    });
+    const teamMember = await prisma.teamMember.create({
+      data: { teamId: owner.team.id, userId: memberUser.id, name: "Reset Target", role: "Vocals" },
+    });
+
+    // Log in as the ATTACKER — a real leader, just on a different team —
+    // and try to generate a reset link for the OWNER's team member by
+    // forging its id, same shape as the song-hijack case above.
+    await loginAs(attacker.user.id);
+    const result = await createPasswordReset(teamMember.id);
+
+    expect(result.ok).toBe(false);
+
+    const resets = await prisma.passwordReset.findMany({ where: { userId: memberUser.id } });
+    expect(resets).toHaveLength(0);
+
+    await prisma.user.delete({ where: { id: memberUser.id } }).catch(() => {});
   });
 });

@@ -6,7 +6,7 @@ import { ChurchAccessList } from "@/components/team/church-access-list";
 import { listChurchAccess } from "@/lib/actions/team";
 
 export default async function TeamPage() {
-  const { team, membershipRole } = await requireUser();
+  const { user, team, membershipRole } = await requireUser();
   const isLeader = isLeaderRole(membershipRole);
   const isAdmin = isAdminRole(membershipRole);
   const [members, pendingInvites, churchAccess] = await Promise.all([
@@ -29,7 +29,13 @@ export default async function TeamPage() {
         title={team.name}
         description={`${members.length} member${members.length === 1 ? "" : "s"}. What someone plays, their account, and their invitation are shown separately.`}
       />
-      <TeamRoster members={members} pendingInvites={pendingInvites} isLeader={isLeader} isAdmin={isAdmin} />
+      <TeamRoster
+        members={members}
+        pendingInvites={pendingInvites}
+        isLeader={isLeader}
+        isAdmin={isAdmin}
+        viewerUserId={user.id}
+      />
       {isLeader && <ChurchAccessList rows={churchAccess} isAdmin={isAdmin} />}
     </div>
   );

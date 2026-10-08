@@ -12,6 +12,7 @@ export type UsabilityEventName =
   | "song_arrangement_started"
   | "team_member_invited"
   | "invite_accepted"
+  | "password_reset_created"
   | "my_part_opened"
   | "rehearsal_started"
   | "transition_created"
