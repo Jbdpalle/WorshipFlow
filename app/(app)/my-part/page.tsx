@@ -4,7 +4,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MyPartCard } from "@/components/team/my-part-card";
-import { Music2 } from "lucide-react";
+import { Music2, UserCircle } from "lucide-react";
 import { MyPartMemberPicker } from "@/components/team/my-part-member-picker";
 import { PrepareMeCard } from "@/components/team/prepare-me-card";
 import { MyRosterCard } from "@/components/team/my-roster-card";
@@ -120,7 +120,7 @@ export default async function MyPartPage({
   return (
     <div className="space-y-8">
       <SectionHeader
-        level={1}
+        level={1} icon={UserCircle} stage="mypart"
         label="My Part"
         title={isOwnView ? "What I play" : `${firstName}'s part`}
         description={`Only what ${activeMember?.name ?? "this person"} needs to know. Nothing else.`}
@@ -131,7 +131,7 @@ export default async function MyPartPage({
 
       {assignments.length === 0 ? (
         <EmptyState
-          icon={Music2}
+          icon={Music2} stage="mypart"
           title={isOwnView ? "No songs assigned to you yet" : `No songs assigned to ${activeMember?.name ?? "this person"} yet`}
           description="A worship leader assigns people to a service from its Worship Team card, or to one song from that song's details. Once you're assigned, your part appears here automatically."
           action={

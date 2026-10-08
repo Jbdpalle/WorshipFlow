@@ -12,6 +12,7 @@ import {
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggleButton } from "@/components/layout/theme-toggle";
 import { Sheet } from "@/components/ui/sheet";
+import { STAGE_SOFT_BG, STAGE_TEXT, StageIcon } from "@/components/ui/stage-icon";
 import { cn } from "@/lib/utils/cn";
 
 const itemClasses =
@@ -39,9 +40,16 @@ export function BottomNav({ userName, teamName }: { userName: string; teamName: 
               key={link.href}
               href={link.href}
               aria-current={active ? "page" : undefined}
-              className={cn(itemClasses, active ? "text-primary" : "text-muted-foreground")}
+              className={cn(itemClasses, active ? "text-foreground" : "text-muted-foreground")}
             >
-              <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} aria-hidden />
+              <span
+                className={cn(
+                  "flex h-8 w-12 items-center justify-center rounded-full transition-colors duration-[var(--duration-fast)]",
+                  active && STAGE_SOFT_BG[link.stage],
+                )}
+              >
+                <Icon className={cn("h-5 w-5", STAGE_TEXT[link.stage])} strokeWidth={active ? 2.5 : 2} aria-hidden />
+              </span>
               {link.label}
             </Link>
           );
@@ -51,9 +59,16 @@ export function BottomNav({ userName, teamName }: { userName: string; teamName: 
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
-          className={cn(itemClasses, moreActive ? "text-primary" : "text-muted-foreground")}
+          className={cn(itemClasses, moreActive ? "text-foreground" : "text-muted-foreground")}
         >
-          <MoreHorizontal className="h-5 w-5" strokeWidth={moreActive ? 2.5 : 2} aria-hidden />
+          <span
+            className={cn(
+              "flex h-8 w-12 items-center justify-center rounded-full transition-colors duration-[var(--duration-fast)]",
+              moreActive && STAGE_SOFT_BG.support,
+            )}
+          >
+            <MoreHorizontal className={cn("h-5 w-5", STAGE_TEXT.support)} strokeWidth={moreActive ? 2.5 : 2} aria-hidden />
+          </span>
           More
         </button>
       </nav>
@@ -76,11 +91,11 @@ export function BottomNav({ userName, teamName }: { userName: string; teamName: 
                   className={cn(
                     "tap-target flex items-center gap-3 rounded-lg px-3 text-base font-medium",
                     active
-                      ? "bg-surface-muted font-semibold text-primary"
+                      ? "bg-surface-muted font-semibold text-foreground"
                       : "text-foreground hover:bg-surface-muted",
                   )}
                 >
-                  <Icon className="h-5 w-5" aria-hidden />
+                  <StageIcon icon={Icon} stage={link.stage} size="sm" />
                   {link.label}
                 </Link>
               </li>

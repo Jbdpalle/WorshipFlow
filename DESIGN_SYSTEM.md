@@ -35,6 +35,28 @@ Rules: neutral surfaces by default, colour only where it carries meaning. Never 
 
 **Legacy:** `accent` / `accent-foreground` still work and currently follow `primary`. They exist so unmigrated screens keep their meaning. New code must use `primary` or `musical`. Each screen's phase migrates its own usages, and the aliases are removed in the final audit phase.
 
+## Icons: colour = workflow stage
+
+Icons are Lucide. Their colour says where you are in the workflow, like coloured tabs in a binder. One source of truth: the `--stage-*` tokens (`app/globals.css`), the `StageIcon` component and the `stage` field on each nav link (`components/ui/stage-icon.tsx`, `components/layout/nav-links.ts`).
+
+| Stage | Light | Stage (dark) | Used for |
+|---|---|---|---|
+| Plan | forest `#2c4a3e` | `#8fbf9f` | Dashboard, Sets, calendar |
+| Arrange | brass `#8a5a12` | `#d2a85a` | Library, songs, dynamics |
+| Assign | indigo `#4a4a8a` | `#a9a9e0` | Team, Roster, coverage |
+| Rehearse | plum `#6b3a5b` | `#d9a0c6` | Metronome, rehearsal |
+| My part | blue `#2f5476` | `#86b2c8` | My Part |
+| Lead | teal `#1f6b6b` | `#7ccbc4` | Music Director, Director mode |
+| Support | slate `#46525a` | `#a39d90` | Settings, Feedback, More |
+
+Rules:
+- `StageIcon` has three looks: `plain` (glyph only: navigation, inline), `tile` (glyph on its soft tint: page headers, empty states), `solid` (one call-out).
+- Colour never carries meaning alone: every icon sits beside a label and is `aria-hidden`.
+- Stage colours stay separate from status colours (success, warning, danger, info). A test fails if any stage colour equals a status colour.
+- Never put a stage colour on a solid `primary` fill (for example the Director announce bar); keep those icons in `primary-foreground`.
+- Every glyph/tint pairing is held to AA (4.5:1) in both themes by `tests/design-tokens.test.ts`.
+- Applied in: sidebar and rail, phone bottom bar and More sheet, page headers (`SectionHeader icon stage`), empty states (`EmptyState stage`), role coverage, the worship calendar.
+
 ## Typography
 
 One family: **Figtree** (self-hosted by `next/font`, variable `--font-figtree`). Chord charts keep the system monospace because alignment depends on it.

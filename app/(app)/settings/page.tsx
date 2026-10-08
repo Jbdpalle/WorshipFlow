@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/guard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Settings } from "lucide-react";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { RestartTourButton } from "@/components/demo/demo-tour-banner";
@@ -17,7 +18,7 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <SectionHeader
-        level={1}
+        level={1} icon={Settings} stage="support"
         label="Settings"
         title="Your account"
         description="Your name and church, as everyone on the team sees them."

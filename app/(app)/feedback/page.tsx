@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, MessageSquarePlus } from "lucide-react";
 
 export default async function FeedbackPage() {
   const { user } = await requireUser();
@@ -28,7 +28,7 @@ export default async function FeedbackPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <SectionHeader
-        level={1}
+        level={1} icon={MessageSquarePlus} stage="support"
         label="Feedback"
         title="Tell us what you think"
         description="Testing WorshipFlow with your team? Bugs, ideas, and general thoughts all help."
@@ -39,7 +39,7 @@ export default async function FeedbackPage() {
         <div className="space-y-3">
           <h2 className="text-xl font-bold">All feedback (admin)</h2>
           {inbox.length === 0 && (
-            <EmptyState icon={MessageSquare} title="No feedback yet" description="Messages your team sends from this page will show up here." />
+            <EmptyState icon={MessageSquare} stage="support" title="No feedback yet" description="Messages your team sends from this page will show up here." />
           )}
           {inbox.map((f) => (
             <Card key={f.id}>

@@ -8,6 +8,7 @@ import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggleButton } from "@/components/layout/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
 import { Logo } from "@/components/brand/logo";
+import { STAGE_SOFT_BG, STAGE_TEXT } from "@/components/ui/stage-icon";
 import { cn } from "@/lib/utils/cn";
 
 // iPad portrait / small laptop (md–lg): a 64px icon rail.
@@ -45,11 +46,11 @@ export function Sidebar({ userName, teamName }: { userName: string; teamName: st
                       className={cn(
                         "flex h-11 items-center justify-center gap-3 rounded-lg text-sm transition-colors duration-[var(--duration-fast)] lg:justify-start lg:px-3",
                         active
-                          ? "bg-surface-muted font-semibold text-primary"
+                          ? cn(STAGE_SOFT_BG[link.stage], "font-semibold text-foreground")
                           : "font-medium text-muted-foreground hover:bg-surface-muted hover:text-foreground",
                       )}
                     >
-                      <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                      <Icon className={cn("h-5 w-5 shrink-0", STAGE_TEXT[link.stage])} aria-hidden />
                       <span className="hidden lg:inline">{link.label}</span>
                     </Link>
                   </li>

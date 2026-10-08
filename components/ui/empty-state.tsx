@@ -1,11 +1,13 @@
 import { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { StageIcon, type Stage } from "@/components/ui/stage-icon";
 import { cn } from "@/lib/utils/cn";
 
 // Never "no data". Say what is missing, why it matters, and what to do next.
 // Keep it to a title, one sentence, and one action.
 export function EmptyState({
   icon: Icon,
+  stage,
   title,
   description,
   action,
@@ -13,6 +15,8 @@ export function EmptyState({
   as: Heading = "h2",
 }: {
   icon?: LucideIcon;
+  /** Colours the icon by workflow stage; omit for a neutral icon. */
+  stage?: Stage;
   title: string;
   description?: ReactNode;
   action?: ReactNode;
@@ -27,7 +31,12 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon && <Icon className="h-8 w-8 text-muted-foreground" aria-hidden />}
+      {Icon &&
+        (stage ? (
+          <StageIcon icon={Icon} stage={stage} size="lg" />
+        ) : (
+          <Icon className="h-8 w-8 text-muted-foreground" aria-hidden />
+        ))}
       <Heading className="text-lg font-semibold text-foreground">{title}</Heading>
       {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-1">{action}</div>}

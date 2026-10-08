@@ -1,5 +1,6 @@
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
+import { Library } from "lucide-react";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SongLibraryList } from "@/components/songs/song-library-list";
 import { NewSongDialog } from "@/components/songs/new-song-dialog";
@@ -29,7 +30,7 @@ export default async function SongLibraryPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        level={1}
+        level={1} icon={Library} stage="arrange"
         label="Library"
         title="Songs"
         description="Every song your team plays, with its key, tempo and arrangement."
