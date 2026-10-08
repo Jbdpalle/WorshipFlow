@@ -20,8 +20,8 @@ export function MyRosterCard({ data, memberName }: { data: MyRosterData; memberN
   return (
     <Card>
       <CardHeader className="flex-row items-center gap-2 space-y-0">
-        <CalendarCheck className="h-4 w-4 text-accent" />
-        <CardTitle className="text-base">My Roster</CardTitle>
+        <CalendarCheck className="h-4 w-4 text-primary" aria-hidden />
+        <CardTitle className="text-base">When I&apos;m serving</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <section>
@@ -31,10 +31,10 @@ export function MyRosterCard({ data, memberName }: { data: MyRosterData; memberN
               No upcoming services yet for {memberName}.
             </p>
           ) : (
-            <ul className="mt-1.5 space-y-1.5">
+            <ul className="mt-1 divide-y divide-border">
               {upcoming.map((row) => (
-                <li key={row.setId} className="flex items-baseline justify-between gap-2 text-sm">
-                  <Link href={`/sets/${row.setId}`} className="min-w-0 truncate hover:text-accent">
+                <li key={row.setId} className="flex items-center justify-between gap-2 text-sm">
+                  <Link href={`/sets/${row.setId}`} className="inline-flex min-h-11 min-w-0 items-center truncate font-semibold hover:text-primary hover:underline">
                     {formatDate(row.serviceDate)}
                     {row.eventType !== "SERVICE" && (
                       <span className="text-muted-foreground"> · {eventTypeLabel(row.eventType)}</span>
@@ -42,7 +42,7 @@ export function MyRosterCard({ data, memberName }: { data: MyRosterData; memberN
                   </Link>
                   <span className="flex shrink-0 gap-1">
                     {row.roles.map((role) => (
-                      <Badge key={role} variant="accent">
+                      <Badge key={role} variant="primary">
                         {role}
                       </Badge>
                     ))}
@@ -59,7 +59,7 @@ export function MyRosterCard({ data, memberName }: { data: MyRosterData; memberN
             <ul className="mt-1.5 space-y-1.5">
               {recent.map((row) => (
                 <li key={row.setId} className="flex items-baseline justify-between gap-2 text-sm text-muted-foreground">
-                  <Link href={`/sets/${row.setId}`} className="min-w-0 truncate hover:text-accent">
+                  <Link href={`/sets/${row.setId}`} className="inline-flex min-h-11 min-w-0 items-center truncate font-semibold hover:text-primary hover:underline">
                     {formatDate(row.serviceDate)}
                   </Link>
                   <span className="flex shrink-0 gap-1">

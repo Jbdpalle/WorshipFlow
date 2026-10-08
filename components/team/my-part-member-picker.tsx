@@ -32,8 +32,8 @@ export function MyPartMemberPicker({
   return (
     <div className="flex items-center gap-2">
       {!isOwnView && (
-        <Badge variant="accent" className="gap-1">
-          <Eye className="h-3 w-3" /> Preview as
+        <Badge variant="info" className="gap-1 px-3 py-1 text-sm">
+          <Eye className="h-3.5 w-3.5" aria-hidden /> Preview as
         </Badge>
       )}
       <Select
