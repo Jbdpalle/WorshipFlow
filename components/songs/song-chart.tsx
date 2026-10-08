@@ -149,7 +149,7 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
 
       {sectionsWithContent.length === 0 ? (
         <EmptyState
-          icon={FileMusic}
+          icon={FileMusic} stage="arrange"
           title="No chords or lyrics yet"
           description="Add them to a section in Song Flow, or import a chord-chart PDF from the Songs library."
           action={

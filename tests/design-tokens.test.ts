@@ -111,3 +111,39 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     expect(contrast(t.ring, t.background)).toBeGreaterThanOrEqual(3);
   });
 });
+
+// Workflow-stage icon colours. Each stage has a glyph colour and a soft tint.
+// Icons are decorative (labels carry the meaning) but must stay clearly visible
+// on every ground they appear on: the tint, the surface and the page.
+describe("stage icon colours", () => {
+  const stages = ["plan", "arrange", "assign", "rehearse", "mypart", "lead", "support"];
+
+  for (const [name, t] of Object.entries(themes)) {
+    for (const stage of stages) {
+      const fg = t[`stage-${stage}`];
+      const soft = t[`stage-${stage}-soft`];
+      it(`${name}: ${stage} defines glyph and tint`, () => {
+        expect(fg).toMatch(/^#[0-9a-f]{6}$/);
+        expect(soft).toMatch(/^#[0-9a-f]{6}$/);
+      });
+      it(`${name}: ${stage} glyph is AA on its tint, surface and page`, () => {
+        expect(contrast(fg, soft)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(fg, t.surface)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(fg, t.background)).toBeGreaterThanOrEqual(4.5);
+      });
+      it(`${name}: ${stage} solid tile keeps its glyph readable`, () => {
+        expect(contrast(t.background, fg)).toBeGreaterThanOrEqual(4.5);
+      });
+      it(`${name}: ${stage} tint sits quietly beside the label text`, () => {
+        expect(contrast(t.foreground, soft)).toBeGreaterThanOrEqual(7);
+      });
+    }
+  }
+
+  it("stage colours stay separate from status colours", () => {
+    for (const t of [light, dark]) {
+      const status = [t.success, t.warning, t.danger, t.info];
+      for (const stage of stages) expect(status).not.toContain(t[`stage-${stage}`]);
+    }
+  });
+});

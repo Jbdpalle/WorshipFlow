@@ -81,7 +81,7 @@ export function SongLibraryList({ songs }: { songs: LibrarySong[] }) {
   if (songs.length === 0) {
     return (
       <EmptyState
-        icon={Library}
+        icon={Library} stage="arrange"
         title="Your song library is empty"
         description="Songs are the heart of every set. Add your first song, import from a PDF, or explore with sample songs and a sample roster first."
         action={

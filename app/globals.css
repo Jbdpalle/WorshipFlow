@@ -54,6 +54,16 @@
   --ring: #2c4a3e;
   --scrim: rgb(30 36 32 / 0.45);
 
+  /* Workflow stages: icon colour tells you where you are (see DESIGN_SYSTEM.md).
+     Kept apart from status colours so a plum icon is never mistaken for an error. */
+  --stage-plan: #2c4a3e;      --stage-plan-soft: #dce5df;
+  --stage-arrange: #8a5a12;   --stage-arrange-soft: #f1e7d2;
+  --stage-assign: #4a4a8a;    --stage-assign-soft: #e3e3f1;
+  --stage-rehearse: #6b3a5b;  --stage-rehearse-soft: #ebdde6;
+  --stage-mypart: #2f5476;    --stage-mypart-soft: #dce5ee;
+  --stage-lead: #1f6b6b;      --stage-lead-soft: #d9e7e7;
+  --stage-support: #46525a;   --stage-support-soft: #e3e5e6;
+
   --shadow-float: 0 8px 24px rgb(30 36 32 / 0.14);
 }
 
@@ -84,6 +94,14 @@
   --ring: #d2a85a;
   --scrim: rgb(0 0 0 / 0.6);
 
+  --stage-plan: #8fbf9f;      --stage-plan-soft: #1e2e25;
+  --stage-arrange: #d2a85a;   --stage-arrange-soft: #2e2616;
+  --stage-assign: #a9a9e0;    --stage-assign-soft: #262640;
+  --stage-rehearse: #d9a0c6;  --stage-rehearse-soft: #3a2a35;
+  --stage-mypart: #86b2c8;    --stage-mypart-soft: #1f2a31;
+  --stage-lead: #7ccbc4;      --stage-lead-soft: #1d3b38;
+  --stage-support: #a39d90;   --stage-support-soft: #2d3237;
+
   --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
 }
 
@@ -110,6 +128,22 @@
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
   --color-info: var(--info);
+
+
+  --color-stage-plan: var(--stage-plan);
+  --color-stage-plan-soft: var(--stage-plan-soft);
+  --color-stage-arrange: var(--stage-arrange);
+  --color-stage-arrange-soft: var(--stage-arrange-soft);
+  --color-stage-assign: var(--stage-assign);
+  --color-stage-assign-soft: var(--stage-assign-soft);
+  --color-stage-rehearse: var(--stage-rehearse);
+  --color-stage-rehearse-soft: var(--stage-rehearse-soft);
+  --color-stage-mypart: var(--stage-mypart);
+  --color-stage-mypart-soft: var(--stage-mypart-soft);
+  --color-stage-lead: var(--stage-lead);
+  --color-stage-lead-soft: var(--stage-lead-soft);
+  --color-stage-support: var(--stage-support);
+  --color-stage-support-soft: var(--stage-support-soft);
 
   --color-ring: var(--ring);
   --color-scrim: var(--scrim);

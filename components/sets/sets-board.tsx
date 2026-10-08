@@ -218,7 +218,7 @@ export function SetsBoard({ entries, members }: { entries: SetsPageEntry[]; memb
 
       {entries.length === 0 ? (
         <EmptyState
-          icon={CalendarX}
+          icon={CalendarX} stage="plan"
           title="Nothing here yet"
           description="Sets you create will appear here, grouped the way you choose above."
         />

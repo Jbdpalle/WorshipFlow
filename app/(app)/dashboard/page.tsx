@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/guard";
 import { getDashboardData, getCalendarMonthData } from "@/lib/dashboard/data";
+import { LayoutDashboard } from "lucide-react";
 import { SectionHeader } from "@/components/ui/section-header";
 import { NextSundayHero } from "@/components/dashboard/next-sunday-hero";
 import { ServiceSetCard } from "@/components/dashboard/service-set-card";
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <SectionHeader
-        level={1}
+        level={1} icon={LayoutDashboard} stage="plan"
         label={today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         title={`${greeting()}, ${user.name.split(" ")[0]}`}
       />
