@@ -9,7 +9,7 @@ const variantClasses: Record<Variant, string> = {
   secondary: "bg-surface-muted text-foreground hover:bg-border",
   outline: "border border-border bg-transparent text-foreground hover:bg-surface-muted",
   ghost: "bg-transparent text-foreground hover:bg-surface-muted",
-  danger: "bg-danger text-white hover:opacity-90",
+  danger: "bg-danger text-danger-foreground hover:opacity-90",
 };
 
 const sizeClasses: Record<Size, string> = {

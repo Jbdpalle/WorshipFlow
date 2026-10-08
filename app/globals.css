@@ -1,77 +1,248 @@
 @import "tailwindcss";
 
-/* Light is the default and the explicit choice — warm ivory background,
-   white work surfaces, mustard-gold accent, dark charcoal text (matches the
-   approved design concepts). Dark applies either from the OS preference
-   (when the person hasn't chosen in Settings → Appearance) or from an
-   explicit data-theme="dark" set by the theme toggle — see
-   lib/theme/use-theme.ts and the no-flash script in app/layout.tsx. */
+/* ──────────────────────────────────────────────────────────────────────────
+   WorshipFlow design tokens — the single source of truth.
+
+   Direction: "Warm Instrumental" (light) with a designed "Stage" theme
+   (dark). See DESIGN_SYSTEM.md for the rationale and usage rules.
+
+   Themes
+   - Light ("Warm"): warm stone ground, forest-green primary, brass for
+     musical information.
+   - Dark ("Stage"): graphite ground, warm-white text, brass primary, cool
+     signal blue for musical information. Authored separately, not inverted.
+   Dark applies from the OS preference (unless the person chose Light) or
+   from data-theme="dark" — see lib/theme/use-theme.ts and the no-flash
+   script in app/layout.tsx. The @media block and the data-theme="dark"
+   block must stay identical; tests/design-tokens.test.ts enforces this and
+   checks WCAG contrast for every text/background pair.
+
+   Colour roles
+   - primary        the one important action on a screen
+   - musical        keys, tempo, dynamics, "where we are now"
+   - success        confirmed / complete
+   - warning        needs attention
+   - danger         destructive
+   - info           neutral notice
+   Never use colour alone: pair with an icon and a word.
+   ────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #faf9f6;
-  --foreground: #1a1a1d;
-  --surface: #ffffff;
-  --surface-muted: #f1efe9;
-  --border: #e4e1d8;
-  --accent: #b8862c;
-  --accent-foreground: #ffffff;
-  --muted-foreground: #6b6b70;
-  --danger: #b3413a;
-  --success: #3a7d5c;
+  --background: #f3f0ea;
+  --foreground: #1e2420;
+  --surface: #faf8f4;
+  --surface-elevated: #ffffff;
+  --surface-muted: #e8e3d8;
+  --border: #d6cfc1;
+  --muted-foreground: #596158;
+
+  --primary: #2c4a3e;
+  --primary-foreground: #f7f5f0;
+  --secondary: #46525a;
+  --secondary-foreground: #f7f5f0;
+
+  --musical: #8a5a12;
+  --musical-foreground: #ffffff;
+  --musical-soft: #f1e7d2;
+
+  --success: #2e6b45;
+  --warning: #b0451a;
+  --danger: #a32d2d;
+  --danger-foreground: #ffffff;
+  --info: #3e5c74;
+
+  --ring: #2c4a3e;
+  --scrim: rgb(30 36 32 / 0.45);
+
+  --shadow-float: 0 8px 24px rgb(30 36 32 / 0.14);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #121214;
-    --foreground: #f2f0ea;
-    --surface: #1b1b1e;
-    --surface-muted: #232326;
-    --border: #302f2f;
-    --accent: #d9a441;
-    --accent-foreground: #1a1a1d;
-    --muted-foreground: #a1a0a3;
-    --danger: #e0685f;
-    --success: #5cb98a;
+    --background: #16181a;
+    --foreground: #ece7dc;
+    --surface: #1e2124;
+    --surface-elevated: #262a2e;
+    --surface-muted: #2d3237;
+    --border: #363c42;
+    --muted-foreground: #a39d90;
+
+    --primary: #d2a85a;
+    --primary-foreground: #1a1408;
+    --secondary: #3a424a;
+    --secondary-foreground: #ece7dc;
+
+    --musical: #86b2c8;
+    --musical-foreground: #10181d;
+    --musical-soft: #1f2a31;
+
+    --success: #82b592;
+    --warning: #e2924a;
+    --danger: #e08074;
+    --danger-foreground: #1a0e0c;
+    --info: #8fafc8;
+
+    --ring: #d2a85a;
+    --scrim: rgb(0 0 0 / 0.6);
+
+    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
   }
 }
 
 :root[data-theme="dark"] {
-  --background: #121214;
-  --foreground: #f2f0ea;
-  --surface: #1b1b1e;
-  --surface-muted: #232326;
-  --border: #302f2f;
-  --accent: #d9a441;
-  --accent-foreground: #1a1a1d;
-  --muted-foreground: #a1a0a3;
-  --danger: #e0685f;
-  --success: #5cb98a;
+  --background: #16181a;
+  --foreground: #ece7dc;
+  --surface: #1e2124;
+  --surface-elevated: #262a2e;
+  --surface-muted: #2d3237;
+  --border: #363c42;
+  --muted-foreground: #a39d90;
+
+  --primary: #d2a85a;
+  --primary-foreground: #1a1408;
+  --secondary: #3a424a;
+  --secondary-foreground: #ece7dc;
+
+  --musical: #86b2c8;
+  --musical-foreground: #10181d;
+  --musical-soft: #1f2a31;
+
+  --success: #82b592;
+  --warning: #e2924a;
+  --danger: #e08074;
+  --danger-foreground: #1a0e0c;
+  --info: #8fafc8;
+
+  --ring: #d2a85a;
+  --scrim: rgb(0 0 0 / 0.6);
+
+  --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+/* Legacy aliases. Existing screens still say bg-accent / text-accent for
+   "the important action or highlight". Until each screen is migrated to
+   primary or musical in its own phase, accent follows primary so nothing
+   changes meaning mid-migration. Do not use in new code. */
+:root {
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
   --color-surface-muted: var(--surface-muted);
   --color-border: var(--border);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-musical: var(--musical);
+  --color-musical-foreground: var(--musical-foreground);
+  --color-musical-soft: var(--musical-soft);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+
+  --color-ring: var(--ring);
+  --color-scrim: var(--scrim);
+
+  /* legacy — see note above */
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-danger: var(--danger);
-  --color-success: var(--success);
-  --font-sans: var(--font-sans);
+
+  --font-sans:
+    var(--font-figtree), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+/* Non-colour tokens. Spacing uses Tailwind's 4px scale (p-1 = 4px … p-16 =
+   64px); breakpoints keep Tailwind's defaults (sm 640, md 768, lg 1024,
+   xl 1280, 2xl 1536) so existing layouts do not shift. */
+@theme {
+  /* Radius: restrained. md controls-small, lg controls, xl panels, full only
+     for status pills and avatars. */
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
+
+  /* Shadows: content separates by surface and border; shadow is reserved
+     for floating layers (menus, sheets, dialogs). */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: var(--shadow-float);
+  --shadow-xl: var(--shadow-float);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Type roles beyond Tailwind's scale */
+  --text-display: 3.5rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-label--letter-spacing: 0.1em;
 }
 
 * {
   border-color: var(--border);
 }
 
+html {
+  /* Respect the user's text-size setting: everything is rem-based. */
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* One visible focus treatment everywhere (keyboard only). */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .tap-target {
   min-height: 44px;
+}
+
+/* Section labels and musical data: caps label, and tabular figures so keys,
+   tempos and bar ranges line up in columns. */
+@utility label-caps {
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
 }
