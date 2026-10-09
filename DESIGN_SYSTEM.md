@@ -59,7 +59,7 @@ Rules:
 
 ### Action tiles
 
-`ActionTile` (`components/ui/action-tile.tsx`) is the big, round (24px), colourful link for what people do most: glyph top-left, label and one detail line bottom-left, gradient in the stage colour (`--tile-*` tokens, the same in both themes). Used for the Dashboard "Jump to" row (`components/dashboard/jump-to-tiles.tsx`) and the landing page's six steps (no `href`, so a plain block). Rules: detail lines show only real data; at most six tiles per screen; tiles use only the seven stage colours; every gradient stop holds white text at 4.5:1 or better (tested).
+`ActionTile` (`components/ui/action-tile.tsx`) has two looks. **Quiet** (`variant="quiet"`) is a normal card (surface, 1px border, 12px corners) with the stage colour only in a small tinted icon tile; it is for daily screens, such as the Dashboard "Jump to" row (`components/dashboard/jump-to-tiles.tsx`), where the primary button must stay the loudest thing. **Bold** (default) is the big, round (24px), gradient block with glyph top-left and label bottom-left (`--tile-*` tokens, same in both themes); it is for first impressions, such as the landing page's six steps. Rules: never more than one loud element per screen; a shortcut row must lead somewhere the page does not already (the Dashboard row omits the actions the Next Service card already has); detail lines show only real data or plain helper text; every bold gradient stop holds white text at 4.5:1 or better (tested).
 
 ## Typography
 
