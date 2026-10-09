@@ -18,6 +18,7 @@ import { addTeamMember, removeTeamMember, updateTeamMember } from "@/lib/actions
 import { revokeInvite } from "@/lib/actions/invites";
 import { InviteDialog } from "@/components/team/invite-dialog";
 import { ResetPasswordDialog } from "@/components/team/reset-password-dialog";
+import { MergeMemberDialog } from "@/components/team/merge-member-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 
 type Member = {
@@ -295,23 +296,29 @@ export function TeamRoster({
                 </div>
               </div>
               {isAdmin && (
-                <Tooltip content={`Remove ${m.name} from the team roster`}>
-                  <IconButton
-                    label={`Remove ${m.name} from the team`}
-                    tone="danger"
-                    onClick={async () => {
-                      setError(null);
-                      const result = await removeTeamMember(m.id);
-                      if (!result.ok) {
-                        setError(result.error);
-                        return;
-                      }
-                      router.refresh();
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </IconButton>
-                </Tooltip>
+                <div className="flex flex-col items-center gap-1">
+                  <MergeMemberDialog
+                    member={{ id: m.id, name: m.name }}
+                    otherMembers={members.filter((o) => o.id !== m.id).map((o) => ({ id: o.id, name: o.name }))}
+                  />
+                  <Tooltip content={`Remove ${m.name} from the team roster`}>
+                    <IconButton
+                      label={`Remove ${m.name} from the team`}
+                      tone="danger"
+                      onClick={async () => {
+                        setError(null);
+                        const result = await removeTeamMember(m.id);
+                        if (!result.ok) {
+                          setError(result.error);
+                          return;
+                        }
+                        router.refresh();
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </Tooltip>
+                </div>
               )}
             </CardContent>
           </Card>
