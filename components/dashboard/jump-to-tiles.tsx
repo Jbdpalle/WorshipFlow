@@ -1,47 +1,35 @@
-import { CircleUser, Library, ListMusic, Radio, UserPlus } from "lucide-react";
+import { CircleUser, Library, ClipboardList, Timer, UserPlus } from "lucide-react";
 import { ActionTile } from "@/components/ui/action-tile";
-import type { DashboardSet } from "@/lib/dashboard/data";
 
-// "Jump to": one tap to what people do most. Every detail line is real data
-// from the dashboard query; nothing is shown that we do not have.
+// "Jump to": shortcuts to destinations the Next Service card does not already
+// cover. Quiet tiles, so the card's primary button stays the loudest thing on
+// the page. The Invite tile only appears when someone still has no login;
+// otherwise the Metronome fills that spot.
 export function JumpToTiles({
-  next,
   isLeaderView,
   uninvitedMemberCount,
 }: {
-  next: DashboardSet | null;
   isLeaderView: boolean;
   uninvitedMemberCount: number;
 }) {
+  const showInvite = isLeaderView && uninvitedMemberCount > 0;
   return (
-    <nav aria-label="Jump to" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
-      <ActionTile
-        href={next ? `/sets/${next.id}` : "/sets"}
-        icon={ListMusic}
-        stage="plan"
-        label={next ? "Open next set" : "Plan a service"}
-        detail={next?.title}
-      />
-      {next && (
+    <nav aria-label="Jump to" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <ActionTile variant="quiet" href="/my-part" icon={CircleUser} stage="mypart" label="My part" detail="What I play" />
+      <ActionTile variant="quiet" href="/roster" icon={ClipboardList} stage="assign" label="Roster" detail="Who's serving" />
+      <ActionTile variant="quiet" href="/songs" icon={Library} stage="arrange" label="Song library" detail="All your songs" />
+      {showInvite ? (
         <ActionTile
-          href={`/rehearsal/${next.id}`}
-          icon={Radio}
-          stage="rehearse"
-          label="Rehearse"
-          detail={`${next.songCount} song${next.songCount === 1 ? "" : "s"}`}
-        />
-      )}
-      <ActionTile href="/my-part" icon={CircleUser} stage="mypart" label="My part" />
-      {isLeaderView && (
-        <ActionTile
+          variant="quiet"
           href="/team"
           icon={UserPlus}
           stage="assign"
           label="Invite team"
-          detail={uninvitedMemberCount > 0 ? `${uninvitedMemberCount} without a login` : undefined}
+          detail={`${uninvitedMemberCount} without a login`}
         />
+      ) : (
+        <ActionTile variant="quiet" href="/metronome" icon={Timer} stage="rehearse" label="Metronome" detail="Set a tempo" />
       )}
-      <ActionTile href="/songs" icon={Library} stage="arrange" label="Song library" />
     </nav>
   );
 }

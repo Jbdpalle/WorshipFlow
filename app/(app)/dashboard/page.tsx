@@ -52,7 +52,7 @@ export default async function DashboardPage() {
 
       <NextSundayHero nextSunday={next} isLeaderView={data.isLeaderView} />
 
-      <JumpToTiles next={next} isLeaderView={data.isLeaderView} uninvitedMemberCount={data.uninvitedMemberCount} />
+      <JumpToTiles isLeaderView={data.isLeaderView} uninvitedMemberCount={data.uninvitedMemberCount} />
 
       {next && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
