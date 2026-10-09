@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -17,6 +17,8 @@ import {
   PlayCircle,
   MoreHorizontal,
   CheckCircle2,
+  WifiOff,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,10 +44,15 @@ import {
   announceToTeam,
   recordSectionVisit,
 } from "@/lib/actions/rehearsal";
+import type { ActionResult } from "@/lib/actions/action-result";
 import { finishPracticeSession, type PracticeSessionSummary } from "@/lib/actions/practice-sessions";
 import { finishLiveSet } from "@/lib/actions/live-set";
 import { cn } from "@/lib/utils/cn";
 import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
+import { useAutoScrollIntoView } from "@/hooks/use-auto-scroll-into-view";
+import { useDirectorShortcuts, loadShortcutMap, type DirectorAction } from "@/hooks/use-director-shortcuts";
+import { ShortcutsPanel } from "@/components/rehearsal/shortcuts-panel";
+import { isFollowingLivePosition } from "@/lib/songs/live-follow";
 
 type RoleNote = {
   id: string;
@@ -76,6 +83,10 @@ export type SetSongData = {
   id: string;
   order: number;
   assignments: { teamMemberId: string | null; role: string }[];
+  // The transition LEAVING this song, toward whatever song is next in the
+  // set — null if none was configured in the Setlist Builder. Reused as-is
+  // here; this is not a second transition model.
+  transitionFrom: { id: string; type: string; direction: string | null } | null;
   song: {
     id: string;
     title: string;
@@ -156,15 +167,50 @@ export function RehearsalMode({
   const [followBanner, setFollowBanner] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const setSong = songs[songIndex];
+  const activeSongRef = useRef<HTMLLIElement | null>(null);
+  useAutoScrollIntoView(activeSongRef, setSong?.id ?? null);
 
-  // Non-leader clients poll the live position (and any announcement) and
-  // jump to follow the leader — this is polling-based near-real-time, not
-  // push/WebSocket (no realtime provider is configured in this
-  // environment). See WORSHIPFLOW_SONG_FLOW_AUDIT.md section 5.
+  // Every leader/MD cue (song switch, section move) goes through this so the
+  // controller always knows whether it actually reached the shared state —
+  // never a fire-and-forget call that leaves them believing it landed when
+  // it didn't (see WORSHIPFLOW build spec §10: no false "synced" claims).
+  const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
+  const lastTargetRef = useRef<{ setSongId: string; sectionId: string | null } | null>(null);
+  const syncPosition = useCallback(
+    async (nextSetSongId: string, sectionId: string | null) => {
+      lastTargetRef.current = { setSongId: nextSetSongId, sectionId };
+      setSyncStatus("syncing");
+      const result = await setLivePosition(setId, nextSetSongId, sectionId);
+      setSyncStatus(result.ok ? "synced" : "error");
+      return result;
+    },
+    [setId],
+  );
+  const retrySync = useCallback(() => {
+    if (!lastTargetRef.current) return;
+    syncPosition(lastTargetRef.current.setSongId, lastTargetRef.current.sectionId);
+  }, [syncPosition]);
+
+  // Loaded lazily on first client render only — loadShortcutMap falls back
+  // to defaults by itself when localStorage isn't available (SSR pass).
+  const [shortcutMap, setShortcutMap] = useState(loadShortcutMap);
+
+  // Every viewer polls the live position (and any announcement) and follows
+  // it — this is polling-based near-real-time, not push/WebSocket (no
+  // realtime provider is configured in this environment). See
+  // WORSHIPFLOW_SONG_FLOW_AUDIT.md section 5.
+  //
+  // This now includes leader-role viewers too, not just plain members:
+  // with a second authorized controller (an MD driving from their own
+  // device), the worship leader's OWN mounted screen must still follow
+  // along even though it isn't the one issuing commands right now — it's
+  // only "the" controller the instant it writes a position itself, never
+  // the only one allowed to read it. A leader's own goTo()/syncPosition
+  // keeps setting local state synchronously, so this poll is a no-op echo
+  // for whoever is actively driving and a real update for everyone else.
   const lastSeenRef = useRef<string | null>(null);
   const lastAnnouncementRef = useRef<string | null>(null);
   useEffect(() => {
-    if (isLeaderView) return;
     const interval = setInterval(async () => {
       const result = await getLivePosition(setId);
       if (!result.ok) return;
@@ -181,7 +227,10 @@ export function RehearsalMode({
       const nextSongIndex = songs.findIndex((s) => s.id === result.data.setSongId);
       if (nextSongIndex === -1) return;
       setSongIndex((prev) => {
-        if (prev !== nextSongIndex) {
+        // Only a viewer who ISN'T themselves the one who just wrote this
+        // position needs the "moved" banner — the active controller's own
+        // screen already changed synchronously and doesn't need telling.
+        if (prev !== nextSongIndex && !isLeaderView) {
           const title = songs[nextSongIndex]?.song.title;
           setFollowBanner(title ? `Leader moved to ${title}` : "Leader moved to a different song");
         }
@@ -193,7 +242,7 @@ export function RehearsalMode({
     }, POLL_MS);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setId, isLeaderView]);
+  }, [setId]);
 
   if (!setSong) {
     return <p className="text-muted-foreground">This set has no songs yet.</p>;
@@ -208,6 +257,8 @@ export function RehearsalMode({
             {mode === "live" ? "Live" : mode === "practice" ? "Practice" : "Director mode"}
           </p>
           <p className="hidden text-sm font-medium sm:block">Everyone follows your position and cues.</p>
+          <SyncIndicator status={syncStatus} onRetry={retrySync} />
+          <ShortcutsPanel map={shortcutMap} onChange={setShortcutMap} />
           {mode && (
             <Button
               type="button"
@@ -275,12 +326,12 @@ export function RehearsalMode({
       <nav aria-label="Set order">
         <ol className="flex gap-2 overflow-x-auto pb-1">
           {songs.map((s, i) => (
-            <li key={s.id} className="shrink-0">
+            <li key={s.id} ref={i === songIndex ? activeSongRef : undefined} className="shrink-0">
               <button
                 onClick={() => {
                   setSongIndex(i);
                   if (isLeaderView) {
-                    setLivePosition(setId, s.id, s.song.sections[0]?.id ?? null);
+                    syncPosition(s.id, s.song.sections[0]?.id ?? null);
                   }
                 }}
                 aria-current={i === songIndex ? "true" : undefined}
@@ -308,6 +359,9 @@ export function RehearsalMode({
         viewerTeamMemberId={viewerTeamMemberId}
         initialLiveSectionId={setSong.id === initialLiveSetSongId ? initialLiveSectionId : null}
         practiceSessionId={practiceSessionId ?? null}
+        onPositionChange={syncPosition}
+        nextSong={songs[songIndex + 1] ?? null}
+        shortcutMap={shortcutMap}
       />
     </div>
   );
@@ -317,20 +371,26 @@ function SongRehearsalPanel({
   setId,
   setTitle,
   setSong,
+  nextSong,
   viewerDefaultRoles,
   isLeaderView,
   viewerTeamMemberId,
   initialLiveSectionId,
   practiceSessionId,
+  onPositionChange,
+  shortcutMap,
 }: {
   setId: string;
   setTitle: string;
   setSong: SetSongData;
+  nextSong: SetSongData | null;
   viewerDefaultRoles: string[];
   isLeaderView: boolean;
   viewerTeamMemberId: string | null;
   initialLiveSectionId: string | null;
   practiceSessionId: string | null;
+  onPositionChange: (setSongId: string, sectionId: string | null) => Promise<ActionResult>;
+  shortcutMap: Record<DirectorAction, string>;
 }) {
   const router = useRouter();
   const song = setSong.song;
@@ -341,6 +401,12 @@ function SongRehearsalPanel({
     sections.findIndex((s) => s.id === initialLiveSectionId),
   );
   const [sectionIndex, setSectionIndex] = useState(initialSectionIndex);
+  // The last section the leader/MD was actually confirmed to be on, per the
+  // poll — distinct from sectionIndex, which a non-leader can move locally
+  // by browsing Previous/Next without touching the shared position (see
+  // goTo below). When they diverge, the viewer has wandered off live and
+  // needs an explicit, obvious way back (§8.2 of the build spec).
+  const [lastKnownLiveSectionId, setLastKnownLiveSectionId] = useState<string | null>(initialLiveSectionId);
   const [rehearsalId, setRehearsalId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
@@ -363,33 +429,68 @@ function SongRehearsalPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id, setSong.id, practiceSessionId]);
 
-  // Follow the leader's section moves within the current song (the parent
-  // dispatches this after each poll — see RehearsalMode above).
+  // Follow section moves within the current song (the parent dispatches
+  // this after each poll — see RehearsalMode above). Runs for every
+  // viewer, leader-role included: with a second controller (MD) driving,
+  // the primary leader's own screen needs to keep following too, same as
+  // any musician's. A non-leader's OWN local browsing (via goTo below,
+  // which never writes the shared position for them) is a separate piece
+  // of state (sectionIndex) from this one (lastKnownLiveSectionId) — see
+  // isFollowingLivePosition.
   useEffect(() => {
-    if (isLeaderView) return;
     function onLiveSection(e: Event) {
       const sectionId = (e as CustomEvent<{ sectionId: string | null }>).detail?.sectionId;
       if (!sectionId) return;
+      setLastKnownLiveSectionId(sectionId);
       const idx = sections.findIndex((s) => s.id === sectionId);
       if (idx !== -1) setSectionIndex(idx);
     }
     window.addEventListener("worshipflow:live-section", onLiveSection);
     return () => window.removeEventListener("worshipflow:live-section", onLiveSection);
-  }, [isLeaderView, sections]);
+  }, [sections]);
 
-  function goTo(nextIndex: number) {
+  async function goTo(nextIndex: number) {
     setSectionIndex(nextIndex);
     if (isLeaderView) {
       const sectionId = sections[nextIndex]?.id ?? null;
-      setLivePosition(setId, setSong.id, sectionId);
+      await onPositionChange(setSong.id, sectionId);
       if (practiceSessionId && rehearsalId && sectionId) {
         recordSectionVisit(rehearsalId, sectionId);
       }
     }
   }
 
+  // A non-leader can browse Previous/Next freely without moving the shared
+  // position (see goTo above, which only syncs when isLeaderView). When
+  // their local browse index no longer matches the last confirmed live
+  // section, they've wandered off — resumeFollowing snaps straight back.
+  const isFollowingLive = isFollowingLivePosition(isLeaderView, sections[sectionIndex]?.id, lastKnownLiveSectionId);
+  function resumeFollowing() {
+    if (!lastKnownLiveSectionId) return;
+    const idx = sections.findIndex((s) => s.id === lastKnownLiveSectionId);
+    if (idx !== -1) setSectionIndex(idx);
+  }
+
   const current = sections[sectionIndex];
   const next = sections[sectionIndex + 1];
+
+  useDirectorShortcuts(
+    isLeaderView,
+    shortcutMap,
+    useMemo(
+      () => ({
+        goNext: () => goTo(Math.min(sections.length - 1, sectionIndex + 1)),
+        previous: () => goTo(Math.max(0, sectionIndex - 1)),
+        repeat: () => announceToTeam(setId, "Repeat"),
+        hold: () => announceToTeam(setId, "Hold"),
+        build: () => announceToTeam(setId, "Build"),
+        drop: () => announceToTeam(setId, "Drop"),
+        wait: () => announceToTeam(setId, "Wait"),
+      }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [setId, sectionIndex, sections.length],
+    ),
+  );
 
   // goTo() only fires on a move — the section already current when this
   // song's Rehearsal row is created (the very first one, or wherever a
@@ -463,6 +564,17 @@ function SongRehearsalPanel({
               if (i !== -1) goTo(i);
             }}
           />
+
+          {!isLeaderView && !isFollowingLive && (
+            <button
+              type="button"
+              onClick={resumeFollowing}
+              className="tap-target flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-info bg-info/10 px-4 py-2.5 text-left text-sm font-semibold text-info hover:bg-info/15"
+            >
+              <span>You&apos;re browsing — the leader has moved on.</span>
+              <span className="whitespace-nowrap">Resume following →</span>
+            </button>
+          )}
 
           {/* One screen, nothing to tap through. Phone: now, my part, next,
               then everything else. iPad landscape / laptop: now and my
@@ -564,8 +676,19 @@ function SongRehearsalPanel({
                     )}
                   </div>
                 </>
+              ) : nextSong ? (
+                <>
+                  <h3 className="mt-1 text-2xl font-extrabold tracking-tight">{nextSong.song.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Next song</p>
+                  {setSong.transitionFrom?.direction?.trim() && (
+                    <div className="mt-3 flex items-start gap-2 rounded-lg bg-surface p-3">
+                      <ArrowDown className="mt-0.5 h-4 w-4 shrink-0 text-musical" aria-hidden />
+                      <p className="text-sm font-semibold text-musical">{setSong.transitionFrom.direction}</p>
+                    </div>
+                  )}
+                </>
               ) : (
-                <p className="mt-1 text-lg font-semibold">End of the song.</p>
+                <p className="mt-1 text-lg font-semibold">End of the set.</p>
               )}
             </section>
 
@@ -699,6 +822,35 @@ function SongRehearsalPanel({
         </>
       )}
     </div>
+  );
+}
+
+// A small, always-visible confirmation that the leader/MD's last position
+// change actually reached the shared state — never lets a command look like
+// it succeeded when the server hasn't confirmed it (build spec §10).
+function SyncIndicator({
+  status,
+  onRetry,
+}: {
+  status: "synced" | "syncing" | "error";
+  onRetry: () => void;
+}) {
+  if (status === "error") {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="tap-target flex items-center gap-1.5 rounded-full bg-danger px-3 text-xs font-bold text-danger-foreground hover:bg-danger/90"
+      >
+        <WifiOff className="h-3.5 w-3.5" aria-hidden /> Sync failed — tap to retry
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5 text-xs font-semibold opacity-80">
+      <span className={cn("h-1.5 w-1.5 rounded-full bg-current", status === "syncing" && "animate-pulse")} aria-hidden />
+      {status === "syncing" ? "Syncing…" : "Synced"}
+    </span>
   );
 }
 

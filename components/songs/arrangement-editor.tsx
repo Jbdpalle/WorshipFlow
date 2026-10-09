@@ -29,6 +29,7 @@ import {
   Compass,
   SlidersHorizontal,
   Save,
+  AlertCircle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { IconButton } from "@/components/ui/icon-button";
 import { DynamicIndicator } from "@/components/songs/dynamic-indicator";
 import { SongFlowRibbon } from "@/components/songs/song-flow-ribbon";
+import { summarizeSectionCoverage } from "@/lib/songs/role-notes";
 import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker";
 import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
 import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
@@ -253,6 +255,11 @@ function SectionOutlineRow({
     transition,
     opacity: isDragging ? 0.6 : 1,
   };
+  const coverage = summarizeSectionCoverage(section.roleNotes);
+  // Freeform/spontaneous sections (Free Worship, etc.) aren't expected to
+  // carry per-role directions, so an empty one there isn't "incomplete" —
+  // only flag a regular section that genuinely has nothing written yet.
+  const isIncomplete = !section.isFreeform && !coverage.hasAny;
 
   return (
     <div
@@ -260,40 +267,53 @@ function SectionOutlineRow({
       style={style}
       data-testid="section-outline-item"
       className={cn(
-        "flex w-44 shrink-0 items-center gap-1 rounded-lg border px-1.5 py-1 lg:w-full",
+        "flex w-44 shrink-0 flex-col gap-0.5 rounded-lg border px-1.5 py-1 lg:w-full",
         active
           ? "border-primary bg-primary/10"
           : "border-border bg-surface hover:bg-surface-muted",
       )}
     >
-      <button
-        {...attributes}
-        {...listeners}
-        className="flex h-11 w-9 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
-        aria-label={`Drag to reorder ${section.label}`}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={onSelect}
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left"
-        aria-current={active ? "true" : undefined}
-      >
-        <span
-          className={cn(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-            active ? "bg-primary text-primary-foreground" : "bg-surface-muted text-muted-foreground",
-          )}
+      <div className="flex items-center gap-1">
+        <button
+          {...attributes}
+          {...listeners}
+          className="flex h-11 w-9 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
+          aria-label={`Drag to reorder ${section.label}`}
         >
-          {index + 1}
-        </span>
-        <span className={cn("truncate text-sm", active ? "font-semibold text-foreground" : "text-foreground")}>
-          {section.label}
-          {section.isFreeform && <Wind className="ml-1 inline h-3 w-3 text-musical" aria-label="Freeform" />}
-        </span>
-        <DynamicIndicator dynamics={section.dynamics} showLabel={false} className="ml-auto shrink-0" />
-      </button>
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left"
+          aria-current={active ? "true" : undefined}
+        >
+          <span
+            className={cn(
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+              active ? "bg-primary text-primary-foreground" : "bg-surface-muted text-muted-foreground",
+            )}
+          >
+            {index + 1}
+          </span>
+          <span className={cn("truncate text-sm", active ? "font-semibold text-foreground" : "text-foreground")}>
+            {section.label}
+            {section.isFreeform && <Wind className="ml-1 inline h-3 w-3 text-musical" aria-label="Freeform" />}
+          </span>
+          <DynamicIndicator dynamics={section.dynamics} showLabel={false} className="ml-auto shrink-0" />
+        </button>
+      </div>
+      <p className="truncate pl-10 text-xs text-muted-foreground">
+        {isIncomplete ? (
+          <span className="flex items-center gap-1 font-semibold text-warning">
+            <AlertCircle className="h-3 w-3 shrink-0" aria-hidden /> No directions yet
+          </span>
+        ) : coverage.hasAny ? (
+          coverage.roles.join(", ")
+        ) : (
+          " "
+        )}
+      </p>
     </div>
   );
 }

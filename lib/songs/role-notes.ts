@@ -35,3 +35,15 @@ export function selectRoleNoteForViewer<T extends RoleNoteLike>(
   // one, so someone without an individual note still knows what to do.
   return pickForRole(roleNotes, catchAllDirectionFor(role), viewerTeamMemberId);
 }
+
+// For the Song Flow overview: which roles actually have a written
+// direction in this section, so the outline can show "Bass, Drums, Vocals"
+// at a glance instead of making a leader open every section to find out —
+// and flag a section with none at all as incomplete. Blank-content rows
+// (the UI leaves an empty row around while someone's mid-type) don't count.
+export function summarizeSectionCoverage<T extends { role: string; content: string }>(
+  roleNotes: T[],
+): { roles: string[]; hasAny: boolean } {
+  const roles = Array.from(new Set(roleNotes.filter((n) => n.content.trim()).map((n) => n.role)));
+  return { roles, hasAny: roles.length > 0 };
+}
