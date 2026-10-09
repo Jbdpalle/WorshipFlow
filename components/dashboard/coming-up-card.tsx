@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TextLink } from "@/components/ui/text-link";
 import { eventTypeLabel } from "@/lib/songs/constants";
 import type { DashboardSet, ThisWeekItem } from "@/lib/dashboard/data";
+import { sortComingUpRows } from "@/lib/dashboard/coming-up";
 
 function short(date: Date) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
@@ -18,11 +19,18 @@ export function ComingUpCard({
   following: DashboardSet | null;
   thisWeek: ThisWeekItem[];
 }) {
-  const rows = [
+  // `following` (the Sunday after next) and `thisWeek` (anything else
+  // coming up within 7 days, any event type) are two independent queries —
+  // nothing guarantees following is actually the soonest of the two. A
+  // nearer rehearsal/camp set in thisWeek must still show above it, so
+  // this sorts the combined list by actual date instead of trusting
+  // "following first, then thisWeek" concatenation order.
+  const rows = sortComingUpRows([
     ...(following
       ? [
           {
             id: following.id,
+            rawDate: following.serviceDate,
             date: following.serviceDate ? short(new Date(following.serviceDate)) : "No date",
             title: following.title,
             sub: following.theme ? `Theme: ${following.theme}` : "Service",
@@ -31,11 +39,12 @@ export function ComingUpCard({
       : []),
     ...thisWeek.map((t) => ({
       id: t.id,
+      rawDate: t.serviceDate as Date | null,
       date: short(t.serviceDate),
       title: t.title,
       sub: eventTypeLabel(t.eventType),
     })),
-  ];
+  ]);
 
   return (
     <Card muted className="flex h-full flex-col">
