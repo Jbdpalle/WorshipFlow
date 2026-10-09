@@ -16,6 +16,7 @@ import {
   unarchiveSet,
 } from "@/lib/actions/sets";
 import { createTestTeam, loginAs, cleanupTeam } from "./helpers";
+import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
 
 // A pre-existing gap: every set-content mutation below had no leader-role
 // check at all, so any MEMBER could edit notes, the exaltation, service
@@ -171,6 +172,51 @@ describe("Set content mutations are Leader-only (pre-existing gap, now fixed)", 
       expect(row?.role).toBe(c.musicalRole);
       expect(row?.role).not.toBe(c.accountRole);
     }
+  });
+
+  // Build spec §12: "Verify that changing a set-level default does not
+  // incorrectly overwrite song-specific assignment overrides." assignMemberToSet
+  // only ever writes SetTeamMember (see lib/actions/sets.ts), never touches
+  // SongAssignment, so this proves it end-to-end through the real actions
+  // and the same pickEffectiveRole resolution My Part/Director Mode use.
+  it("changing a set-level default role leaves an existing song-level override untouched", async () => {
+    const owner = await createTestTeam("override-survives", "OWNER");
+    cleanup.push({ teamId: owner.team.id, churchId: owner.church.id });
+    await loginAs(owner.user.id);
+
+    const set = await prisma.worshipSet.create({ data: { teamId: owner.team.id, title: "Override Survives" } });
+    const song = await prisma.song.create({ data: { teamId: owner.team.id, title: "A Song" } });
+    const setSong = await prisma.setSong.create({ data: { setId: set.id, songId: song.id, order: 0 } });
+    const musician = await prisma.teamMember.create({
+      data: { teamId: owner.team.id, name: "Multi-Role Musician", role: "Other" },
+    });
+
+    // Whole-set default: this musician plays Acoustic Guitar for the set...
+    const defaultAssign = await assignMemberToSet(set.id, musician.id, "Acoustic Guitar");
+    expect(defaultAssign.ok).toBe(true);
+    // ...but for this one song they're overridden onto Drums instead.
+    const override = await assignMemberToSetSong(setSong.id, musician.id, "Drums");
+    expect(override.ok).toBe(true);
+
+    // Leader now changes the set-level default to something else entirely —
+    // mirroring components/setlist/set-team.tsx's inline editor, which
+    // assigns the new role then removes the old SetTeamMember row.
+    const oldRow = await prisma.setTeamMember.findFirstOrThrow({ where: { setId: set.id, teamMemberId: musician.id } });
+    const changedDefault = await assignMemberToSet(set.id, musician.id, "Keys");
+    expect(changedDefault.ok).toBe(true);
+    const removed = await removeSetMember(oldRow.id);
+    expect(removed.ok).toBe(true);
+
+    const songOverride = await prisma.songAssignment.findFirst({ where: { setSongId: setSong.id, teamMemberId: musician.id } });
+    expect(songOverride?.role).toBe("Drums");
+
+    const setDefaults = await prisma.setTeamMember.findMany({ where: { setId: set.id, teamMemberId: musician.id } });
+    expect(setDefaults.map((r) => r.role)).toEqual(["Keys"]);
+
+    // And resolution still prefers the untouched song-level override, not
+    // either whole-set default — exactly what Director Mode/My Part read.
+    const effective = pickEffectiveRole(songOverride?.role, setDefaults.map((r) => r.role));
+    expect(effective).toBe("Drums");
   });
 
   it("archiveSet and unarchiveSet remain open to any team member (deliberate, not a gap)", async () => {

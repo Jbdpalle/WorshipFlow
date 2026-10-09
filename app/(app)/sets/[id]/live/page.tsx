@@ -16,6 +16,7 @@ export default async function LiveSetPage({ params }: { params: Promise<{ id: st
           orderBy: { order: "asc" },
           include: {
             assignments: { select: { teamMemberId: true, role: true } },
+            transitionFrom: { select: { id: true, type: true, direction: true } },
             song: {
               include: {
                 sections: {

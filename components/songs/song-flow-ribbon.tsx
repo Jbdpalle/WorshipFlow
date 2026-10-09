@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import { cn } from "@/lib/utils/cn";
 import { dynamicsStep } from "@/lib/songs/dynamics";
+import { useAutoScrollIntoView } from "@/hooks/use-auto-scroll-into-view";
 
 type RibbonSection = {
   id: string;
@@ -13,6 +15,11 @@ type RibbonSection = {
 // The whole song at a glance: one block per section, in order, as wide as
 // its repeat count and as tall as its dynamic level. Click a block to jump
 // to that section. Scrolls sideways on narrow screens rather than squashing.
+//
+// When the selected section changes WITHOUT the viewer clicking it directly
+// (a leader/MD cue arriving via poll, or the leader's own Go Next), the
+// active block is scrolled into view automatically — this is the live
+// auto-scroll contract: it follows position changes, it never causes one.
 export function SongFlowRibbon({
   sections,
   selectedId,
@@ -22,6 +29,9 @@ export function SongFlowRibbon({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const activeRef = useRef<HTMLLIElement | null>(null);
+  useAutoScrollIntoView(activeRef, selectedId);
+
   if (sections.length === 0) return null;
 
   return (
@@ -31,7 +41,7 @@ export function SongFlowRibbon({
           const step = dynamicsStep(s.dynamics);
           const active = s.id === selectedId;
           return (
-            <li key={s.id} style={{ flexGrow: Math.max(1, s.repeatCount ?? 1), flexBasis: 72 }}>
+            <li key={s.id} ref={active ? activeRef : undefined} style={{ flexGrow: Math.max(1, s.repeatCount ?? 1), flexBasis: 72 }}>
               <button
                 type="button"
                 onClick={() => onSelect(s.id)}

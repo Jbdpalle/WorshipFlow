@@ -16,6 +16,7 @@ export default async function RehearsalPage({ params }: { params: Promise<{ setI
           orderBy: { order: "asc" },
           include: {
             assignments: { select: { teamMemberId: true, role: true } },
+            transitionFrom: { select: { id: true, type: true, direction: true } },
             song: {
               include: {
                 sections: {
