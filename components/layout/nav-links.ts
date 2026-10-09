@@ -8,6 +8,7 @@ import {
   UserCircle,
   Timer,
   Megaphone,
+  BookOpen,
   MessageSquarePlus,
   Settings,
   type LucideIcon,
@@ -35,6 +36,8 @@ export const NAV_GROUPS: NavLink[][] = [
     { href: "/metronome", label: "Metronome", icon: Timer, stage: "rehearse" },
     // Placeholder — not built yet. Takes leaders to a simple "coming soon" page.
     { href: "/music-director", label: "Music Director", icon: Megaphone, stage: "lead" },
+    // Placeholder — not built yet. Takes everyone to a "coming soon" page.
+    { href: "/team-devotions", label: "Team Devotions", icon: BookOpen, stage: "support" },
     { href: "/feedback", label: "Feedback", icon: MessageSquarePlus, stage: "support" },
   ],
 ];
@@ -58,6 +61,7 @@ export const MOBILE_MORE_LINKS: NavLink[] = [
   byHref("/roster"),
   byHref("/metronome"),
   byHref("/music-director"),
+  byHref("/team-devotions"),
   byHref("/feedback"),
   SETTINGS_LINK,
 ];
