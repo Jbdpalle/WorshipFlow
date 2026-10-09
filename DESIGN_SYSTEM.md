@@ -57,6 +57,10 @@ Rules:
 - Every glyph/tint pairing is held to AA (4.5:1) in both themes by `tests/design-tokens.test.ts`.
 - Applied in: sidebar and rail, phone bottom bar and More sheet, page headers (`SectionHeader icon stage`), empty states (`EmptyState stage`), role coverage, the worship calendar.
 
+### Action tiles
+
+`ActionTile` (`components/ui/action-tile.tsx`) is the big, round (24px), colourful link for what people do most: glyph top-left, label and one detail line bottom-left, gradient in the stage colour (`--tile-*` tokens, the same in both themes). Used for the Dashboard "Jump to" row (`components/dashboard/jump-to-tiles.tsx`) and the landing page's six steps (no `href`, so a plain block). Rules: detail lines show only real data; at most six tiles per screen; tiles use only the seven stage colours; every gradient stop holds white text at 4.5:1 or better (tested).
+
 ## Typography
 
 One family: **Figtree** (self-hosted by `next/font`, variable `--font-figtree`). Chord charts keep the system monospace because alignment depends on it.

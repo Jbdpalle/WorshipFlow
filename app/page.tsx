@@ -7,7 +7,8 @@ import { DemoButton } from "@/components/landing/demo-button";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Status } from "@/components/ui/status";
-import { StageIcon, STAGE_TEXT, type Stage } from "@/components/ui/stage-icon";
+import { ActionTile } from "@/components/ui/action-tile";
+import { STAGE_TEXT, type Stage } from "@/components/ui/stage-icon";
 import { readSession } from "@/lib/auth/session";
 import { cn } from "@/lib/utils/cn";
 
@@ -113,14 +114,16 @@ export default async function RootPage() {
                 Each step has its own colour in the app, so you always know which part of the workflow you are in.
               </p>
             </div>
-            <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ol className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {STEPS.map((s) => (
-                <li key={s.label} className="flex flex-col gap-3 rounded-xl border border-border bg-background p-5">
-                  <StageIcon icon={s.icon} stage={s.stage} size="lg" />
-                  <p className={cn("label-caps", STAGE_TEXT[s.stage])}>
-                    {s.n} {s.label}
-                  </p>
-                  <p className="text-base text-foreground">{s.body}</p>
+                <li key={s.label} className="contents">
+                  <ActionTile
+                    icon={s.icon}
+                    stage={s.stage}
+                    label={`${s.n} ${s.label}`}
+                    detail={s.body}
+                    className="min-h-44"
+                  />
                 </li>
               ))}
             </ol>

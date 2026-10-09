@@ -8,6 +8,7 @@ import { ServiceTeamCard } from "@/components/dashboard/service-team-card";
 import { ComingUpCard } from "@/components/dashboard/coming-up-card";
 import { NeedsAttentionList } from "@/components/dashboard/needs-attention-list";
 import { MemberStatusCard } from "@/components/dashboard/member-status-card";
+import { JumpToTiles } from "@/components/dashboard/jump-to-tiles";
 import { InviteNudgeBanner } from "@/components/dashboard/invite-nudge-banner";
 import { WorshipCalendar } from "@/components/dashboard/worship-calendar";
 
@@ -50,6 +51,8 @@ export default async function DashboardPage() {
       <InviteNudgeBanner count={data.uninvitedMemberCount} />
 
       <NextSundayHero nextSunday={next} isLeaderView={data.isLeaderView} />
+
+      <JumpToTiles next={next} isLeaderView={data.isLeaderView} uninvitedMemberCount={data.uninvitedMemberCount} />
 
       {next && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
