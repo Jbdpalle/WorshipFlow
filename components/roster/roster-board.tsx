@@ -293,7 +293,7 @@ function ByMemberView({ entries, members }: { entries: RosterPageEntry[]; member
   // id in the group rather than split or hidden behind whichever id
   // happens to be selected.
   const groups = groupMembersByName(members);
-  const [selectedName, setSelectedName] = useState(groups[0]?.name ?? "");
+  const [selectedName, setSelectedName] = useState("");
   const group = groups.find((g) => g.name === selectedName);
   const groupIds = new Set(group?.ids ?? []);
 
@@ -309,13 +309,18 @@ function ByMemberView({ entries, members }: { entries: RosterPageEntry[]; member
   return (
     <div className="space-y-3">
       <Select value={selectedName} onChange={(e) => setSelectedName(e.target.value)} className="max-w-xs">
+        <option value="" disabled>
+          Select a team member…
+        </option>
         {groups.map((g) => (
           <option key={g.name} value={g.name}>
             {g.name}
           </option>
         ))}
       </Select>
-      {rows.length === 0 ? (
+      {!selectedName ? (
+        <p className="text-sm text-muted-foreground">Choose a team member above to see their upcoming services.</p>
+      ) : rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No upcoming services scheduled for this person.</p>
       ) : (
         <ul className="divide-y divide-border">

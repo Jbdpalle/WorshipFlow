@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { SetlistBoard } from "@/components/setlist/setlist-board";
 import { ServiceOrderStrip } from "@/components/setlist/service-order-strip";
 import { ThemeSuggestions } from "@/components/setlist/theme-suggestions";
@@ -63,6 +64,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
     ...s,
     songFlowStatus: getSongFlowStatus(s.song),
   }));
+  const distinctTeamMemberCount = new Set(set.teamMembers.map((tm) => tm.teamMemberId)).size;
 
   return (
     <div className="space-y-6">
@@ -119,31 +121,34 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-4 lg:col-span-2">
-          <Card id="team">
-            <CardHeader>
-              <CardTitle className="text-base">Worship Team</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SetTeam
-                setId={set.id}
-                members={set.teamMembers}
-                teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
-                isLeader={isLeader}
-              />
-            </CardContent>
-          </Card>
+          <CollapsibleCard
+            id="team"
+            title="Worship Team"
+            summary={distinctTeamMemberCount > 0 ? `${distinctTeamMemberCount} on the team` : "No one assigned yet"}
+            defaultOpen={false}
+          >
+            <SetTeam
+              setId={set.id}
+              members={set.teamMembers}
+              teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+              isLeader={isLeader}
+            />
+          </CollapsibleCard>
 
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold tracking-tight">Setlist</h2>
-            {isLeader && <AddFromLibraryDialog setId={set.id} librarySongs={librarySongsRaw} />}
-          </div>
-          <SetlistBoard
-            setId={set.id}
-            initialSongs={songsWithFlowStatus}
-            teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
-            anchorSongId={set.anchorSongId}
-            isLeader={isLeader}
-          />
+          <CollapsibleCard
+            title="Setlist"
+            summary={`${songsWithFlowStatus.length} song${songsWithFlowStatus.length === 1 ? "" : "s"}`}
+            headerAction={isLeader ? <AddFromLibraryDialog setId={set.id} librarySongs={librarySongsRaw} /> : undefined}
+            defaultOpen
+          >
+            <SetlistBoard
+              setId={set.id}
+              initialSongs={songsWithFlowStatus}
+              teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+              anchorSongId={set.anchorSongId}
+              isLeader={isLeader}
+            />
+          </CollapsibleCard>
         </div>
 
         <div className="min-w-0 space-y-4">

@@ -77,6 +77,115 @@ export async function removeTeamMember(memberId: string): Promise<ActionResult> 
   });
 }
 
+// Two TeamMember rows can turn out to be the same real person (an import
+// that didn't exactly match an existing roster row, a typo'd re-add, etc.).
+// Deleting the extra one outright (removeTeamMember above) cascade-deletes
+// everything tied to its own id -- past assignments, role directions,
+// personal notes -- which silently loses real history instead of just
+// removing a redundant card. This moves every one of those relations onto
+// `keep` first, deduping against anything `keep` already has (the unique
+// constraints below would otherwise reject the move), then deletes the
+// now-empty `merge` row. Never touches Membership/login access -- a
+// duplicate roster CARD is not the same thing as someone's account, and
+// merging must never silently revoke someone's ability to log in.
+export async function mergeTeamMembers(keepId: string, mergeId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isAdminRole(membershipRole)) {
+      return { ok: false, error: "Only an admin or the church owner can merge team members." };
+    }
+    if (keepId === mergeId) {
+      return { ok: false, error: "Pick two different people to merge." };
+    }
+    const [keep, merge] = await Promise.all([
+      prisma.teamMember.findUnique({ where: { id: keepId } }),
+      prisma.teamMember.findUnique({ where: { id: mergeId } }),
+    ]);
+    if (!keep || keep.teamId !== team.id) return { ok: false, error: "Not found." };
+    if (!merge || merge.teamId !== team.id) return { ok: false, error: "Not found." };
+
+    await prisma.$transaction(async (tx) => {
+      // SetTeamMember: unique on (setId, teamMemberId, role) -- drop merge's
+      // row wherever keep already has the same (setId, role), else move it.
+      const [keepSetRoles, mergeSetRoles] = await Promise.all([
+        tx.setTeamMember.findMany({ where: { teamMemberId: keepId }, select: { setId: true, role: true } }),
+        tx.setTeamMember.findMany({ where: { teamMemberId: mergeId } }),
+      ]);
+      const keepSetRoleKeys = new Set(keepSetRoles.map((r) => `${r.setId}:${r.role}`));
+      for (const row of mergeSetRoles) {
+        if (keepSetRoleKeys.has(`${row.setId}:${row.role}`)) {
+          await tx.setTeamMember.delete({ where: { id: row.id } });
+        } else {
+          await tx.setTeamMember.update({ where: { id: row.id }, data: { teamMemberId: keepId } });
+        }
+      }
+
+      // SongAssignment: no DB-level unique constraint, but the app only
+      // ever intends one assignment per (setSongId, teamMemberId) -- same
+      // dedupe-then-move rule, keeping whichever row already belongs to keep.
+      const [keepAssignments, mergeAssignments] = await Promise.all([
+        tx.songAssignment.findMany({ where: { teamMemberId: keepId }, select: { setSongId: true } }),
+        tx.songAssignment.findMany({ where: { teamMemberId: mergeId } }),
+      ]);
+      const keepAssignedSongs = new Set(keepAssignments.map((a) => a.setSongId));
+      for (const row of mergeAssignments) {
+        if (keepAssignedSongs.has(row.setSongId)) {
+          await tx.songAssignment.delete({ where: { id: row.id } });
+        } else {
+          await tx.songAssignment.update({ where: { id: row.id }, data: { teamMemberId: keepId } });
+        }
+      }
+
+      // SongRoleNote: unique on (sectionId, role, teamMemberId).
+      const [keepNotes, mergeNotes] = await Promise.all([
+        tx.songRoleNote.findMany({ where: { teamMemberId: keepId }, select: { sectionId: true, role: true } }),
+        tx.songRoleNote.findMany({ where: { teamMemberId: mergeId } }),
+      ]);
+      const keepNoteKeys = new Set(keepNotes.map((n) => `${n.sectionId}:${n.role}`));
+      for (const row of mergeNotes) {
+        if (keepNoteKeys.has(`${row.sectionId}:${row.role}`)) {
+          await tx.songRoleNote.delete({ where: { id: row.id } });
+        } else {
+          await tx.songRoleNote.update({ where: { id: row.id }, data: { teamMemberId: keepId } });
+        }
+      }
+
+      // TeamMemberRole: unique on (teamMemberId, role) -- copy over any
+      // role keep doesn't already have; cascade-delete cleans up merge's
+      // own rows once the TeamMember row itself goes.
+      const [keepRoles, mergeRoles] = await Promise.all([
+        tx.teamMemberRole.findMany({ where: { teamMemberId: keepId }, select: { role: true } }),
+        tx.teamMemberRole.findMany({ where: { teamMemberId: mergeId }, select: { role: true } }),
+      ]);
+      const keepRoleSet = new Set(keepRoles.map((r) => r.role));
+      const rolesToAdd = mergeRoles.filter((r) => !keepRoleSet.has(r.role));
+      if (rolesToAdd.length > 0) {
+        await tx.teamMemberRole.createMany({
+          data: rolesToAdd.map((r) => ({ teamMemberId: keepId, role: r.role })),
+        });
+      }
+
+      // PersonalNote: no unique constraint -- a straight reassignment.
+      await tx.personalNote.updateMany({ where: { teamMemberId: mergeId }, data: { teamMemberId: keepId } });
+
+      // Invite: no unique constraint on teamMemberId -- a straight
+      // reassignment, so a still-pending invite for the duplicate card
+      // now links to the kept one instead.
+      await tx.invite.updateMany({ where: { teamMemberId: mergeId }, data: { teamMemberId: keepId } });
+
+      // Everything that pointed at `merge` now points at `keep` (or was a
+      // dropped duplicate); the row itself is safe to remove. Its own
+      // TeamMemberRole rows cascade-delete here too.
+      await tx.teamMember.delete({ where: { id: mergeId } });
+    });
+
+    revalidatePath("/team");
+    revalidatePath("/roster");
+    revalidatePath("/sets");
+    return { ok: true };
+  });
+}
+
 // Admin/Owner can re-grant someone's role (Member/Leader/Admin) after the
 // fact — previously a role was only ever set once, at invite time. Never
 // grants OWNER (there's exactly one, the church's creator — no transfer

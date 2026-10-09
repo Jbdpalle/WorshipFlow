@@ -170,7 +170,11 @@ function SetSongCard({
   });
   const [overrideKey, setOverrideKey] = useState(item.overrideKey);
   const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
-  const [assignMember, setAssignMember] = useState(teamMembers[0]?.id ?? "");
+  // Never pre-select a person — assignMemberToSetSong below already no-ops
+  // on an empty value, but that guard only protects against a silent wrong
+  // assignment if the dropdown actually starts empty, not pre-filled with
+  // whoever sorts first in teamMembers.
+  const [assignMember, setAssignMember] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -420,6 +424,9 @@ function SetSongCard({
                           aria-label="Person for this song"
                           className="h-11 w-44 text-sm"
                         >
+                          <option value="" disabled>
+                            Select…
+                          </option>
                           {teamMembers.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.name}
