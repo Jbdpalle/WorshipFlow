@@ -147,3 +147,22 @@ describe("stage icon colours", () => {
     }
   });
 });
+
+// Action tiles are colourful gradient links with white text. Every gradient
+// stop must hold that text at AA, in both themes.
+describe("action tile colours", () => {
+  const stages = ["plan", "arrange", "assign", "rehearse", "mypart", "lead", "support"];
+  for (const [name, t] of Object.entries(themes)) {
+    for (const stage of stages) {
+      it(`${name}: ${stage} tile holds tile text at 4.5:1 on both gradient stops`, () => {
+        for (const stop of [t[`tile-${stage}`], t[`tile-${stage}-deep`]]) {
+          expect(stop).toMatch(/^#[0-9a-f]{6}$/);
+          expect(contrast(t["tile-foreground"], stop)).toBeGreaterThanOrEqual(4.5);
+        }
+      });
+    }
+  }
+  it("tiles look the same in both themes", () => {
+    for (const k of Object.keys(light).filter((k) => k.startsWith("tile-"))) expect(dark[k]).toBe(light[k]);
+  });
+});

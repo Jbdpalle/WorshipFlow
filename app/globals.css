@@ -64,6 +64,18 @@
   --stage-lead: #1f6b6b;      --stage-lead-soft: #d9e7e7;
   --stage-support: #46525a;   --stage-support-soft: #e3e5e6;
 
+  /* Action tiles: big, round, colourful links (Dashboard, landing page). Same
+     in both themes so they are recognised by colour; every stop holds white
+     text at 4.5:1 or better (tests/design-tokens.test.ts). */
+  --tile-plan: #2a8559;  --tile-plan-deep: #1f6e4b;
+  --tile-arrange: #bf5509;  --tile-arrange-deep: #a8470a;
+  --tile-assign: #8350d0;  --tile-assign-deep: #6a3bb0;
+  --tile-rehearse: #d63753;  --tile-rehearse-deep: #ba2943;
+  --tile-mypart: #3873bf;  --tile-mypart-deep: #2a5fa6;
+  --tile-lead: #187f7b;  --tile-lead-deep: #136e6b;
+  --tile-support: #66737d;  --tile-support-deep: #505c65;
+  --tile-foreground: #ffffff;
+
   --shadow-float: 0 8px 24px rgb(30 36 32 / 0.14);
 }
 
@@ -101,6 +113,18 @@
   --stage-mypart: #86b2c8;    --stage-mypart-soft: #1f2a31;
   --stage-lead: #7ccbc4;      --stage-lead-soft: #1d3b38;
   --stage-support: #a39d90;   --stage-support-soft: #2d3237;
+
+  /* Action tiles: big, round, colourful links (Dashboard, landing page). Same
+     in both themes so they are recognised by colour; every stop holds white
+     text at 4.5:1 or better (tests/design-tokens.test.ts). */
+  --tile-plan: #2a8559;  --tile-plan-deep: #1f6e4b;
+  --tile-arrange: #bf5509;  --tile-arrange-deep: #a8470a;
+  --tile-assign: #8350d0;  --tile-assign-deep: #6a3bb0;
+  --tile-rehearse: #d63753;  --tile-rehearse-deep: #ba2943;
+  --tile-mypart: #3873bf;  --tile-mypart-deep: #2a5fa6;
+  --tile-lead: #187f7b;  --tile-lead-deep: #136e6b;
+  --tile-support: #66737d;  --tile-support-deep: #505c65;
+  --tile-foreground: #ffffff;
 
   --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
 }
@@ -144,6 +168,8 @@
   --color-stage-lead-soft: var(--stage-lead-soft);
   --color-stage-support: var(--stage-support);
   --color-stage-support-soft: var(--stage-support-soft);
+
+  --color-tile-foreground: var(--tile-foreground);
 
   --color-ring: var(--ring);
   --color-scrim: var(--scrim);
