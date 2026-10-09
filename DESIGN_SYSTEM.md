@@ -105,7 +105,7 @@ All in `components/ui` unless noted. Do not create one-off versions of these.
 | Choosing | `Tabs`, `SegmentedControl`, `FilterChip`, `Select`, `Checkbox`, `Switch` |
 | Overlays | `Dialog` (one decision), `Sheet` (drawer on iPad/desktop, bottom sheet on phone) |
 | Feedback | `SaveStatus` (inline), `Status`; avoid toasts |
-| Musical | `DynamicIndicator`, `SongFlowRibbon` (`components/songs`), `LogoMark` / `Logo` (`components/brand`) |
+| Musical | `DynamicIndicator`, `SongFlowRibbon` (`components/songs`), `LogoMark` / `Logo` (`components/brand`): the Baton W with a rising staff underneath (one bold accent line, one soft line). The same artwork is drawn for the generated app icons in `lib/brand/icon-image.tsx`; change both together |
 
 ## Screen patterns
 
