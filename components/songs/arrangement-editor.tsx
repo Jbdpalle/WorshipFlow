@@ -47,6 +47,7 @@ import { summarizeSectionCoverage } from "@/lib/songs/role-notes";
 import { summarizeDirectionAudience, type UpcomingRosterRow } from "@/lib/songs/direction-audience";
 import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker";
 import { SectionPersonalNote } from "@/components/songs/note-editors";
+import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
 import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
 import { cn } from "@/lib/utils/cn";
@@ -100,12 +101,14 @@ export function ArrangementEditor({
   initialVisionNote,
   teamMembers,
   audienceRoster,
+  isLeader,
 }: {
   songId: string;
   initialSections: Section[];
   initialVisionNote: string;
   teamMembers: TeamMemberOption[];
   audienceRoster: UpcomingRosterRow[];
+  isLeader: boolean;
 }) {
   const [sections, setSections] = useState(initialSections);
   const [syncedSections, setSyncedSections] = useState(initialSections);
@@ -218,6 +221,7 @@ export function ArrangementEditor({
             sectionCount={sections.length}
             teamMembers={teamMembers}
             audienceRoster={audienceRoster}
+            isLeader={isLeader}
             onDeleted={() => {
               setSections((prev) => prev.filter((s) => s.id !== selected.id));
               router.refresh();
@@ -336,6 +340,7 @@ function FocusedSectionEditor({
   sectionCount,
   teamMembers,
   audienceRoster,
+  isLeader,
   onDeleted,
   onDuplicated,
   onDirectionAdded,
@@ -348,6 +353,7 @@ function FocusedSectionEditor({
   sectionCount: number;
   teamMembers: TeamMemberOption[];
   audienceRoster: UpcomingRosterRow[];
+  isLeader: boolean;
   onDeleted: () => void;
   onDuplicated: () => void;
   onDirectionAdded: () => void;
@@ -626,7 +632,7 @@ function FocusedSectionEditor({
       </div>
 
       {/* Lyrics and chords */}
-      <LyricsChordsBlock sectionId={section.id} initialContent={section.lyricsChords ?? ""} />
+      <LyricsChordsBlock sectionId={section.id} initialContent={section.lyricsChords ?? ""} isLeader={isLeader} />
 
       {/* Role-specific and group directions */}
       <div className="space-y-2">
@@ -731,9 +737,11 @@ function SongVisionGroup({ songId, initialVision }: { songId: string; initialVis
 function LyricsChordsBlock({
   sectionId,
   initialContent,
+  isLeader,
 }: {
   sectionId: string;
   initialContent: string;
+  isLeader: boolean;
 }) {
   const [content, setContent] = useState(initialContent);
   const [expanded, setExpanded] = useState(initialContent.trim().length > 0);
@@ -744,6 +752,23 @@ function LyricsChordsBlock({
     const result = await updateSectionLyrics(sectionId, content);
     setStatus(result.ok ? "saved" : "error");
     if (result.ok) setTimeout(() => setStatus("idle"), 1800);
+  }
+
+  // A non-leader can't save here (updateSectionLyrics rejects it server-side),
+  // so don't show an editable textarea that would mislead them — read-only
+  // view if there's already content, nothing at all if there isn't.
+  if (!isLeader) {
+    if (!content.trim()) return null;
+    return (
+      <div className="space-y-1">
+        <label className="flex items-center gap-1.5 label-caps">
+          <FileText className="h-3.5 w-3.5" /> Lyrics &amp; Chords
+        </label>
+        <div className="rounded-lg bg-surface-muted p-2">
+          <LyricsChordsView content={content} size="sm" />
+        </div>
+      </div>
+    );
   }
 
   if (!expanded) {
