@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Song, SongSection } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { DEFAULT_SONG_STRUCTURE, THEME_CATEGORIES, WORSHIP_TYPES } from "@/lib/songs/constants";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
@@ -227,9 +227,17 @@ export async function renameSection(sectionId: string, label: string): Promise<A
   });
 }
 
+// A pre-existing gap mirrored from lib/actions/sets.ts's set-content checks:
+// this had no leader-role check at all, so any MEMBER could rewrite a
+// song's canonical chords/lyrics — exactly the "shared musical arrangement"
+// the mobile chord-tap editor must not let an unauthorized user touch. Same
+// fix, same pattern: reject a non-leader session server-side.
 export async function updateSectionLyrics(sectionId: string, lyricsChords: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can edit lyrics and chords." };
+    }
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.update({

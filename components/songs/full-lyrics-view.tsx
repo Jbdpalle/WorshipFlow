@@ -19,7 +19,15 @@ type Section = {
 // straight through, with or without chords, is still a real need. This
 // stays simple on purpose: a Lyrics/Chords toggle, no transpose or text
 // size — that fuller, stand-ready chart lives at /songs/[id]/chart.
-export function FullLyricsView({ songId, sections }: { songId: string; sections: Section[] }) {
+export function FullLyricsView({
+  songId,
+  sections,
+  isLeader,
+}: {
+  songId: string;
+  sections: Section[];
+  isLeader: boolean;
+}) {
   const [mode, setMode] = useState<LyricsChordsMode>("lyrics");
   const sectionsWithLyrics = sections.filter((s) => s.lyricsChords?.trim());
 
@@ -56,7 +64,14 @@ export function FullLyricsView({ songId, sections }: { songId: string; sections:
             {section.label}
             {section.repeatCount && section.repeatCount > 1 ? ` ×${section.repeatCount}` : ""}
           </h2>
-          <LyricsChordsView content={section.lyricsChords!} mode={mode} />
+          <LyricsChordsView
+            content={section.lyricsChords!}
+            mode={mode}
+            editable={isLeader}
+            songId={songId}
+            sectionId={section.id}
+            sectionLabel={section.label}
+          />
         </div>
       ))}
     </div>

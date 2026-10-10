@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
@@ -28,7 +28,8 @@ export const maxDuration = 60;
 
 export default async function SongDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { user, team } = await requireUser();
+  const { user, team, membershipRole } = await requireUser();
+  const isLeader = isLeaderRole(membershipRole);
 
   const [song, teamMembers] = await Promise.all([
     prisma.song.findUnique({
@@ -123,13 +124,14 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
                 initialVisionNote={song.visionNote ?? ""}
                 teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
                 audienceRoster={audienceRoster}
+                isLeader={isLeader}
               />
             ),
           },
           {
             key: "lyrics",
             label: "Full Lyrics",
-            content: <FullLyricsView songId={song.id} sections={song.sections} />,
+            content: <FullLyricsView songId={song.id} sections={song.sections} isLeader={isLeader} />,
           },
           {
             key: "notes",

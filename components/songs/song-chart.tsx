@@ -32,7 +32,15 @@ const MODES: { value: LyricsChordsMode; label: string }[] = [
   { value: "numbers", label: "Numbers" },
 ];
 
-export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: string | null }) {
+export function SongChart({
+  song,
+  initialKey,
+  isLeader,
+}: {
+  song: SongInfo;
+  initialKey?: string | null;
+  isLeader: boolean;
+}) {
   const [size, setSize] = useState<Size>("md");
   const [mode, setMode] = useState<LyricsChordsMode>("all");
   const [displayKey, setDisplayKey] = useState<string | null>(initialKey ?? song.key);
@@ -114,7 +122,9 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
                 </Select>
               </Tooltip>
               {displayKey && displayKey !== song.key && (
-                <Badge variant="musical">transposed from {song.key}</Badge>
+                <Tooltip content="Chords can only be edited at the song's own key — switch back to it to tap-edit them">
+                  <Badge variant="musical">transposed from {song.key}</Badge>
+                </Tooltip>
               )}
             </div>
           ) : (
@@ -169,6 +179,10 @@ export function SongChart({ song, initialKey }: { song: SongInfo; initialKey?: s
                 mode={mode}
                 songKey={song.key}
                 transposeToKey={displayKey}
+                editable={isLeader}
+                songId={song.id}
+                sectionId={section.id}
+                sectionLabel={section.label}
               />
             </div>
           ))}

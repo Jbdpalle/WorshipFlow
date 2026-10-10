@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth/guard";
+import { requireUser, isLeaderRole } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/prisma";
 import { SongChart } from "@/components/songs/song-chart";
 
@@ -12,7 +12,8 @@ export default async function SongChartPage({
 }) {
   const { id } = await params;
   const { setSongId } = await searchParams;
-  const { team } = await requireUser();
+  const { team, membershipRole } = await requireUser();
+  const isLeader = isLeaderRole(membershipRole);
 
   const song = await prisma.song.findUnique({
     where: { id },
@@ -39,5 +40,5 @@ export default async function SongChartPage({
     }
   }
 
-  return <SongChart song={song} initialKey={initialKey} />;
+  return <SongChart song={song} initialKey={initialKey} isLeader={isLeader} />;
 }
