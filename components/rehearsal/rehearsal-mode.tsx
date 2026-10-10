@@ -34,8 +34,6 @@ import { ROLES, REHEARSAL_CHECK_STATUSES } from "@/lib/songs/constants";
 import { selectRoleNoteForViewer } from "@/lib/songs/role-notes";
 import {
   startRehearsal,
-  saveRehearsalNotes,
-  setRehearsalCheck,
   proposeArrangementChange,
   keepArrangementChange,
   discardArrangementChange,
@@ -53,6 +51,8 @@ import { useAutoScrollIntoView } from "@/hooks/use-auto-scroll-into-view";
 import { useDirectorShortcuts, loadShortcutMap, type DirectorAction } from "@/hooks/use-director-shortcuts";
 import { ShortcutsPanel } from "@/components/rehearsal/shortcuts-panel";
 import { isFollowingLivePosition } from "@/lib/songs/live-follow";
+import { callOffline } from "@/lib/offline/outbox";
+import { useSyncDownSnapshot } from "@/lib/offline/use-offline-sync";
 
 type RoleNote = {
   id: string;
@@ -169,6 +169,21 @@ export function RehearsalMode({
   const setSong = songs[songIndex];
   const activeSongRef = useRef<HTMLLIElement | null>(null);
   useAutoScrollIntoView(activeSongRef, setSong?.id ?? null);
+
+  // Mirrors the songs/directions/assignments this screen was just given
+  // into IndexedDB, so a later offline visit to this exact set has
+  // something real to fall back to (see lib/offline/). Only ever writes
+  // when the data we have is actually fresh (i.e. we're online) — never
+  // overwrites a good cached copy with something read from a stale,
+  // service-worker-served page.
+  useSyncDownSnapshot(`rehearsal:${setId}`, {
+    setId,
+    setTitle,
+    songs,
+    setTeamMembers,
+    isLeaderView,
+    viewerTeamMemberId,
+  });
 
   // Every leader/MD cue (song switch, section move) goes through this so the
   // controller always knows whether it actually reached the shared state —
@@ -410,6 +425,7 @@ function SongRehearsalPanel({
   const [rehearsalId, setRehearsalId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
+  const [notesQueued, setNotesQueued] = useState(false);
   const [activeStatus, setActiveStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -762,7 +778,7 @@ function SongRehearsalPanel({
                       onClick={async () => {
                         if (!rehearsalId) return;
                         setError(null);
-                        const result = await setRehearsalCheck(rehearsalId, s.value);
+                        const result = await callOffline("setRehearsalCheck", [rehearsalId, s.value], `Rehearsal check — ${s.label}`);
                         if (!result.ok) {
                           setError(result.error);
                           return;
@@ -792,18 +808,27 @@ function SongRehearsalPanel({
                   onClick={async () => {
                     if (!rehearsalId) return;
                     setError(null);
-                    const result = await saveRehearsalNotes(rehearsalId, notes.split("\n"));
+                    const result = await callOffline(
+                      "saveRehearsalNotes",
+                      [rehearsalId, notes.split("\n")],
+                      `Rehearsal notes — ${song.title}`,
+                    );
                     if (!result.ok) {
                       setError(result.error);
                       return;
                     }
                     setNotes("");
                     setSaved(true);
+                    setNotesQueued(!!result.queued);
                   }}
                 >
                   <Save className="h-4 w-4" /> Save
                 </Button>
-                {saved && <p role="status" className="text-sm text-success">Saved to rehearsal history.</p>}
+                {saved && (
+                  <p role="status" className="text-sm text-success">
+                    {notesQueued ? "Saved on this device — will sync once you're back online." : "Saved to rehearsal history."}
+                  </p>
+                )}
                 {error && <p role="alert" className="text-sm text-danger">{error}</p>}
               </div>
             </div>

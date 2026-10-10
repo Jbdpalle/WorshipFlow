@@ -5,8 +5,8 @@ import { Sheet } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SaveStatus, type SaveState } from "@/components/ui/save-status";
-import { updateSectionLyrics } from "@/lib/actions/songs";
 import { replaceToken } from "@/lib/songs/chord-edit";
+import { callOffline } from "@/lib/offline/outbox";
 
 export function ChordEditSheet({
   open,
@@ -47,19 +47,12 @@ export function ChordEditSheet({
     setStatus("saving");
     setError(null);
     const newContent = replaceToken(fullContent, lineIndex, partIndex, trimmed);
-    // A network failure (offline, dropped connection) rejects this call
-    // rather than resolving it — without this catch, the thrown rejection
-    // would leave `saving`/`status` stuck on "saving" forever, with no
-    // error shown and no way to retry short of closing the sheet.
-    let result;
-    try {
-      result = await updateSectionLyrics(sectionId, newContent);
-    } catch {
-      setSaving(false);
-      setStatus("error");
-      setError("Couldn't save — check your connection and try again.");
-      return;
-    }
+    // Offline (or a network failure mid-call) queues this through the
+    // outbox instead of failing — see lib/offline/outbox.ts. The sheet
+    // closes immediately either way; `onSaved` already applies the new
+    // content locally so the chart reflects the edit right away, synced
+    // for real once there's a connection.
+    const result = await callOffline("updateSectionLyrics", [sectionId, newContent], `Chord edit — ${sectionLabel}`);
     setSaving(false);
     if (!result.ok) {
       setStatus("error");
