@@ -86,7 +86,7 @@ export type SetSongData = {
   // The transition LEAVING this song, toward whatever song is next in the
   // set — null if none was configured in the Setlist Builder. Reused as-is
   // here; this is not a second transition model.
-  transitionFrom: { id: string; type: string; direction: string | null } | null;
+  transitionFrom: { id: string; type: string; direction: string | null; roleNotes: RoleNote[] } | null;
   song: {
     id: string;
     title: string;
@@ -680,12 +680,28 @@ function SongRehearsalPanel({
                 <>
                   <h3 className="mt-1 text-2xl font-extrabold tracking-tight">{nextSong.song.title}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">Next song</p>
-                  {setSong.transitionFrom?.direction?.trim() && (
-                    <div className="mt-3 flex items-start gap-2 rounded-lg bg-surface p-3">
-                      <ArrowDown className="mt-0.5 h-4 w-4 shrink-0 text-musical" aria-hidden />
-                      <p className="text-sm font-semibold text-musical">{setSong.transitionFrom.direction}</p>
-                    </div>
-                  )}
+                  {(() => {
+                    // Leader sees the whole shared transition; a musician
+                    // sees their own piece of it if one was written for
+                    // their role, else falls back to the shared text — same
+                    // "leader sees everything, follower sees their part"
+                    // split already used for every section direction above.
+                    const myTransitionText = !isLeaderView
+                      ? selectRoleNoteForViewer(
+                          setSong.transitionFrom?.roleNotes ?? [],
+                          myRole ?? "",
+                          viewerTeamMemberId,
+                        )?.content
+                      : undefined;
+                    const text = myTransitionText ?? setSong.transitionFrom?.direction;
+                    if (!text?.trim()) return null;
+                    return (
+                      <div className="mt-3 flex items-start gap-2 rounded-lg bg-surface p-3">
+                        <ArrowDown className="mt-0.5 h-4 w-4 shrink-0 text-musical" aria-hidden />
+                        <p className="text-sm font-semibold text-musical">{text}</p>
+                      </div>
+                    );
+                  })()}
                 </>
               ) : (
                 <p className="mt-1 text-lg font-semibold">End of the set.</p>

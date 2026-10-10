@@ -41,8 +41,12 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { IconButton } from "@/components/ui/icon-button";
 import { DynamicIndicator } from "@/components/songs/dynamic-indicator";
 import { SongFlowRibbon } from "@/components/songs/song-flow-ribbon";
+import { ArrangementLanes } from "@/components/songs/arrangement-lanes";
+import { DirectionAudienceBadge } from "@/components/songs/direction-audience-badge";
 import { summarizeSectionCoverage } from "@/lib/songs/role-notes";
+import { summarizeDirectionAudience, type UpcomingRosterRow } from "@/lib/songs/direction-audience";
 import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker";
+import { SectionPersonalNote } from "@/components/songs/note-editors";
 import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
 import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
 import { cn } from "@/lib/utils/cn";
@@ -68,6 +72,7 @@ type RoleNote = {
   content: string;
   teamMemberId: string | null;
   visibility: "TEAM" | "ROLE" | "PERSON";
+  cueLabel: string | null;
 };
 type Section = {
   id: string;
@@ -78,6 +83,7 @@ type Section = {
   isFreeform: boolean;
   lyricsChords: string | null;
   roleNotes: RoleNote[];
+  personalNotes: { id: string; content: string }[];
 };
 type TeamMemberOption = { id: string; name: string; role: string };
 
@@ -93,11 +99,13 @@ export function ArrangementEditor({
   initialSections,
   initialVisionNote,
   teamMembers,
+  audienceRoster,
 }: {
   songId: string;
   initialSections: Section[];
   initialVisionNote: string;
   teamMembers: TeamMemberOption[];
+  audienceRoster: UpcomingRosterRow[];
 }) {
   const [sections, setSections] = useState(initialSections);
   const [syncedSections, setSyncedSections] = useState(initialSections);
@@ -142,6 +150,8 @@ export function ArrangementEditor({
         selectedId={selectedId}
         onSelect={setSelectedId}
       />
+
+      <ArrangementLanes sections={sections} />
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr] lg:items-start">
         <DndContext id="song-sections" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -207,6 +217,7 @@ export function ArrangementEditor({
             sectionNumber={selectedIndex + 1}
             sectionCount={sections.length}
             teamMembers={teamMembers}
+            audienceRoster={audienceRoster}
             onDeleted={() => {
               setSections((prev) => prev.filter((s) => s.id !== selected.id));
               router.refresh();
@@ -324,6 +335,7 @@ function FocusedSectionEditor({
   sectionNumber,
   sectionCount,
   teamMembers,
+  audienceRoster,
   onDeleted,
   onDuplicated,
   onDirectionAdded,
@@ -335,6 +347,7 @@ function FocusedSectionEditor({
   sectionNumber: number;
   sectionCount: number;
   teamMembers: TeamMemberOption[];
+  audienceRoster: UpcomingRosterRow[];
   onDeleted: () => void;
   onDuplicated: () => void;
   onDirectionAdded: () => void;
@@ -346,6 +359,18 @@ function FocusedSectionEditor({
   const [dynamics, setDynamics] = useState(section.dynamics ?? "");
   const [isFreeform, setIsFreeform] = useState(section.isFreeform);
   const [roleNotes, setRoleNotes] = useState(section.roleNotes);
+  const [syncedRoleNotes, setSyncedRoleNotes] = useState(section.roleNotes);
+  // Adjust local state during render when the server gives us a fresh
+  // roleNotes array (e.g. after router.refresh() following an add/edit),
+  // same pattern as ArrangementEditor's own sections sync above — without
+  // this, FocusedSectionEditor never remounts on a same-section update (its
+  // key is the section id, which doesn't change), so a newly added or just
+  // -edited direction silently fails to appear until the page is reloaded.
+  // This is the literal mechanism behind "directions appear to disappear."
+  if (section.roleNotes !== syncedRoleNotes) {
+    setSyncedRoleNotes(section.roleNotes);
+    setRoleNotes(section.roleNotes);
+  }
   const [copyingPrevious, setCopyingPrevious] = useState(false);
   const dynamicsIsCustomInitially = Boolean(dynamics) && !(DYNAMICS_LEVELS as readonly string[]).includes(dynamics);
   const [dynamicsIsCustom, setDynamicsIsCustom] = useState(dynamicsIsCustomInitially);
@@ -637,7 +662,9 @@ function FocusedSectionEditor({
             initialContent={note.content}
             initialTeamMemberId={note.teamMemberId}
             initialVisibility={note.visibility}
+            initialCueLabel={note.cueLabel}
             teamMembers={teamMembers}
+            audienceRoster={audienceRoster}
             onRemoved={() => setRoleNotes((prev) => prev.filter((n) => n.id !== note.id))}
             onRoleChanged={(newRole) =>
               setRoleNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, role: newRole } : n)))
@@ -652,6 +679,13 @@ function FocusedSectionEditor({
           onAdded={onDirectionAdded}
         />
       </div>
+
+      <SectionPersonalNote
+        songId={songId}
+        sectionId={section.id}
+        initialNote={section.personalNotes[0]?.content ?? ""}
+      />
+
       {error && <p className="text-sm text-danger">{error}</p>}
     </Card>
   );
@@ -765,7 +799,9 @@ function RoleNoteRow({
   initialContent,
   initialTeamMemberId,
   initialVisibility,
+  initialCueLabel,
   teamMembers,
+  audienceRoster,
   onRemoved,
   onRoleChanged,
 }: {
@@ -776,13 +812,30 @@ function RoleNoteRow({
   initialContent: string;
   initialTeamMemberId: string | null;
   initialVisibility: "TEAM" | "ROLE" | "PERSON";
+  initialCueLabel: string | null;
   teamMembers: TeamMemberOption[];
+  audienceRoster: UpcomingRosterRow[];
   onRemoved: () => void;
   onRoleChanged: (newRole: string) => void;
 }) {
   const [content, setContent] = useState(initialContent);
   const [teamMemberId, setTeamMemberId] = useState(initialTeamMemberId ?? "");
   const [visibility, setVisibility] = useState(initialVisibility);
+  const [cueLabel, setCueLabel] = useState(initialCueLabel ?? "");
+  // Same "sync local state when the server prop changes" pattern as
+  // FocusedSectionEditor's roleNotes above: this row keeps the same
+  // key={note.id} across a refresh even when ITS OWN content/visibility
+  // changed server-side (e.g. the quick-add picker updating this exact
+  // role's existing row) — without this, the field keeps showing what it
+  // showed before the save, which is indistinguishable from "it didn't save."
+  const [syncedContent, setSyncedContent] = useState(initialContent);
+  if (initialContent !== syncedContent) {
+    setSyncedContent(initialContent);
+    setContent(initialContent);
+    setTeamMemberId(initialTeamMemberId ?? "");
+    setVisibility(initialVisibility);
+    setCueLabel(initialCueLabel ?? "");
+  }
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<SaveState>("idle");
   const [roleError, setRoleError] = useState<string | null>(null);
@@ -792,12 +845,18 @@ function RoleNoteRow({
   // reassigning its role doesn't need a server round trip, just remove and
   // re-add it with the right role instead.
   const isPersisted = !noteId.startsWith("new-");
+  const matches = summarizeDirectionAudience(role, audienceRoster);
 
-  async function save(overrides?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON" }) {
+  async function save(overrides?: {
+    teamMemberId?: string | null;
+    visibility?: "TEAM" | "ROLE" | "PERSON";
+    cueLabel?: string | null;
+  }) {
     setStatus("saving");
     const result = await upsertRoleNote(sectionId, role, content, songId, {
       teamMemberId: overrides?.teamMemberId !== undefined ? overrides.teamMemberId : teamMemberId || null,
       visibility: overrides?.visibility ?? visibility,
+      cueLabel: overrides?.cueLabel !== undefined ? overrides.cueLabel : cueLabel || null,
     });
     setStatus(result.ok ? "saved" : "error");
     if (result.ok) setTimeout(() => setStatus("idle"), 1800);
@@ -885,8 +944,27 @@ function RoleNoteRow({
       </div>
       <SaveStatus state={status} className="mt-1 sm:ml-[11.5rem]" />
       {roleError && <p role="alert" className="mt-1 text-sm text-danger sm:ml-[11.5rem]">{roleError}</p>}
+      {isPersisted && content.trim() && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:pl-[11.5rem]">
+          <DirectionAudienceBadge visibility={visibility} assigneeName={assigneeName} role={role} matches={matches} />
+          {cueLabel.trim() && (
+            <span className="rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+              Cue: {cueLabel}
+            </span>
+          )}
+        </div>
+      )}
       {expanded && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm sm:pl-[11.5rem]">
+          <span className="text-muted-foreground">Cue:</span>
+          <Input
+            value={cueLabel}
+            onChange={(e) => setCueLabel(e.target.value)}
+            onBlur={() => save({ cueLabel: cueLabel || null })}
+            placeholder="e.g. Line 3, Count-in 4-3-2-1"
+            className="h-11 w-48 text-sm"
+            aria-label="Cue label (optional)"
+          />
           <span className="text-muted-foreground">For:</span>
           <Select
             value={teamMemberId}

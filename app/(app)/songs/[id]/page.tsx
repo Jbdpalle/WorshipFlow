@@ -18,6 +18,7 @@ import { RehearsalHistoryList } from "@/components/songs/rehearsal-history";
 import { ChangeLogPanel } from "@/components/songs/change-log";
 import { LastTimeCallout } from "@/components/songs/last-time-callout";
 import { advanceTourIfNeeded } from "@/lib/actions/demo-tour";
+import { getUpcomingRosterForSong } from "@/lib/songs/direction-audience";
 import { BookOpenText } from "lucide-react";
 
 // "Suggest theme & verse" calls the Anthropic API, which can take longer
@@ -38,20 +39,23 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
         bibleRefs: true,
         sections: {
           orderBy: { order: "asc" },
-          include: { roleNotes: true },
+          include: { roleNotes: true, personalNotes: { where: { userId: user.id } } },
         },
         rehearsals: {
           orderBy: { occurredAt: "desc" },
           include: { notes: true },
         },
         changeLogs: { orderBy: { createdAt: "desc" } },
-        personalNotes: { where: { userId: user.id } },
+        // sectionId: null — the whole-song note, distinct from a
+        // section-pinned one (see FocusedSectionEditor's inline private note).
+        personalNotes: { where: { userId: user.id, sectionId: null } },
       },
     }),
     prisma.teamMember.findMany({ where: { teamId: team.id }, orderBy: { name: "asc" } }),
   ]);
 
   if (!song || song.teamId !== team.id) notFound();
+  const audienceRoster = await getUpcomingRosterForSong(song.id, team.id);
   await advanceTourIfNeeded(user.id, team.id, 3);
 
   const facts = [
@@ -118,6 +122,7 @@ export default async function SongDetailPage({ params }: { params: Promise<{ id:
                 initialSections={song.sections}
                 initialVisionNote={song.visionNote ?? ""}
                 teamMembers={teamMembers.map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+                audienceRoster={audienceRoster}
               />
             ),
           },

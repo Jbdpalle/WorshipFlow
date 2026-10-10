@@ -39,6 +39,7 @@ export function QuickDirectionPicker({
   const [showExtra, setShowExtra] = useState(false);
   const [intensity, setIntensity] = useState<number | null>(null);
   const [note, setNote] = useState("");
+  const [cueLabel, setCueLabel] = useState("");
   const [teamMemberId, setTeamMemberId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export function QuickDirectionPicker({
     setShowExtra(false);
     setIntensity(null);
     setNote("");
+    setCueLabel("");
     setTeamMemberId("");
     setError(null);
   }
@@ -82,6 +84,7 @@ export function QuickDirectionPicker({
     const result = await upsertRoleNote(sectionId, effectiveRole, content, songId, {
       teamMemberId: teamMemberId || null,
       visibility: teamMemberId ? "PERSON" : "TEAM",
+      cueLabel: cueLabel.trim() || null,
     });
     setSaving(false);
     if (!result.ok) {
@@ -242,6 +245,16 @@ export function QuickDirectionPicker({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Stay underneath the vocal"
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label htmlFor={`${uid}-cue`} className="text-sm font-semibold">Cue (optional)</label>
+            <Input
+              id={`${uid}-cue`}
+              value={cueLabel}
+              onChange={(e) => setCueLabel(e.target.value)}
+              placeholder="e.g. Line 3, Count-in 4-3-2-1"
               className="text-sm"
             />
           </div>

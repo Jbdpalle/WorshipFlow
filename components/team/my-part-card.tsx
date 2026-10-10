@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { DynamicIndicator } from "@/components/songs/dynamic-indicator";
@@ -30,6 +31,11 @@ export type MyPartAssignment = {
         roleNotes: RoleNote[];
       }[];
     };
+    transitionFrom: {
+      direction: string | null;
+      roleNotes: RoleNote[];
+      toSetSong: { song: { title: string } } | null;
+    } | null;
   };
 };
 
@@ -51,12 +57,15 @@ export function MyPartCard({
   showSet?: boolean;
 }) {
   const { role, setSong } = assignment;
-  const { song, set } = setSong;
+  const { song, set, transitionFrom } = setSong;
   const rows = song.sections.map((section) => ({
     section,
     note: selectRoleNoteForViewer(section.roleNotes, role, memberId),
   }));
   const hasAnyDirection = rows.some((r) => r.note);
+  const myTransitionNote = transitionFrom
+    ? selectRoleNoteForViewer(transitionFrom.roleNotes, role, memberId)
+    : undefined;
 
   // Consecutive sections with no direction for this person collapse into
   // one quiet row ("Verse 2 · Chorus: follow the flow") so the sections
@@ -141,6 +150,20 @@ export function MyPartCard({
         <p className="p-4 text-sm text-muted-foreground sm:p-5">
           No specific instructions yet for {role}. Play it as written.
         </p>
+      )}
+
+      {transitionFrom && (myTransitionNote || transitionFrom.direction?.trim()) && (
+        <div className="flex items-start gap-2 border-t border-border bg-surface-muted px-4 py-3 sm:px-5">
+          <ArrowDown className="mt-0.5 h-4 w-4 shrink-0 text-musical" aria-hidden />
+          <div>
+            <p className="label-caps text-musical">
+              Transition{transitionFrom.toSetSong ? ` into ${transitionFrom.toSetSong.song.title}` : ""}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-foreground">
+              {myTransitionNote?.content ?? transitionFrom.direction}
+            </p>
+          </div>
+        </div>
       )}
     </Card>
   );

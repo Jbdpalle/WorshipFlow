@@ -39,7 +39,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
             },
           },
           assignments: { include: { teamMember: true } },
-          transitionFrom: { select: { id: true, type: true, direction: true } },
+          transitionFrom: { select: { id: true, type: true, direction: true, roleNotes: true } },
         },
       },
     },

@@ -71,6 +71,15 @@ export default async function MyPartPage({
               changeLogs: { orderBy: { createdAt: "desc" }, take: 2 },
             },
           },
+          // The transition OUT of this song (into whatever comes next in the
+          // set) — reused as-is from the Setlist Builder's Transition model,
+          // just resolved down to this musician's own piece of it below.
+          transitionFrom: {
+            include: {
+              roleNotes: true,
+              toSetSong: { include: { song: { select: { title: true } } } },
+            },
+          },
         },
       })
     : [];
