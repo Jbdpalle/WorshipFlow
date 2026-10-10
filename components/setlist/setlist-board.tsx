@@ -138,6 +138,7 @@ export function SetlistBoard({
                   transition={item.transitionFrom}
                   fromKey={item.overrideKey ?? item.song.key}
                   toKey={items[index + 1] ? (items[index + 1].overrideKey ?? items[index + 1].song.key) : null}
+                  teamMembers={teamMembers}
                 />
               </div>
             </div>

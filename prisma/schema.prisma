@@ -298,6 +298,7 @@ model SongSection {
   roleNotes          SongRoleNote[]
   arrangementChanges ArrangementChange[]
   liveForSets        WorshipSet[]
+  personalNotes      PersonalNote[]
 
   @@index([songId])
 }
@@ -314,26 +315,48 @@ enum NoteVisibility {
 
 // Role is a fixed vocabulary (Worship Leader, Lead Vocal, Acoustic Guitar, ...)
 // represented as a plain string so the MVP can extend it without a migration.
+//
+// A direction belongs to exactly one parent: a SongSection (the normal
+// case) or a Transition (a direction scoped to the handoff between two
+// songs, e.g. "keys change pads" during the transition itself rather than
+// inside either song's sections). Both are optional and app code enforces
+// "exactly one is set" (see findOwnedSection/findOwnedTransition in
+// lib/actions) — this is the smallest extension that lets a Transition
+// reuse this exact model (visibility, teamMemberId targeting,
+// selectRoleNoteForViewer, summarizeSectionCoverage) instead of a second,
+// parallel direction system.
 model SongRoleNote {
   id           String         @id @default(cuid())
-  sectionId    String
+  sectionId    String?
+  transitionId String?
   role         String
   content      String
+  // Optional short cue anchor — a line/phrase reference, a count-in, or any
+  // other free-text position marker ("Line 3", "Count-in: 4,3,2,1", "On the
+  // downbeat"). Deliberately a plain label, not a bar/beat number: not every
+  // arrangement is that precise, and this never drives live auto-advance.
+  cueLabel     String?
   teamMemberId String?        // optional: directs this at one specific person rather than the whole role
   visibility   NoteVisibility @default(TEAM)
   updatedAt    DateTime       @updatedAt
 
-  section    SongSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
+  section    SongSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  transition Transition?  @relation(fields: [transitionId], references: [id], onDelete: Cascade)
+  teamMember TeamMember?  @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
 
   @@index([sectionId])
+  @@index([transitionId])
   @@index([teamMemberId])
   // Includes teamMemberId (not just sectionId+role) so two different people
   // sharing a role can each get their own individualized PERSON-scoped note
   // in the same section — Postgres treats NULL as distinct, so the single
   // shared TEAM/ROLE-wide row (teamMemberId IS NULL) keeps working exactly
-  // as before.
+  // as before. Two separate unique indexes (rather than one compound one)
+  // because exactly one of sectionId/transitionId is non-null on any given
+  // row — Postgres's NULL-is-distinct behavior means the "other" index
+  // never collides for that row, which is exactly what's wanted here.
   @@unique([sectionId, role, teamMemberId])
+  @@unique([transitionId, role, teamMemberId])
 }
 
 model SongAssignment {
@@ -517,6 +540,7 @@ model Transition {
   set         WorshipSet @relation(fields: [setId], references: [id], onDelete: Cascade)
   fromSetSong SetSong    @relation("TransitionFrom", fields: [fromSetSongId], references: [id], onDelete: Cascade)
   toSetSong   SetSong?   @relation("TransitionTo", fields: [toSetSongId], references: [id], onDelete: SetNull)
+  roleNotes   SongRoleNote[]
 
   @@index([setId])
   @@index([toSetSongId])
@@ -684,16 +708,22 @@ model PersonalNote {
   userId       String
   teamMemberId String?
   songId       String?
+  // Optional: pins a note to one section/cue instead of the whole song
+  // (e.g. "come in quiet on line 2") — null keeps the original whole-song
+  // behavior unchanged for every existing row.
+  sectionId    String?
   content      String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id])
-  teamMember TeamMember? @relation(fields: [teamMemberId], references: [id])
-  song       Song?       @relation(fields: [songId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id])
+  teamMember TeamMember?  @relation(fields: [teamMemberId], references: [id])
+  song       Song?        @relation(fields: [songId], references: [id], onDelete: Cascade)
+  section    SongSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([songId])
+  @@index([sectionId])
 }
 
 // ── Feedback ─────────────────────────────────────────────────────────

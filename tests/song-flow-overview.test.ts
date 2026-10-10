@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { summarizeSectionCoverage } from "@/lib/songs/role-notes";
+import { summarizeSectionCoverage, laneForRole } from "@/lib/songs/role-notes";
 import { isFollowingLivePosition } from "@/lib/songs/live-follow";
 
 describe("summarizeSectionCoverage", () => {
@@ -24,6 +24,29 @@ describe("summarizeSectionCoverage", () => {
 
   it("reports no coverage for a section with zero role notes", () => {
     expect(summarizeSectionCoverage([])).toEqual({ roles: [], hasAny: false });
+  });
+});
+
+describe("laneForRole", () => {
+  it("puts Worship Leader, Lead Vocal, and Backing Vocal in the vocal lane", () => {
+    expect(laneForRole("Worship Leader")).toBe("vocal");
+    expect(laneForRole("Lead Vocal")).toBe("vocal");
+    expect(laneForRole("Backing Vocal")).toBe("vocal");
+  });
+
+  it("puts the 'Rest of the Vocals' catch-all in the vocal lane", () => {
+    expect(laneForRole("Rest of the Vocals")).toBe("vocal");
+  });
+
+  it("puts real instruments in the instrument lane", () => {
+    expect(laneForRole("Bass")).toBe("instrument");
+    expect(laneForRole("Drums")).toBe("instrument");
+    expect(laneForRole("Keys")).toBe("instrument");
+  });
+
+  it("defaults an unrecognized/custom role to the instrument lane", () => {
+    expect(laneForRole("Percussion")).toBe("instrument");
+    expect(laneForRole("Rest of the Band")).toBe("instrument");
   });
 });
 

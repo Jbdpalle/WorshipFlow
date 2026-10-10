@@ -21,7 +21,7 @@ export default async function PracticeSessionPage({
           orderBy: { order: "asc" },
           include: {
             assignments: { select: { teamMemberId: true, role: true } },
-            transitionFrom: { select: { id: true, type: true, direction: true } },
+            transitionFrom: { select: { id: true, type: true, direction: true, roleNotes: true } },
             song: {
               include: {
                 sections: {

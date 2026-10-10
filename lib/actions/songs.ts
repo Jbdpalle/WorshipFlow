@@ -369,7 +369,7 @@ export async function upsertRoleNote(
   role: string,
   content: string,
   songIdForRevalidate: string,
-  options?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON" },
+  options?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON"; cueLabel?: string | null },
 ): Promise<ActionResult> {
   return runAction(async () => {
     const { user, team } = await requireUser();
@@ -385,6 +385,7 @@ export async function upsertRoleNote(
     // the shared (teamMemberId: null) case goes through an explicit
     // find-then-update-or-create instead.
     const teamMemberId = options?.teamMemberId !== undefined ? options.teamMemberId : null;
+    const cueLabel = options?.cueLabel !== undefined ? (options.cueLabel?.trim() || null) : undefined;
     const isNewNote =
       content.trim() &&
       !(await prisma.songRoleNote.findFirst({ where: { sectionId, role, teamMemberId }, select: { id: true } }));
@@ -396,8 +397,9 @@ export async function upsertRoleNote(
         update: {
           content,
           ...(options?.visibility !== undefined ? { visibility: options.visibility } : {}),
+          ...(cueLabel !== undefined ? { cueLabel } : {}),
         },
-        create: { sectionId, role, content, teamMemberId, visibility: options?.visibility ?? "TEAM" },
+        create: { sectionId, role, content, teamMemberId, visibility: options?.visibility ?? "TEAM", cueLabel: cueLabel ?? null },
       });
     } else {
       const existing = await prisma.songRoleNote.findFirst({ where: { sectionId, role, teamMemberId: null } });
@@ -407,11 +409,12 @@ export async function upsertRoleNote(
           data: {
             content,
             ...(options?.visibility !== undefined ? { visibility: options.visibility } : {}),
+            ...(cueLabel !== undefined ? { cueLabel } : {}),
           },
         });
       } else {
         await prisma.songRoleNote.create({
-          data: { sectionId, role, content, teamMemberId: null, visibility: options?.visibility ?? "TEAM" },
+          data: { sectionId, role, content, teamMemberId: null, visibility: options?.visibility ?? "TEAM", cueLabel: cueLabel ?? null },
         });
       }
     }
@@ -442,7 +445,10 @@ export async function changeRoleNoteRole(
       where: { id: noteId },
       include: { section: { include: { song: true } } },
     });
-    if (!note || note.section.song.teamId !== team.id) return { ok: false, error: "Not found." };
+    // This re-labels a section-scoped direction only — a transition-scoped
+    // note (section null) has no song to re-render against and isn't
+    // reachable from this UI, so it's treated the same as "not found."
+    if (!note || !note.section || note.section.song.teamId !== team.id) return { ok: false, error: "Not found." };
     if (note.role === newRole) return { ok: true };
 
     const collision = await prisma.songRoleNote.findFirst({
