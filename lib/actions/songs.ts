@@ -35,6 +35,50 @@ async function findOwnedSection(sectionId: string, teamId: string): Promise<Sect
 // open to every member because they are private to their author.
 const ARRANGEMENT_LEADER_ONLY = "Only the worship leader can change the arrangement.";
 
+export type SongPreview = {
+  id: string;
+  title: string;
+  artist: string | null;
+  key: string | null;
+  bpm: number | null;
+  lyricsSummary: string | null;
+  sections: { id: string; label: string; lyricsChords: string | null }[];
+};
+
+// Backs the Theme Matches song preview (Sheet) — quick-look content for
+// deciding whether a matched song fits, without leaving the planning page
+// or opening the full song editor. Deliberately returns lyricsSummary and
+// each section's own lyricsChords rather than any separate lyrics store —
+// Song intentionally never stores full copyrighted lyrics (see the
+// `lyricsSummary` field comment in prisma/schema.prisma); lyricsChords is
+// only ever what the team itself typed or imported from their own PDF.
+export async function getSongPreview(songId: string): Promise<ActionResultData<SongPreview>> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSong(songId, team.id);
+    if (!lookup.ok) return lookup;
+
+    const sections = await prisma.songSection.findMany({
+      where: { songId },
+      orderBy: { order: "asc" },
+      select: { id: true, label: true, lyricsChords: true },
+    });
+
+    return {
+      ok: true,
+      data: {
+        id: lookup.song.id,
+        title: lookup.song.title,
+        artist: lookup.song.artist,
+        key: lookup.song.key,
+        bpm: lookup.song.bpm,
+        lyricsSummary: lookup.song.lyricsSummary,
+        sections,
+      },
+    };
+  });
+}
+
 export async function createSong(input: {
   title: string;
   artist?: string;
