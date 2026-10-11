@@ -24,10 +24,15 @@ export function SongFlowRibbon({
   sections,
   selectedId,
   onSelect,
+  partTags,
 }: {
   sections: RibbonSection[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  // Optional per-section tag for the viewer's own part ("IN" when they come
+  // in, "OUT" when they drop out) — lets a musician see their entrances
+  // across the whole song without opening each section.
+  partTags?: Record<string, string | null>;
 }) {
   const activeRef = useRef<HTMLLIElement | null>(null);
   useAutoScrollIntoView(activeRef, selectedId);
@@ -65,6 +70,17 @@ export function SongFlowRibbon({
                   {i + 1}. {s.label}
                   {s.repeatCount && s.repeatCount > 1 ? ` ×${s.repeatCount}` : ""}
                 </span>
+                {partTags && (
+                  <span
+                    className={cn(
+                      "tnum h-4 text-[0.7rem] font-extrabold leading-4",
+                      partTags[s.id] === "IN" ? "text-primary" : "text-muted-foreground",
+                    )}
+                    aria-label={partTags[s.id] === "IN" ? "You come in here" : partTags[s.id] === "OUT" ? "You drop out here" : undefined}
+                  >
+                    {partTags[s.id] ?? ""}
+                  </span>
+                )}
               </button>
             </li>
           );

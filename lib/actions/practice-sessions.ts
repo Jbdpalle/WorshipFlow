@@ -112,6 +112,9 @@ export type PracticeSessionSummary = {
   durationMinutes: number | null;
   songsPracticed: number;
   sectionsCovered: number;
+  // Rehearsal observations for this set still waiting on a leader decision.
+  // Informational only — never blocks Finish or the Live Set.
+  openNotes: number;
 };
 
 export async function finishPracticeSession(
@@ -154,6 +157,47 @@ export async function finishPracticeSession(
     trackEvent(team.id, "practice_session_finished", { entityId: sessionId });
     revalidatePath(`/sets/${session.setId}/practice`);
     revalidatePath(`/sets/${session.setId}/practice/${sessionId}`);
-    return { ok: true, data: { durationMinutes, songsPracticed, sectionsCovered } };
+    const openNotes = await prisma.rehearsalNote.count({
+      where: { status: "OPEN", rehearsal: { setSong: { setId: session.setId } } },
+    });
+    return { ok: true, data: { durationMinutes, songsPracticed, sectionsCovered, openNotes } };
+  });
+}
+
+// The ordinary Sunday path: one tap from the set to rehearsing. Resumes the
+// practice already in progress, else starts the next planned one, else
+// creates the first/next session on the spot — so a normal week never has
+// to visit the session list. Extra sessions (camps, conferences) are still
+// created and chosen explicitly via createPracticeSession / the list page.
+export async function startDefaultPractice(setId: string): Promise<ActionResultData<{ id: string }>> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) {
+      return { ok: false, error: "Only the worship leader can start practice." };
+    }
+    const lookup = await findOwnedSet(setId, team.id);
+    if (!lookup.ok) return lookup;
+
+    const sessions = await prisma.practiceSession.findMany({
+      where: { setId },
+      orderBy: [{ createdAt: "asc" }],
+    });
+    const target =
+      sessions.find((s) => s.id === lookup.set.activePracticeSessionId && s.status !== "COMPLETED") ??
+      sessions.find((s) => s.status === "IN_PROGRESS") ??
+      sessions.find((s) => s.status === "PLANNED");
+
+    let sessionId = target?.id;
+    if (!sessionId) {
+      const created = await prisma.practiceSession.create({
+        data: { setId, name: sessions.length === 0 ? "Practice" : `Practice ${sessions.length + 1}` },
+      });
+      sessionId = created.id;
+      trackEvent(team.id, "practice_session_created", { entityId: created.id, meta: { setId } });
+    }
+
+    const started = await startPracticeSession(sessionId);
+    if (!started.ok) return started;
+    return { ok: true, data: { id: sessionId } };
   });
 }

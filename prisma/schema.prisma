@@ -299,6 +299,7 @@ model SongSection {
   arrangementChanges ArrangementChange[]
   liveForSets        WorshipSet[]
   personalNotes      PersonalNote[]
+  rehearsalNotes     RehearsalNote[]
 
   @@index([songId])
 }
@@ -623,14 +624,37 @@ model Rehearsal {
   @@index([practiceSessionId])
 }
 
+// A quick rehearsal observation. `category` (KEEP/FIX/TRY/DECISION/
+// TRANSITION — see lib/songs/rehearsal-notes.ts) and `sectionId` are both
+// optional so a bare one-line note still works. `status` separates an
+// observation from an agreed change: OPEN is "not yet reviewed", the
+// leader then marks it KEPT (stays a rehearsal note), DISCARDED, or
+// CONVERTED (applied to the canonical arrangement via the same
+// SongRoleNote/ArrangementChange path as Keep Change). A note never
+// edits the arrangement by itself.
+enum RehearsalNoteStatus {
+  OPEN
+  KEPT
+  DISCARDED
+  CONVERTED
+}
+
 model RehearsalNote {
-  id          String @id @default(cuid())
+  id          String              @id @default(cuid())
   rehearsalId String
   content     String
+  category    String?
+  sectionId   String?
+  status      RehearsalNoteStatus @default(OPEN)
+  createdAt   DateTime            @default(now())
+  resolvedAt  DateTime?
 
   rehearsal Rehearsal @relation(fields: [rehearsalId], references: [id], onDelete: Cascade)
+  section   SongSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
 
   @@index([rehearsalId])
+  @@index([sectionId])
+  @@index([status])
 }
 
 model RehearsalCheck {

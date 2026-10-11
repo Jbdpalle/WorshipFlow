@@ -4,7 +4,7 @@
 // calling UI actually wraps it with lib/offline/outbox.ts's callOffline —
 // every other action keeps working exactly as before (fails immediately
 // when offline, same as today).
-import { saveRehearsalNotes, setRehearsalCheck } from "@/lib/actions/rehearsal";
+import { saveRehearsalNotes, setRehearsalCheck, captureRehearsalNote } from "@/lib/actions/rehearsal";
 import { updateSectionLyrics } from "@/lib/actions/songs";
 import type { ActionResult, ActionResultData } from "@/lib/actions/action-result";
 
@@ -18,6 +18,7 @@ type RegisteredAction = (...args: unknown[]) => Promise<ActionResult | ActionRes
 export const OFFLINE_ACTION_REGISTRY: Record<string, RegisteredAction> = {
   saveRehearsalNotes: saveRehearsalNotes as RegisteredAction,
   setRehearsalCheck: setRehearsalCheck as RegisteredAction,
+  captureRehearsalNote: captureRehearsalNote as RegisteredAction,
   updateSectionLyrics: updateSectionLyrics as RegisteredAction,
 };
 

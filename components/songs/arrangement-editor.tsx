@@ -49,10 +49,12 @@ import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker"
 import { SectionPersonalNote } from "@/components/songs/note-editors";
 import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
-import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS } from "@/lib/songs/constants";
+import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS, DEFAULT_SONG_STRUCTURE } from "@/lib/songs/constants";
+import { QUICK_SECTION_LABELS, nextSectionLabel, parseStructureText } from "@/lib/songs/section-labels";
 import { cn } from "@/lib/utils/cn";
 import {
   addSection,
+  addSections,
   deleteSection,
   duplicateSection,
   renameSection,
@@ -148,13 +150,22 @@ export function ArrangementEditor({
     <div className="space-y-5">
       <SongVisionGroup songId={songId} initialVision={initialVisionNote} />
 
-      <SongFlowRibbon
-        sections={sections}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-      />
+      {/* On a phone the arrangement overview below already lists every
+          section with its dynamics, so the ribbon would just repeat it. */}
+      <div className="hidden sm:block">
+        <SongFlowRibbon sections={sections} selectedId={selectedId} onSelect={setSelectedId} />
+      </div>
 
-      <ArrangementLanes sections={sections} />
+      <ArrangementLanes sections={sections} selectedId={selectedId} onSelectSection={setSelectedId} />
+
+      {isLeader && (
+        <StructureBuilder
+          songId={songId}
+          existingLabels={sections.map((s) => s.label)}
+          onError={setError}
+          onAdded={() => router.refresh()}
+        />
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr] lg:items-start">
         <DndContext id="song-sections" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -697,6 +708,85 @@ function FocusedSectionEditor({
   );
 }
 
+// One-tap structure building: tap a section type to append it, or paste/type
+// a whole form ("Intro, V1, C, V2, C, Bridge, C, Outro") and add it in one
+// step. Replaces typing a label and pressing Enter once per section.
+function StructureBuilder({
+  songId,
+  existingLabels,
+  onError,
+  onAdded,
+}: {
+  songId: string;
+  existingLabels: string[];
+  onError: (message: string | null) => void;
+  onAdded: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [text, setText] = useState("");
+  const isEmpty = existingLabels.length === 0;
+
+  async function add(labels: string[]) {
+    if (busy || labels.length === 0) return;
+    setBusy(true);
+    onError(null);
+    const result = await addSections(songId, labels);
+    setBusy(false);
+    if (!result.ok) {
+      onError(result.error);
+      return;
+    }
+    setText("");
+    onAdded();
+  }
+
+  return (
+    <details className="rounded-lg bg-surface-muted p-3" open={isEmpty}>
+      <summary className="tap-target flex cursor-pointer items-center label-caps">
+        Build structure{isEmpty ? "" : " (add sections)"}
+      </summary>
+      <div className="mt-2 space-y-3">
+        {isEmpty && (
+          <Button type="button" disabled={busy} onClick={() => add([...DEFAULT_SONG_STRUCTURE])}>
+            Start with Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus → Outro
+          </Button>
+        )}
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Add a section">
+          {QUICK_SECTION_LABELS.map((label) => (
+            <button
+              key={label}
+              type="button"
+              disabled={busy}
+              onClick={() => add([nextSectionLabel(label, existingLabels)])}
+              className="min-h-11 rounded-full border border-border bg-surface px-4 text-sm font-semibold text-foreground hover:bg-surface-muted disabled:opacity-50"
+            >
+              + {label}
+            </button>
+          ))}
+        </div>
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            add(parseStructureText(text));
+          }}
+        >
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Intro, V1, C, V2, C, Bridge, C, Outro"
+            aria-label="Type a whole structure"
+            className="h-11 min-w-0 flex-1 text-sm"
+          />
+          <Button type="submit" variant="secondary" disabled={busy || !text.trim()}>
+            Add all
+          </Button>
+        </form>
+      </div>
+    </details>
+  );
+}
+
 function SongVisionGroup({ songId, initialVision }: { songId: string; initialVision: string }) {
   const [value, setValue] = useState(initialVision);
   const [status, setStatus] = useState<SaveState>("idle");
@@ -708,16 +798,18 @@ function SongVisionGroup({ songId, initialVision }: { songId: string; initialVis
     if (result.ok) setTimeout(() => setStatus("idle"), 1800);
   }
 
+  // Optional and collapsed unless already filled in: the set's own vision
+  // is the primary one, so a familiar song never needs this to be ready.
   return (
-    <div className="rounded-lg bg-surface-muted p-3">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 label-caps">
-          <Compass className="h-3.5 w-3.5" /> Song Vision
-        </h2>
+    <details className="rounded-lg bg-surface-muted p-3" open={initialVision.trim().length > 0}>
+      <summary className="tap-target flex cursor-pointer items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 label-caps">
+          <Compass className="h-3.5 w-3.5" /> Song note (optional)
+        </span>
         <SaveStatus state={status} />
-      </div>
+      </summary>
       <p className="mt-1 text-xs text-muted-foreground">
-        Where this song is going as a whole — applies across every section, not just this one.
+        Only if this song needs its own direction beyond the set&apos;s vision — it applies across every section.
       </p>
       <Textarea
         value={value}
@@ -725,12 +817,12 @@ function SongVisionGroup({ songId, initialVision }: { songId: string; initialVis
         onBlur={save}
         rows={2}
         className="mt-2 bg-surface"
-        placeholder="Start intimate. Keep Verse 1 open. Build through the bridge and leave room for spontaneous worship."
+        placeholder="Start intimate. Keep Verse 1 open. Build through the bridge."
       />
       <Button type="button" variant="secondary" size="sm" className="mt-2" onClick={save}>
         <Save className="h-3.5 w-3.5" /> Save
       </Button>
-    </div>
+    </details>
   );
 }
 

@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PlayCircle, Clock3, ListMusic, LayoutGrid } from "lucide-react";
+import { PlayCircle, Clock3, ListMusic, LayoutGrid, Radio } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Status } from "@/components/ui/status";
 import { RehearsalMode, type SetSongData } from "@/components/rehearsal/rehearsal-mode";
+import { NotesReview } from "@/components/rehearsal/notes-review";
 import { startPracticeSession, type PracticeSessionSummary } from "@/lib/actions/practice-sessions";
 
 type Session = {
@@ -34,6 +35,7 @@ export function PracticeSessionRunner({
   session,
   setId,
   setTitle,
+  setVision,
   songs,
   setTeamMembers,
   isLeaderView,
@@ -45,6 +47,7 @@ export function PracticeSessionRunner({
   session: Session;
   setId: string;
   setTitle: string;
+  setVision: string | null;
   songs: SetSongData[];
   setTeamMembers: { teamMemberId: string; role: string }[];
   isLeaderView: boolean;
@@ -93,11 +96,19 @@ export function PracticeSessionRunner({
                 <p className="text-xs text-muted-foreground">sections covered</p>
               </div>
             </div>
+            {isLeaderView && (
+              <NotesReview setId={setId} onArrangementChanged={() => router.refresh()} />
+            )}
             <p className="text-sm text-muted-foreground">
-              Your current arrangement remains ready for the next practice session or the Live Set.
+              {(summary ?? initialSummary).openNotes > 0
+                ? `${(summary ?? initialSummary).openNotes} note${(summary ?? initialSummary).openNotes === 1 ? " is" : "s are"} still waiting for a decision — you can review them now or after. They don't block Live.`
+                : "Nothing is waiting for review. The arrangement you agreed on is what the Live Set will use."}
             </p>
-            <ButtonLink href={`/sets/${setId}/practice`} className="w-full">
-              Back to Practice Sessions
+            <ButtonLink href={`/sets/${setId}/live`} className="w-full">
+              <Radio className="h-4 w-4" aria-hidden /> Ready — go to Live Set
+            </ButtonLink>
+            <ButtonLink href={`/sets/${setId}/practice`} variant="outline" className="w-full">
+              All practice sessions
             </ButtonLink>
           </CardContent>
         </Card>
@@ -110,6 +121,7 @@ export function PracticeSessionRunner({
       <RehearsalMode
         setId={setId}
         setTitle={setTitle}
+        setVision={setVision}
         songs={songs}
         setTeamMembers={setTeamMembers}
         isLeaderView={isLeaderView}

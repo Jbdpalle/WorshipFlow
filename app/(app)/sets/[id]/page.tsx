@@ -10,11 +10,11 @@ import { SetlistBoard } from "@/components/setlist/setlist-board";
 import { ServiceOrderStrip } from "@/components/setlist/service-order-strip";
 import { ThemeSuggestions } from "@/components/setlist/theme-suggestions";
 import { AddFromLibraryDialog } from "@/components/setlist/add-from-library-dialog";
-import { SetNotes } from "@/components/setlist/set-notes";
-import { SetExaltation } from "@/components/setlist/set-exaltation";
+import { SetVision } from "@/components/setlist/set-vision";
 import { SetMetaEditor } from "@/components/setlist/set-meta-editor";
 import { SetTeam } from "@/components/setlist/set-team";
 import { SetReadiness } from "@/components/setlist/set-readiness";
+import { StartPracticeButton } from "@/components/rehearsal/start-practice-button";
 import { SetActions } from "@/components/setlist/set-actions";
 import { ServiceProgressPath } from "@/components/dashboard/service-progress-path";
 import { getSetReadiness, getSongFlowStatus, getServiceStages } from "@/lib/songs/readiness";
@@ -95,12 +95,18 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         }
         action={
           <>
-            <ButtonLink href={`/sets/${set.id}/practice`} variant="outline">
-                <ClipboardList className="h-4 w-4" aria-hidden /> Practice Sessions
-              </ButtonLink>
+            <StartPracticeButton
+              setId={set.id}
+              isLeader={isLeader}
+              practiceInProgress={set.liveMode === "PRACTICE"}
+              activeSessionId={set.activePracticeSessionId}
+            />
             <ButtonLink href={`/sets/${set.id}/live`} variant="outline">
-                <Radio className="h-4 w-4" aria-hidden /> Live Set
-              </ButtonLink>
+              <Radio className="h-4 w-4" aria-hidden /> Live Set
+            </ButtonLink>
+            <ButtonLink href={`/sets/${set.id}/practice`} variant="ghost" size="sm">
+              <ClipboardList className="h-4 w-4" aria-hidden /> Sessions
+            </ButtonLink>
             <SetActions
               setId={set.id}
               setTitle={set.title}
@@ -111,11 +117,17 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         }
       />
 
+      <SetVision setId={set.id} notes={set.notes ?? ""} exaltation={set.exaltation ?? ""} isLeader={isLeader} />
+
       <Card className="p-4">
         <ServiceProgressPath stages={stages} />
       </Card>
 
-      <ServiceOrderStrip songs={songsWithFlowStatus} />
+      {/* The phone already shows the full setlist right below; the strip
+          would just repeat it, so it is a tablet/desktop overview only. */}
+      <div className="hidden sm:block">
+        <ServiceOrderStrip songs={songsWithFlowStatus} />
+      </div>
 
       <SetReadiness items={readiness} />
 
@@ -152,11 +164,11 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
         </div>
 
         <div className="min-w-0 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Set Direction</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <CollapsibleCard
+            title="Service Details"
+            summary={[set.theme, set.leaderName].filter(Boolean).join(" · ") || "Date, leader, theme, playlists"}
+            defaultOpen={false}
+          >
               <SetMetaEditor
                 setId={set.id}
                 initialTheme={set.theme ?? ""}
@@ -169,26 +181,7 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
                 songOptions={set.songs.map((s) => ({ songId: s.song.id, title: s.song.title }))}
                 isLeader={isLeader}
               />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Exaltation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SetExaltation setId={set.id} initialExaltation={set.exaltation ?? ""} isLeader={isLeader} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Leader&apos;s Note</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SetNotes setId={set.id} initialNotes={set.notes ?? ""} isLeader={isLeader} />
-            </CardContent>
-          </Card>
+          </CollapsibleCard>
 
           <ThemeSuggestions
             setId={set.id}

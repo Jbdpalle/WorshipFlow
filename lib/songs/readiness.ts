@@ -3,16 +3,19 @@
 
 export type SongFlowStatus = "ready" | "needs_work" | "not_started";
 
+// A song is ready once musicians have something to read: at least one
+// section carrying a direction, or chords/lyrics. The song-level vision is
+// deliberately NOT required — the set owns the vision (WorshipSet.notes);
+// a familiar song needs only its structure and chart.
 export function getSongFlowStatus(song: {
   visionNote?: string | null;
-  sections: { roleNotes: { content: string }[] }[];
+  sections: { lyricsChords?: string | null; roleNotes: { content: string }[] }[];
 }): SongFlowStatus {
   if (song.sections.length === 0) return "not_started";
-  const hasDirection = song.sections.some((s) =>
-    s.roleNotes.some((n) => n.content.trim().length > 0),
+  const hasContent = song.sections.some(
+    (s) => s.roleNotes.some((n) => n.content.trim().length > 0) || Boolean(s.lyricsChords?.trim()),
   );
-  const hasVision = Boolean(song.visionNote?.trim());
-  return hasDirection && hasVision ? "ready" : "needs_work";
+  return hasContent ? "ready" : "needs_work";
 }
 
 export type ReadinessItem = { id: string; message: string };
@@ -30,7 +33,7 @@ type StageSong = {
   song: {
     id: string;
     visionNote?: string | null;
-    sections: { roleNotes: { content: string }[] }[];
+    sections: { lyricsChords?: string | null; roleNotes: { content: string }[] }[];
     rehearsals: unknown[];
   };
 };
@@ -71,7 +74,7 @@ export function getServiceStages(set: {
         ? "Add songs first"
         : songFlowReady
           ? "All songs ready"
-          : `${songFlowNeedsWork} song${songFlowNeedsWork === 1 ? "" : "s"} need notes & keys`,
+          : `${songFlowNeedsWork} song${songFlowNeedsWork === 1 ? "" : "s"} need a chart or directions`,
       href: songFlowHref,
       complete: songFlowReady,
     },
@@ -97,7 +100,7 @@ export function getSetReadiness(set: {
   songs: {
     id: string;
     assignments: unknown[];
-    song: { title: string; visionNote?: string | null; sections: { roleNotes: { content: string }[] }[] };
+    song: { title: string; visionNote?: string | null; sections: { lyricsChords?: string | null; roleNotes: { content: string }[] }[] };
   }[];
   teamMembers: unknown[];
 }): ReadinessItem[] {
