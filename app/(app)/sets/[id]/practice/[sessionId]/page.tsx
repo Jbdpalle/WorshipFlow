@@ -52,8 +52,15 @@ export default async function PracticeSessionPage({
 
   const rehearsals = await prisma.rehearsal.findMany({
     where: { practiceSessionId: session.id },
-    select: { songId: true, sectionsVisited: true },
+    select: { id: true, songId: true, sectionsVisited: true },
   });
+  const rehearsalIds = rehearsals.map((r) => r.id);
+  const [agreedChanges, unresolvedChanges, discardedExperiments, needsWorkChecks] = await Promise.all([
+    prisma.arrangementChange.count({ where: { rehearsalId: { in: rehearsalIds }, status: "KEPT" } }),
+    prisma.arrangementChange.count({ where: { rehearsalId: { in: rehearsalIds }, status: "PROPOSED" } }),
+    prisma.arrangementChange.count({ where: { rehearsalId: { in: rehearsalIds }, status: "DISCARDED" } }),
+    prisma.rehearsalCheck.count({ where: { rehearsalId: { in: rehearsalIds }, status: "needs_work" } }),
+  ]);
   const summary = {
     durationMinutes:
       session.startedAt && session.finishedAt
@@ -61,6 +68,10 @@ export default async function PracticeSessionPage({
         : null,
     songsPracticed: new Set(rehearsals.map((r) => r.songId)).size,
     sectionsCovered: new Set(rehearsals.flatMap((r) => r.sectionsVisited)).size,
+    agreedChanges,
+    unresolvedChanges,
+    discardedExperiments,
+    needsWorkChecks,
   };
 
   return (

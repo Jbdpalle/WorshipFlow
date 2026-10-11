@@ -7,7 +7,14 @@ import {
   updatePracticeSessionNotes,
 } from "@/lib/actions/practice-sessions";
 import { startLiveSet, finishLiveSet } from "@/lib/actions/live-set";
-import { startRehearsal, recordSectionVisit, keepArrangementChange, proposeArrangementChange } from "@/lib/actions/rehearsal";
+import {
+  startRehearsal,
+  recordSectionVisit,
+  keepArrangementChange,
+  discardArrangementChange,
+  proposeArrangementChange,
+  setRehearsalCheck,
+} from "@/lib/actions/rehearsal";
 import { createTestTeam, loginAs, cleanupTeam } from "./helpers";
 
 describe("Practice Sessions + Live Set", () => {
@@ -117,6 +124,76 @@ describe("Practice Sessions + Live Set", () => {
     if (!finished.ok) return;
     expect(finished.data.songsPracticed).toBe(2);
     expect(finished.data.sectionsCovered).toBe(2);
+  });
+
+  it("finish summary flags agreed changes, unresolved (still-proposed) changes, discarded experiments, and needs-work checks", async () => {
+    const { owner, set, song1, song2, section1, section2 } = await setupSetWithSongs("practice-unresolved");
+    await loginAs(owner.user.id);
+    const created = await createPracticeSession(set.id, { name: "Practice Session 1" });
+    if (!created.ok) throw new Error("setup failed");
+    await startPracticeSession(created.data.id);
+
+    const r1 = await startRehearsal(song1.id, null, undefined, created.data.id);
+    if (!r1.ok) throw new Error("setup failed");
+
+    // One change gets kept (agreed), one gets discarded, one is left
+    // PROPOSED — tried during rehearsal but never resolved either way.
+    const kept = await proposeArrangementChange({
+      sectionId: section1.id,
+      role: "Guitar",
+      proposedContent: "Enter on the second bridge build",
+      rehearsalId: r1.data.id,
+    });
+    if (!kept.ok) throw new Error("setup failed");
+    await keepArrangementChange(kept.data.id);
+
+    const discarded = await proposeArrangementChange({
+      sectionId: section2.id,
+      role: "Keys",
+      proposedContent: "Try a pad under the chorus",
+      rehearsalId: r1.data.id,
+    });
+    if (!discarded.ok) throw new Error("setup failed");
+    await discardArrangementChange(discarded.data.id);
+
+    const unresolved = await proposeArrangementChange({
+      sectionId: section2.id,
+      role: "Bass",
+      proposedContent: "Maybe rest until the final chorus — still deciding",
+      rehearsalId: r1.data.id,
+    });
+    expect(unresolved.ok).toBe(true);
+
+    await setRehearsalCheck(r1.data.id, "needs_work");
+
+    const r2 = await startRehearsal(song2.id, null, undefined, created.data.id);
+    if (!r2.ok) throw new Error("setup failed");
+
+    const finished = await finishPracticeSession(created.data.id);
+    expect(finished.ok).toBe(true);
+    if (!finished.ok) return;
+    expect(finished.data.agreedChanges).toBe(1);
+    expect(finished.data.unresolvedChanges).toBe(1);
+    expect(finished.data.discardedExperiments).toBe(1);
+    expect(finished.data.needsWorkChecks).toBe(1);
+  });
+
+  it("finish summary reports zero unresolved items for a clean rehearsal with no experiments", async () => {
+    const { owner, set, song1 } = await setupSetWithSongs("practice-clean-finish");
+    await loginAs(owner.user.id);
+    const created = await createPracticeSession(set.id, { name: "Practice Session 1" });
+    if (!created.ok) throw new Error("setup failed");
+    await startPracticeSession(created.data.id);
+    const r1 = await startRehearsal(song1.id, null, undefined, created.data.id);
+    if (!r1.ok) throw new Error("setup failed");
+
+    const finished = await finishPracticeSession(created.data.id);
+    expect(finished.ok).toBe(true);
+    if (!finished.ok) return;
+    expect(finished.data.agreedChanges).toBe(0);
+    expect(finished.data.unresolvedChanges).toBe(0);
+    expect(finished.data.discardedExperiments).toBe(0);
+    expect(finished.data.needsWorkChecks).toBe(0);
   });
 
   it("an experiment kept during a practice-tagged rehearsal updates the canonical SongRoleNote directly — no separate Practice/Live arrangement", async () => {

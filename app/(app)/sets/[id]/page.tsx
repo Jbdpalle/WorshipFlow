@@ -177,7 +177,13 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
               <CardTitle className="text-base">Exaltation</CardTitle>
             </CardHeader>
             <CardContent>
-              <SetExaltation setId={set.id} initialExaltation={set.exaltation ?? ""} isLeader={isLeader} />
+              <SetExaltation
+                setId={set.id}
+                initialExaltation={set.exaltation ?? ""}
+                theme={set.theme ?? ""}
+                keywords={set.keywords ?? ""}
+                isLeader={isLeader}
+              />
             </CardContent>
           </Card>
 
@@ -186,7 +192,13 @@ export default async function SetDetailPage({ params }: { params: Promise<{ id: 
               <CardTitle className="text-base">Leader&apos;s Note</CardTitle>
             </CardHeader>
             <CardContent>
-              <SetNotes setId={set.id} initialNotes={set.notes ?? ""} isLeader={isLeader} />
+              <SetNotes
+                setId={set.id}
+                initialNotes={set.notes ?? ""}
+                theme={set.theme ?? ""}
+                keywords={set.keywords ?? ""}
+                isLeader={isLeader}
+              />
             </CardContent>
           </Card>
 

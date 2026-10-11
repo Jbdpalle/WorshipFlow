@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PlayCircle, Clock3, ListMusic, LayoutGrid } from "lucide-react";
+import { PlayCircle, Clock3, ListMusic, LayoutGrid, CircleAlert, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Status } from "@/components/ui/status";
@@ -93,6 +93,36 @@ export function PracticeSessionRunner({
                 <p className="text-xs text-muted-foreground">sections covered</p>
               </div>
             </div>
+            {(() => {
+              const s = summary ?? initialSummary;
+              const unresolvedTotal = s.unresolvedChanges + s.needsWorkChecks;
+              if (unresolvedTotal === 0 && s.agreedChanges === 0) return null;
+              return (
+                <div className="space-y-2 rounded-lg border border-border p-3 text-sm">
+                  {s.agreedChanges > 0 && (
+                    <p className="flex items-center gap-2 text-foreground">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden />
+                      {s.agreedChanges} agreed change{s.agreedChanges === 1 ? "" : "s"} applied to the
+                      arrangement — ready for Live Set.
+                    </p>
+                  )}
+                  {unresolvedTotal > 0 && (
+                    <p className="flex items-center gap-2 text-foreground">
+                      <CircleAlert className="h-4 w-4 shrink-0 text-warning" aria-hidden />
+                      {[
+                        s.unresolvedChanges > 0 &&
+                          `${s.unresolvedChanges} tried change${s.unresolvedChanges === 1 ? "" : "s"} never kept or discarded`,
+                        s.needsWorkChecks > 0 &&
+                          `${s.needsWorkChecks} section${s.needsWorkChecks === 1 ? "" : "s"} marked needs work`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      {" — worth a look before Live Set, but nothing's blocked."}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
             <p className="text-sm text-muted-foreground">
               Your current arrangement remains ready for the next practice session or the Live Set.
             </p>

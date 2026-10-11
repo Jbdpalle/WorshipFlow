@@ -5,14 +5,19 @@ import { Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { updateSetExaltation } from "@/lib/actions/sets";
+import { getOpeningPlaceholder } from "@/lib/songs/vision-guidance";
 
 export function SetExaltation({
   setId,
   initialExaltation,
+  theme,
+  keywords,
   isLeader,
 }: {
   setId: string;
   initialExaltation: string;
+  theme: string;
+  keywords: string;
   isLeader: boolean;
 }) {
   const [value, setValue] = useState(initialExaltation);
@@ -46,7 +51,7 @@ export function SetExaltation({
           setSaved(false);
         }}
         onBlur={save}
-        placeholder="What's on your heart as you open worship — a verse, a prayer, a word to set the tone."
+        placeholder={getOpeningPlaceholder(theme, keywords)}
         rows={3}
       />
       <div className="mt-1 flex items-center justify-between gap-2">

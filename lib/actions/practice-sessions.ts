@@ -112,6 +112,18 @@ export type PracticeSessionSummary = {
   durationMinutes: number | null;
   songsPracticed: number;
   sectionsCovered: number;
+  // What rehearsal produced that the leader needs to act on before Live
+  // Set, distinct from the counts above (which just describe coverage).
+  // agreedChanges/discardedExperiments are already resolved — shown for
+  // context. unresolvedChanges (still PROPOSED — tried but never kept or
+  // discarded) and needsWorkChecks (a rehearsal explicitly marked "needs
+  // work") are the ones worth flagging, per the build spec's "make
+  // important unresolved observations visible... without preventing a
+  // team from proceeding."
+  agreedChanges: number;
+  unresolvedChanges: number;
+  discardedExperiments: number;
+  needsWorkChecks: number;
 };
 
 export async function finishPracticeSession(
@@ -129,13 +141,21 @@ export async function finishPracticeSession(
     const finishedAt = new Date();
     const rehearsals = await prisma.rehearsal.findMany({
       where: { practiceSessionId: sessionId },
-      select: { songId: true, sectionsVisited: true },
+      select: { id: true, songId: true, sectionsVisited: true },
     });
     const songsPracticed = new Set(rehearsals.map((r) => r.songId)).size;
     const sectionsCovered = new Set(rehearsals.flatMap((r) => r.sectionsVisited)).size;
     const durationMinutes = session.startedAt
       ? Math.max(1, Math.round((finishedAt.getTime() - session.startedAt.getTime()) / 60000))
       : null;
+
+    const rehearsalIds = rehearsals.map((r) => r.id);
+    const [agreedChanges, unresolvedChanges, discardedExperiments, needsWorkChecks] = await Promise.all([
+      prisma.arrangementChange.count({ where: { rehearsalId: { in: rehearsalIds }, status: "KEPT" } }),
+      prisma.arrangementChange.count({ where: { rehearsalId: { in: rehearsalIds }, status: "PROPOSED" } }),
+      prisma.arrangementChange.count({ where: { rehearsalId: { in: rehearsalIds }, status: "DISCARDED" } }),
+      prisma.rehearsalCheck.count({ where: { rehearsalId: { in: rehearsalIds }, status: "needs_work" } }),
+    ]);
 
     await prisma.$transaction([
       prisma.practiceSession.update({
@@ -154,6 +174,17 @@ export async function finishPracticeSession(
     trackEvent(team.id, "practice_session_finished", { entityId: sessionId });
     revalidatePath(`/sets/${session.setId}/practice`);
     revalidatePath(`/sets/${session.setId}/practice/${sessionId}`);
-    return { ok: true, data: { durationMinutes, songsPracticed, sectionsCovered } };
+    return {
+      ok: true,
+      data: {
+        durationMinutes,
+        songsPracticed,
+        sectionsCovered,
+        agreedChanges,
+        unresolvedChanges,
+        discardedExperiments,
+        needsWorkChecks,
+      },
+    };
   });
 }

@@ -1,8 +1,9 @@
 import { analyzeTheme, matchSongsToTheme } from "@/lib/songs/theme-engine";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardDescription } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Badge } from "@/components/ui/badge";
 import { AddSongButton } from "@/components/setlist/add-song-button";
-import { Tags } from "lucide-react";
+import { SongPreviewButton } from "@/components/setlist/song-preview-sheet";
 
 type LibrarySong = {
   id: string;
@@ -45,20 +46,17 @@ export function ThemeSuggestions({
     list.push(m);
     byCategory.set(m.category, list);
   }
+  const distinctSongCount = new Set(matches.map((m) => m.song.id)).size;
+  const summary = distinctSongCount > 0 ? `${distinctSongCount} song${distinctSongCount === 1 ? "" : "s"}` : "No matches";
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Tags className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-base">Theme Matches</CardTitle>
-        </div>
+    <CollapsibleCard title="Theme Matches" summary={summary} defaultOpen>
+      <div className="space-y-4">
         <CardDescription>
           Songs from your library tagged with a matching theme — a keyword match, not a
           recommendation. Use the library search below for anything else.
         </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+
         {analysis.suggestedFlow.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span className="font-medium text-foreground">Suggested flow:</span>
@@ -94,14 +92,17 @@ export function ThemeSuggestions({
                           .join(" · ")}
                       </div>
                     </div>
-                    <AddSongButton setId={setId} songId={song.id} />
+                    <div className="flex shrink-0 items-center gap-1">
+                      <SongPreviewButton setId={setId} songId={song.id} songTitle={song.title} />
+                      <AddSongButton setId={setId} songId={song.id} />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           ))
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleCard>
   );
 }

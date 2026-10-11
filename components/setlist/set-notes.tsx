@@ -5,14 +5,23 @@ import { Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { updateSetNotes } from "@/lib/actions/sets";
+import { getVisionPlaceholder } from "@/lib/songs/vision-guidance";
 
+// This is the Set Vision field: the one overall description of where the
+// service is headed, distinct from each song's own `visionNote`. Labeled
+// "Leader's Note" in the UI, which already matches that role — reused as
+// is rather than adding a second field.
 export function SetNotes({
   setId,
   initialNotes,
+  theme,
+  keywords,
   isLeader,
 }: {
   setId: string;
   initialNotes: string;
+  theme: string;
+  keywords: string;
   isLeader: boolean;
 }) {
   const [value, setValue] = useState(initialNotes);
@@ -46,7 +55,7 @@ export function SetNotes({
           setSaved(false);
         }}
         onBlur={save}
-        placeholder={'Keep this one intimate. Build toward free worship. Connect this to the sermon.'}
+        placeholder={getVisionPlaceholder(theme, keywords)}
         rows={3}
       />
       <div className="mt-1 flex items-center justify-between gap-2">
