@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   WifiOff,
   ArrowDown,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,7 +51,7 @@ import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
 import { useAutoScrollIntoView } from "@/hooks/use-auto-scroll-into-view";
 import { useDirectorShortcuts, loadShortcutMap, type DirectorAction } from "@/hooks/use-director-shortcuts";
 import { ShortcutsPanel } from "@/components/rehearsal/shortcuts-panel";
-import { isFollowingLivePosition } from "@/lib/songs/live-follow";
+import { isFollowingLivePosition, nextDetourAnchor } from "@/lib/songs/live-follow";
 import { callOffline } from "@/lib/offline/outbox";
 import { useSyncDownSnapshot } from "@/lib/offline/use-offline-sync";
 
@@ -195,7 +196,11 @@ export function RehearsalMode({
     async (nextSetSongId: string, sectionId: string | null) => {
       lastTargetRef.current = { setSongId: nextSetSongId, sectionId };
       setSyncStatus("syncing");
-      const result = await setLivePosition(setId, nextSetSongId, sectionId);
+      // Captured here, at the moment the leader actually issued the
+      // command, not when the request reaches the server — see
+      // setLivePosition's own comment for why that distinction matters for
+      // out-of-order delivery.
+      const result = await setLivePosition(setId, nextSetSongId, sectionId, new Date().toISOString());
       setSyncStatus(result.ok ? "synced" : "error");
       return result;
     },
@@ -225,10 +230,31 @@ export function RehearsalMode({
   // for whoever is actively driving and a real update for everyone else.
   const lastSeenRef = useRef<string | null>(null);
   const lastAnnouncementRef = useRef<string | null>(null);
+  // Who most recently moved the live position — visibility only, not a
+  // lock (see setLivePosition's own comment: any leader-tier account can
+  // still drive at any time). Lets everyone see who's currently directing
+  // when more than one leader-tier account might be in Director Mode.
+  const [controllerName, setControllerName] = useState<string | null>(null);
+  // Distinct from syncStatus (which reflects only *this* device's own last
+  // write): this reflects whether *this* device is still successfully
+  // receiving updates at all. "catching-up" after one missed poll (a
+  // single dropped request isn't alarming), "disconnected" only once
+  // several in a row have failed — never silently stop showing updates
+  // without saying so (build spec §5.3: never imply synced when it isn't).
+  const lastPollSuccessAtRef = useRef<number | null>(null);
+  const [connectionState, setConnectionState] = useState<"live" | "catching-up" | "disconnected">("live");
   useEffect(() => {
+    lastPollSuccessAtRef.current = Date.now();
     const interval = setInterval(async () => {
       const result = await getLivePosition(setId);
-      if (!result.ok) return;
+      if (!result.ok) {
+        const elapsedMs = Date.now() - (lastPollSuccessAtRef.current ?? Date.now());
+        setConnectionState(elapsedMs > POLL_MS * 4 ? "disconnected" : "catching-up");
+        return;
+      }
+      lastPollSuccessAtRef.current = Date.now();
+      setConnectionState("live");
+      setControllerName(result.data.controllerName);
 
       if (result.data.announcementAt && result.data.announcementAt !== lastAnnouncementRef.current) {
         lastAnnouncementRef.current = result.data.announcementAt;
@@ -314,6 +340,23 @@ export function RehearsalMode({
         <p role="alert" className="text-sm text-danger">
           {finishError}
         </p>
+      )}
+      {connectionState !== "live" && (
+        <p
+          role="status"
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+            connectionState === "disconnected" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning",
+          )}
+        >
+          <WifiOff className="h-4 w-4 shrink-0" aria-hidden />
+          {connectionState === "disconnected"
+            ? "Disconnected — this screen may be showing an outdated position. Reconnecting…"
+            : "Catching up…"}
+        </p>
+      )}
+      {connectionState === "live" && controllerName && (
+        <p className="text-xs font-medium text-muted-foreground">Directed by {controllerName}</p>
       )}
       {!isLeaderView && (
         <>
@@ -465,7 +508,22 @@ function SongRehearsalPanel({
     return () => window.removeEventListener("worshipflow:live-section", onLiveSection);
   }, [sections]);
 
+  // Where to come back to after a Free Worship detour — see
+  // lib/songs/live-follow.ts's nextDetourAnchor for exactly when this is
+  // set/cleared. Leader-only concept; non-leaders don't drive goTo's
+  // shared-position side, so there's nothing for them to return to.
+  const [preDetourSectionIndex, setPreDetourSectionIndex] = useState<number | null>(null);
+
   async function goTo(nextIndex: number) {
+    if (isLeaderView) {
+      setPreDetourSectionIndex(
+        nextDetourAnchor(
+          { sectionIndex, isFreeform: !!sections[sectionIndex]?.isFreeform },
+          { sectionIndex: nextIndex, isFreeform: !!sections[nextIndex]?.isFreeform },
+          preDetourSectionIndex,
+        ),
+      );
+    }
     setSectionIndex(nextIndex);
     if (isLeaderView) {
       const sectionId = sections[nextIndex]?.id ?? null;
@@ -474,6 +532,11 @@ function SongRehearsalPanel({
         recordSectionVisit(rehearsalId, sectionId);
       }
     }
+  }
+
+  function returnToPlan() {
+    if (preDetourSectionIndex === null) return;
+    goTo(preDetourSectionIndex);
   }
 
   // A non-leader can browse Previous/Next freely without moving the shared
@@ -499,6 +562,7 @@ function SongRehearsalPanel({
         previous: () => goTo(Math.max(0, sectionIndex - 1)),
         repeat: () => announceToTeam(setId, "Repeat"),
         hold: () => announceToTeam(setId, "Hold"),
+        resume: () => announceToTeam(setId, "Resume"),
         build: () => announceToTeam(setId, "Build"),
         drop: () => announceToTeam(setId, "Drop"),
         wait: () => announceToTeam(setId, "Wait"),
@@ -834,29 +898,53 @@ function SongRehearsalPanel({
             </div>
 
             {isLeaderView && (
-              <div role="group" aria-label="Signal" className="sticky bottom-20 z-10 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface-elevated p-2 shadow-lg md:bottom-3 lg:col-span-5">
-                <LeaderCueButton
-                  icon={Pause}
-                  label="Hold"
-                  sublabel="Stay on this section"
-                  variant="secondary"
-                  onClick={() => announceToTeam(setId, "Hold")}
-                />
-                <LeaderCueButton
-                  icon={BarChart3}
-                  label="Build"
-                  sublabel="Increase intensity"
-                  variant="outline"
-                  onClick={() => announceToTeam(setId, "Build")}
-                />
-                <LeaderCueButton
-                  icon={PlayCircle}
-                  label="Go Next"
-                  sublabel={next ? `Jump to ${next.label}` : "End of set"}
-                  variant="primary"
-                  disabled={sectionIndex >= sections.length - 1}
-                  onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
-                />
+              <div className="sticky bottom-20 z-10 space-y-1.5 md:bottom-3 lg:col-span-5">
+                {preDetourSectionIndex !== null && preDetourSectionIndex !== sectionIndex && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-center"
+                    onClick={returnToPlan}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Return to plan — {sections[preDetourSectionIndex]?.label}
+                  </Button>
+                )}
+                <div role="group" aria-label="Signal" className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface-elevated p-2 shadow-lg">
+                  <LeaderCueButton
+                    icon={Pause}
+                    label="Hold"
+                    sublabel="Stay on this section"
+                    variant="secondary"
+                    onClick={() => announceToTeam(setId, "Hold")}
+                  />
+                  <LeaderCueButton
+                    icon={BarChart3}
+                    label="Build"
+                    sublabel="Increase intensity"
+                    variant="outline"
+                    onClick={() => announceToTeam(setId, "Build")}
+                  />
+                  <LeaderCueButton
+                    icon={PlayCircle}
+                    label="Go Next"
+                    sublabel={next ? `Jump to ${next.label}` : "End of set"}
+                    variant="primary"
+                    disabled={sectionIndex >= sections.length - 1}
+                    onClick={() => goTo(Math.min(sections.length - 1, sectionIndex + 1))}
+                  />
+                </div>
+                {/* Resume sits apart from the three big cues above, deliberately
+                    de-emphasized (build spec §4.3: not every control at equal
+                    priority) — it's the quieter, less frequent counterpart to
+                    Hold, not a fourth equally-weighted action. */}
+                <button
+                  type="button"
+                  onClick={() => announceToTeam(setId, "Resume")}
+                  className="tap-target mx-auto flex items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                >
+                  <PlayCircle className="h-3.5 w-3.5" aria-hidden /> Resume (after a Hold)
+                </button>
               </div>
             )}
           </div>

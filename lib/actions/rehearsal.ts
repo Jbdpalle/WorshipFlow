@@ -202,17 +202,39 @@ export async function setLivePosition(
   setId: string,
   setSongId: string,
   sectionId: string | null,
+  // When the controller actually issued this command (captured client-side
+  // at tap time), not when the request reaches the server. Without this, a
+  // command delayed by a slow connection could land after — and silently
+  // overwrite — a position a second, faster command already set, even
+  // though the delayed one was issued first. Comparing against the
+  // position's own liveUpdatedAt rejects anything older than what's
+  // already authoritative, so duplicate/out-of-order/concurrent commands
+  // resolve to the logically-latest one, not whichever happens to commit
+  // to the database last. Optional only so existing callers/tests that
+  // predate this still compile; omitting it falls back to "now", which
+  // reproduces the old last-write-wins behavior for that one call.
+  commandIssuedAt?: string,
 ): Promise<ActionResult> {
   return runAction(async () => {
     const { user, team, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) return { ok: false, error: "Only the worship leader can direct rehearsal." };
     const set = await prisma.worshipSet.findUnique({ where: { id: setId } });
     if (!set || set.teamId !== team.id) return { ok: false, error: "Not found." };
-    const isFirstMove = !set.liveSetSongId;
 
+    const issuedAt = commandIssuedAt ? new Date(commandIssuedAt) : new Date();
+    if (set.liveUpdatedAt && issuedAt < set.liveUpdatedAt) {
+      return { ok: false, error: "A newer position was already set by another device — your view will catch up shortly." };
+    }
+
+    const isFirstMove = !set.liveSetSongId;
     await prisma.worshipSet.update({
       where: { id: setId },
-      data: { liveSetSongId: setSongId, liveSectionId: sectionId, liveUpdatedAt: new Date() },
+      data: {
+        liveSetSongId: setSongId,
+        liveSectionId: sectionId,
+        liveUpdatedAt: issuedAt,
+        liveControllerName: user.name,
+      },
     });
     if (isFirstMove) {
       trackEvent(team.id, "director_mode_started", { entityId: setId });
@@ -226,6 +248,7 @@ export type LivePosition = {
   setSongId: string | null;
   sectionId: string | null;
   updatedAt: string | null;
+  controllerName: string | null;
   announcement: string | null;
   announcementAt: string | null;
 };
@@ -240,6 +263,7 @@ export async function getLivePosition(setId: string): Promise<ActionResultData<L
         liveSetSongId: true,
         liveSectionId: true,
         liveUpdatedAt: true,
+        liveControllerName: true,
         liveAnnouncement: true,
         liveAnnouncementAt: true,
       },
@@ -251,6 +275,7 @@ export async function getLivePosition(setId: string): Promise<ActionResultData<L
       data: {
         setSongId: set.liveSetSongId,
         sectionId: set.liveSectionId,
+        controllerName: set.liveControllerName,
         updatedAt: set.liveUpdatedAt?.toISOString() ?? null,
         announcement: set.liveAnnouncement,
         announcementAt: set.liveAnnouncementAt?.toISOString() ?? null,

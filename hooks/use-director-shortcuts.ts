@@ -7,12 +7,13 @@ import { useEffect, useRef } from "react";
 // Director Mode actions as the on-screen buttons, through this one
 // mapping. No proprietary pedal protocol, no MIDI — any device that can
 // "type" a key already works.
-export type DirectorAction = "goNext" | "previous" | "hold" | "build" | "drop" | "wait" | "repeat";
+export type DirectorAction = "goNext" | "previous" | "hold" | "resume" | "build" | "drop" | "wait" | "repeat";
 
 export const DEFAULT_SHORTCUT_MAP: Record<DirectorAction, string> = {
   goNext: "ArrowRight",
   previous: "ArrowLeft",
   hold: "h",
+  resume: "u",
   build: "b",
   drop: "d",
   wait: "w",
@@ -23,6 +24,7 @@ export const SHORTCUT_LABELS: Record<DirectorAction, string> = {
   goNext: "Go Next",
   previous: "Previous",
   hold: "Hold",
+  resume: "Resume",
   build: "Build",
   drop: "Drop",
   wait: "Wait",
