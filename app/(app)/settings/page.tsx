@@ -8,10 +8,15 @@ import { RestartTourButton } from "@/components/demo/demo-tour-banner";
 import { ThemeSegmentedControl } from "@/components/layout/theme-toggle";
 import { TooltipToggle } from "@/components/layout/tooltip-toggle";
 import { DangerZone } from "@/components/settings/danger-zone";
+import { TestLabCard } from "@/components/settings/test-lab-card";
+import { isSuperAdmin } from "@/lib/auth/super-admin";
+import { isTestLabChurchId } from "@/lib/auth/test-lab";
 
 export default async function SettingsPage() {
   const { user, church, membershipRole } = await requireUser();
   const isOwner = membershipRole === "OWNER";
+  const showTestLab = isSuperAdmin(user.email);
+  const inTestLab = showTestLab && (await isTestLabChurchId(church.id));
   const daysLeft = user.demoExpiresAt
     ? Math.max(0, Math.ceil((user.demoExpiresAt.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000)))
     : null;
@@ -24,6 +29,8 @@ export default async function SettingsPage() {
         title="Your account"
         description="Your name and church, as everyone on the team sees them."
       />
+
+      {showTestLab && <TestLabCard inLab={inTestLab} />}
 
       {user.isDemo && (
         <Card>
