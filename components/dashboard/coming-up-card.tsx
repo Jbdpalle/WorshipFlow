@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TextLink } from "@/components/ui/text-link";
 import { eventTypeLabel } from "@/lib/songs/constants";
 import type { DashboardSet, ThisWeekItem } from "@/lib/dashboard/data";
 import { sortComingUpRows } from "@/lib/dashboard/coming-up";
+import { ScrollToCalendarButton } from "@/components/dashboard/scroll-to-calendar-button";
 
 function short(date: Date) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
@@ -73,7 +73,7 @@ export function ComingUpCard({
           </ul>
         )}
         <div className="border-t border-border px-4">
-          <TextLink href="/dashboard#worship-calendar">View calendar →</TextLink>
+          <ScrollToCalendarButton />
         </div>
       </CardContent>
     </Card>

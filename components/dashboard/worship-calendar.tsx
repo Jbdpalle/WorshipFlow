@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { ServiceRosterList } from "@/components/dashboard/service-roster-list";
 import { getCalendarMonth } from "@/lib/actions/calendar";
 import { createSet } from "@/lib/actions/sets";
@@ -104,28 +104,27 @@ export function WorshipCalendar({
     router.refresh();
   }
 
+  const monthLabel = firstOfMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
   return (
-    <Card id="worship-calendar">
-      <CardHeader className="flex items-center justify-between gap-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-4 w-4 text-stage-plan" aria-hidden /> Worship calendar
-        </CardTitle>
-        <div className="flex items-center gap-1">
-          <IconButton label="Previous month" onClick={goPrevMonth}>
-            <ChevronLeft className="h-5 w-5" />
-          </IconButton>
-          <Button type="button" variant="outline" onClick={goToday}>
-            Today
-          </Button>
-          <IconButton label="Next month" onClick={goNextMonth}>
-            <ChevronRight className="h-5 w-5" />
-          </IconButton>
+    <CollapsibleCard id="worship-calendar" title="Worship calendar" summary={monthLabel} defaultOpen>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-base font-bold text-foreground" aria-live="polite">
+            {monthLabel}
+          </p>
+          <div className="flex items-center gap-1">
+            <IconButton label="Previous month" onClick={goPrevMonth}>
+              <ChevronLeft className="h-5 w-5" />
+            </IconButton>
+            <Button type="button" variant="outline" onClick={goToday}>
+              Today
+            </Button>
+            <IconButton label="Next month" onClick={goNextMonth}>
+              <ChevronRight className="h-5 w-5" />
+            </IconButton>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-center text-base font-bold text-foreground" aria-live="polite">
-          {firstOfMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
-        </p>
 
         <div className={cn("grid grid-cols-7 gap-1 text-center", pending && "opacity-50")}>
           {WEEKDAY_LABELS.map((w, i) => (
@@ -236,7 +235,7 @@ export function WorshipCalendar({
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleCard>
   );
 }

@@ -46,6 +46,13 @@ export function ThemeSuggestions({
     list.push(m);
     byCategory.set(m.category, list);
   }
+  // Within a theme category, list songs alphabetically rather than by match
+  // score — a leader scanning "Grace / Mercy" is looking for a title they
+  // recognize, not ranking relevance. matchSongsToTheme's own score-sorted
+  // order is left untouched; this only reorders what's shown per group.
+  for (const list of byCategory.values()) {
+    list.sort((a, b) => a.song.title.localeCompare(b.song.title));
+  }
   const distinctSongCount = new Set(matches.map((m) => m.song.id)).size;
   const summary = distinctSongCount > 0 ? `${distinctSongCount} song${distinctSongCount === 1 ? "" : "s"}` : "No matches";
 
