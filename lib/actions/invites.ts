@@ -9,6 +9,7 @@ import { createSession } from "@/lib/auth/session";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
 import { checkCanInvite } from "@/lib/plans/limits";
+import { isTestLabChurchId } from "@/lib/auth/test-lab";
 
 const INVITE_DURATION_DAYS = 7;
 
@@ -21,6 +22,10 @@ export async function createInvite(input: {
     const { user, team, church, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) {
       return { ok: false, error: "Only the worship leader can invite people." };
+    }
+    // The Test Lab is closed to everyone but the two owner accounts.
+    if (await isTestLabChurchId(church.id)) {
+      return { ok: false, error: "Nobody can be invited to the Test Lab." };
     }
     const limit = await checkCanInvite(team.id, user.isDemo);
     if (!limit.ok) return limit;
