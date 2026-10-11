@@ -10,6 +10,7 @@ import { LyricsChordsView, type LyricsChordsMode } from "@/components/songs/lyri
 import { CHROMATIC_KEYS } from "@/lib/songs/constants";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/cn";
+import { useSyncDownSnapshot } from "@/lib/offline/use-offline-sync";
 
 type Section = { id: string; label: string; lyricsChords: string | null };
 type SongInfo = {
@@ -44,6 +45,11 @@ export function SongChart({
   const [size, setSize] = useState<Size>("md");
   const [mode, setMode] = useState<LyricsChordsMode>("all");
   const [displayKey, setDisplayKey] = useState<string | null>(initialKey ?? song.key);
+
+  // Mirrors this song's chart into IndexedDB so reopening it offline shows
+  // the last-known chords/lyrics instead of the service worker's generic
+  // fallback — see lib/offline/.
+  useSyncDownSnapshot(`chart:${song.id}`, { song, isLeader });
 
   useEffect(() => {
     // Reads a per-viewer browser preference that isn't available during SSR,
