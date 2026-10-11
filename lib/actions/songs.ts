@@ -29,6 +29,12 @@ async function findOwnedSection(sectionId: string, teamId: string): Promise<Sect
   return { ok: true, section };
 }
 
+// Song structure, directions, and canonical song details are the team's shared
+// arrangement — only a leader-role account may change them, enforced here
+// regardless of what the UI shows. Personal notes (lib/actions/notes.ts) stay
+// open to every member because they are private to their author.
+const ARRANGEMENT_LEADER_ONLY = "Only the worship leader can change the arrangement.";
+
 export async function createSong(input: {
   title: string;
   artist?: string;
@@ -87,7 +93,8 @@ export async function updateSong(
   }>,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSong(songId, team.id);
     if (!lookup.ok) return lookup;
     if (input.youtubeUrl !== undefined && input.youtubeUrl.trim() && !isHttpUrl(input.youtubeUrl)) {
@@ -116,7 +123,8 @@ export async function updateSong(
 
 export async function deleteSong(songId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSong(songId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.song.delete({ where: { id: songId } });
@@ -201,7 +209,8 @@ export async function addBibleReference(songId: string, reference: string, text?
 
 export async function addSection(songId: string, label: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSong(songId, team.id);
     if (!lookup.ok) return lookup;
     const count = await prisma.songSection.count({ where: { songId } });
@@ -212,9 +221,31 @@ export async function addSection(songId: string, label: string): Promise<ActionR
   });
 }
 
+// Builds a whole structure in one step ("Intro → Verse → Chorus → …") — the
+// same SongSection rows addSection creates, appended in order, so a familiar
+// song is arranged with one action instead of one form per section.
+export async function addSections(songId: string, labels: string[]): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
+    const lookup = await findOwnedSong(songId, team.id);
+    if (!lookup.ok) return lookup;
+    const clean = labels.map((l) => l.trim().slice(0, 60)).filter(Boolean).slice(0, 40);
+    if (clean.length === 0) return { ok: false, error: "Choose at least one section." };
+    const count = await prisma.songSection.count({ where: { songId } });
+    await prisma.songSection.createMany({
+      data: clean.map((label, i) => ({ songId, label, order: count + i })),
+    });
+    revalidatePath(`/songs/${songId}`);
+    if (count === 0) trackEvent(team.id, "song_arrangement_started", { entityId: songId });
+    return { ok: true };
+  });
+}
+
 export async function renameSection(sectionId: string, label: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.update({ where: { id: sectionId }, data: { label } });
@@ -254,7 +285,8 @@ export async function updateSectionRepeatCount(
   repeatCount: number | null,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.update({
@@ -268,7 +300,8 @@ export async function updateSectionRepeatCount(
 
 export async function setSectionFreeform(sectionId: string, isFreeform: boolean): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.update({ where: { id: sectionId }, data: { isFreeform } });
@@ -280,7 +313,8 @@ export async function setSectionFreeform(sectionId: string, isFreeform: boolean)
 
 export async function updateSectionDynamics(sectionId: string, dynamics: string | null): Promise<ActionResult> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.update({
@@ -296,7 +330,8 @@ export async function updateSectionDynamics(sectionId: string, dynamics: string 
 
 export async function duplicateSection(sectionId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -337,7 +372,8 @@ export async function duplicateSection(sectionId: string): Promise<ActionResult>
 
 export async function deleteSection(sectionId: string): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
     await prisma.songSection.delete({ where: { id: sectionId } });
@@ -357,7 +393,8 @@ export async function deleteSection(sectionId: string): Promise<ActionResult> {
 
 export async function reorderSections(songId: string, orderedSectionIds: string[]): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSong(songId, team.id);
     if (!lookup.ok) return lookup;
     await Promise.all(
@@ -380,7 +417,8 @@ export async function upsertRoleNote(
   options?: { teamMemberId?: string | null; visibility?: "TEAM" | "ROLE" | "PERSON"; cueLabel?: string | null },
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { user, team } = await requireUser();
+    const { user, team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const lookup = await findOwnedSection(sectionId, team.id);
     if (!lookup.ok) return lookup;
 
@@ -448,7 +486,8 @@ export async function changeRoleNoteRole(
   songIdForRevalidate: string,
 ): Promise<ActionResult> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const note = await prisma.songRoleNote.findUnique({
       where: { id: noteId },
       include: { section: { include: { song: true } } },
@@ -490,7 +529,8 @@ export async function copyRoleNotes(
   songIdForRevalidate: string,
 ): Promise<ActionResultData<{ copied: number; skipped: number }>> {
   return runAction(async () => {
-    const { team } = await requireUser();
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
     const [fromLookup, toLookup] = await Promise.all([
       findOwnedSection(fromSectionId, team.id),
       findOwnedSection(toSectionId, team.id),

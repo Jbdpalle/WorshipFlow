@@ -42,6 +42,7 @@ export type SetSongData = {
   id: string;
   order: number;
   overrideKey: string | null;
+  purpose: string | null;
   song: {
     id: string;
     title: string;
@@ -170,6 +171,7 @@ function SetSongCard({
     id: item.id,
   });
   const [overrideKey, setOverrideKey] = useState(item.overrideKey);
+  const [purpose, setPurpose] = useState(item.purpose ?? "");
   const [assignRole, setAssignRole] = useState<string>(ROLES[0]);
   // Never pre-select a person — assignMemberToSetSong below already no-ops
   // on an empty value, but that guard only protects against a silent wrong
@@ -253,7 +255,7 @@ function SetSongCard({
                   <p className="text-xs text-muted-foreground">{item.song.artist}</p>
                 )}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {item.song.key && isLeader && (
                   <div className="flex items-center gap-1">
                     <Tooltip content="Key for this service only — the song's own key elsewhere is unchanged">
@@ -352,8 +354,32 @@ function SetSongCard({
               </button>
             </div>
 
+            {!detailsOpen && purpose.trim() && (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">Role in the set:</span> {purpose}
+              </p>
+            )}
+
             {detailsOpen && (
               <div className="space-y-3 border-t border-border pt-3">
+                <div className="space-y-1">
+                  <label htmlFor={`purpose-${item.id}`} className="label-caps">
+                    Role in the set (optional)
+                  </label>
+                  <input
+                    id={`purpose-${item.id}`}
+                    value={purpose}
+                    maxLength={200}
+                    disabled={!isLeader}
+                    onChange={(e) => setPurpose(e.target.value)}
+                    onBlur={async () => {
+                      if (purpose.trim() === (item.purpose ?? "").trim()) return;
+                      showErrorIfAny(await updateSetSongDetails(item.id, { purpose: purpose.trim() }));
+                    }}
+                    placeholder="e.g. Opens the set with awe · Our response to grace"
+                    className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                  />
+                </div>
                 <div className="space-y-2">
                   <p className="label-caps">Per-song assignment override</p>
                   <p className="text-sm text-muted-foreground">

@@ -101,7 +101,7 @@ export async function getDashboardData(
           assignments: { include: { teamMember: { select: { id: true, role: true } } } },
           song: {
             include: {
-              sections: { select: { roleNotes: { select: { content: true } } } },
+              sections: { select: { lyricsChords: true, roleNotes: { select: { content: true } } } },
               rehearsals: { orderBy: { occurredAt: "desc" }, take: 1 },
               changeLogs: { orderBy: { createdAt: "desc" }, take: 5 },
             },

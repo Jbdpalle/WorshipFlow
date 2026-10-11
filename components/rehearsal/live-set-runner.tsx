@@ -13,6 +13,7 @@ import { startLiveSet } from "@/lib/actions/live-set";
 type SetInfo = {
   id: string;
   title: string;
+  vision: string | null;
   serviceDate: string | null;
   liveMode: "NONE" | "PRACTICE" | "LIVE";
   liveStartedAt: string | null;
@@ -53,6 +54,7 @@ export function LiveSetRunner({
       <RehearsalMode
         setId={set.id}
         setTitle={set.title}
+        setVision={set.vision}
         songs={songs}
         setTeamMembers={setTeamMembers}
         isLeaderView={isLeaderView}

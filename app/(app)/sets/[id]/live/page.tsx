@@ -52,6 +52,7 @@ export default async function LiveSetPage({ params }: { params: Promise<{ id: st
         set={{
           id: set.id,
           title: set.title,
+          vision: set.notes,
           serviceDate: set.serviceDate?.toISOString() ?? null,
           liveMode: set.liveMode,
           liveStartedAt: set.liveStartedAt?.toISOString() ?? null,

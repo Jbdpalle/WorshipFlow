@@ -10,10 +10,16 @@ export function SetNotes({
   setId,
   initialNotes,
   isLeader,
+  placeholder = "Keep this one intimate. Build toward free worship. Connect this to the sermon.",
+  emptyText = "No notes yet for this service.",
+  rows = 3,
 }: {
   setId: string;
   initialNotes: string;
   isLeader: boolean;
+  placeholder?: string;
+  emptyText?: string;
+  rows?: number;
 }) {
   const [value, setValue] = useState(initialNotes);
   const [saved, setSaved] = useState(true);
@@ -31,8 +37,8 @@ export function SetNotes({
 
   if (!isLeader) {
     return (
-      <p className="text-sm text-muted-foreground">
-        {initialNotes.trim() || "No notes yet for this service."}
+      <p className="whitespace-pre-line text-sm text-foreground">
+        {initialNotes.trim() || emptyText}
       </p>
     );
   }
@@ -46,8 +52,9 @@ export function SetNotes({
           setSaved(false);
         }}
         onBlur={save}
-        placeholder={'Keep this one intimate. Build toward free worship. Connect this to the sermon.'}
-        rows={3}
+        placeholder={placeholder}
+        rows={rows}
+        aria-label="Set vision"
       />
       <div className="mt-1 flex items-center justify-between gap-2">
         {error ? (

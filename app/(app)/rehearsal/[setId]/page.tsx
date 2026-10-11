@@ -56,6 +56,7 @@ export default async function RehearsalPage({ params }: { params: Promise<{ setI
       <RehearsalMode
         setId={set.id}
         setTitle={set.title}
+        setVision={set.notes}
         songs={set.songs}
         setTeamMembers={set.teamMembers}
         isLeaderView={isLeaderView}

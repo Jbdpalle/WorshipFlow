@@ -61,6 +61,9 @@ export default async function PracticeSessionPage({
         : null,
     songsPracticed: new Set(rehearsals.map((r) => r.songId)).size,
     sectionsCovered: new Set(rehearsals.flatMap((r) => r.sectionsVisited)).size,
+    openNotes: await prisma.rehearsalNote.count({
+      where: { status: "OPEN", rehearsal: { setSong: { setId: set.id } } },
+    }),
   };
 
   return (
@@ -76,6 +79,7 @@ export default async function PracticeSessionPage({
         }}
         setId={set.id}
         setTitle={set.title}
+        setVision={set.notes}
         songs={set.songs}
         setTeamMembers={set.teamMembers}
         isLeaderView={isLeaderView}
