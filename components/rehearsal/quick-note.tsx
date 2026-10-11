@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { NotebookPen, Check } from "lucide-react";
+import { NotebookPen, Check, Mic, Square } from "lucide-react";
 import { callOffline } from "@/lib/offline/outbox";
 import { REHEARSAL_NOTE_CATEGORIES, REHEARSAL_NOTE_MAX_LENGTH } from "@/lib/songs/rehearsal-notes";
+import { useSpeechToText, combineDictationText } from "@/hooks/use-speech-to-text";
 import { cn } from "@/lib/utils/cn";
 
 // Capture an observation without leaving the music: one tap opens a single
@@ -30,6 +31,19 @@ export function QuickNote({
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const dictationBaseRef = useRef("");
+  const speech = useSpeechToText();
+
+  function toggleDictation() {
+    if (speech.listening) {
+      speech.stop();
+      return;
+    }
+    dictationBaseRef.current = text;
+    speech.start((spoken) => {
+      setText(combineDictationText(dictationBaseRef.current, spoken));
+    });
+  }
 
   async function save() {
     const content = text.trim();
@@ -120,6 +134,23 @@ export function QuickNote({
           placeholder={locked.label ? `On ${locked.label}: e.g. bass enters too early` : "e.g. bass enters too early"}
           className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
+        {speech.supported && (
+          <button
+            type="button"
+            onClick={toggleDictation}
+            aria-pressed={speech.listening}
+            aria-label={speech.listening ? "Stop dictation" : "Dictate note"}
+            title={speech.listening ? "Stop dictation" : "Dictate note"}
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border",
+              speech.listening
+                ? "animate-pulse border-danger bg-danger/15 text-danger"
+                : "border-border bg-surface text-muted-foreground hover:bg-surface-muted",
+            )}
+          >
+            {speech.listening ? <Square className="h-4 w-4" aria-hidden /> : <Mic className="h-4 w-4" aria-hidden />}
+          </button>
+        )}
         <button
           type="submit"
           disabled={busy || !text.trim() || !rehearsalId}
@@ -135,9 +166,9 @@ export function QuickNote({
           Close
         </button>
       </form>
-      {error && (
+      {(error || speech.error) && (
         <p role="alert" className="text-sm text-danger">
-          {error}
+          {error ?? speech.error}
         </p>
       )}
     </div>
