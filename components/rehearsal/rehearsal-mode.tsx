@@ -46,12 +46,12 @@ import type { ActionResult } from "@/lib/actions/action-result";
 import { finishPracticeSession, type PracticeSessionSummary } from "@/lib/actions/practice-sessions";
 import { finishLiveSet } from "@/lib/actions/live-set";
 import { cn } from "@/lib/utils/cn";
-import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
+import { pickEffectiveRoles } from "@/lib/songs/assignment-resolver";
 import { useAutoScrollIntoView } from "@/hooks/use-auto-scroll-into-view";
 import { useDirectorShortcuts, loadShortcutMap, type DirectorAction } from "@/hooks/use-director-shortcuts";
 import { ShortcutsPanel } from "@/components/rehearsal/shortcuts-panel";
 import { shouldAutoFollow, computeConnectionState, type LiveCursor, type ConnectionState } from "@/lib/songs/live-follow";
-import { partTagsForRole } from "@/lib/songs/arrangement-lanes";
+import { partTagsForRoles } from "@/lib/songs/arrangement-lanes";
 import { QuickNote } from "@/components/rehearsal/quick-note";
 import { NotesReview } from "@/components/rehearsal/notes-review";
 import { useWakeLock } from "@/hooks/use-wake-lock";
@@ -165,7 +165,7 @@ export function RehearsalMode({
   const [finishError, setFinishError] = useState<string | null>(null);
   // The default role(s) this viewer holds for the whole service — falls
   // back to here only when the current song has no per-song override (see
-  // myRole in SongRehearsalPanel below). Never falls back to account role.
+  // myRoles in SongRehearsalPanel below). Never falls back to account role.
   const viewerDefaultRoles = viewerTeamMemberId
     ? setTeamMembers.filter((m) => m.teamMemberId === viewerTeamMemberId).map((m) => m.role)
     : [];
@@ -707,26 +707,34 @@ function SongRehearsalPanel({
     [next, isLeaderView, viewerTeamMemberId],
   );
 
-  // The viewing musician's own part for this song, independent of the
-  // generic "every role" list above — null for the leader (they see
-  // everything already). A per-song override wins if one exists; otherwise
-  // falls back to their default role(s) for the whole service — never to
-  // account role, and never guessed when neither exists.
-  const myRole = !isLeaderView
-    ? pickEffectiveRole(
-        setSong.assignments.find((a) => a.teamMemberId === viewerTeamMemberId)?.role,
-        viewerDefaultRoles,
-      )
-    : undefined;
-  const myPartNote = myRole && current ? selectRoleNoteForViewer(current.roleNotes, myRole, viewerTeamMemberId) : undefined;
-
-  const nextMyPartNote =
-    myRole && next ? selectRoleNoteForViewer(next.roleNotes, myRole, viewerTeamMemberId) : undefined;
+  // The viewing musician's own part(s) for this song, independent of the
+  // generic "every role" list above — computed for every viewer, leader
+  // included, since church-account tier (isLeaderView) and musical
+  // assignment are different things: a Worship Leader who's also the
+  // guitarist still has a guitar part to see. A per-song override wins if
+  // one exists; otherwise falls back to their default role(s) for the
+  // whole service — never to account role, and never guessed when neither
+  // exists. A viewer can hold more than one role at once (e.g. Acoustic
+  // Guitar + Lead Vocal), so this is a list, not a single value.
+  const myRoles = pickEffectiveRoles(
+    setSong.assignments.find((a) => a.teamMemberId === viewerTeamMemberId)?.role,
+    viewerDefaultRoles,
+  );
+  const myPartNotes = current
+    ? myRoles
+        .map((role) => ({ role, note: selectRoleNoteForViewer(current.roleNotes, role, viewerTeamMemberId) }))
+        .filter(({ note }) => note?.content.trim())
+    : [];
+  const nextMyPartNotes = next
+    ? myRoles
+        .map((role) => ({ role, note: selectRoleNoteForViewer(next.roleNotes, role, viewerTeamMemberId) }))
+        .filter(({ note }) => note?.content.trim())
+    : [];
   const isFreeform = !!current?.isFreeform;
 
   // When this musician comes in, drops out, or returns across the song —
   // shown on the flow ribbon so "when do I enter" is visible at a glance.
-  const myPartTags = myRole ? partTagsForRole(sections, myRole) : undefined;
+  const myPartTags = myRoles.length > 0 ? partTagsForRoles(sections, myRoles) : undefined;
 
   return (
     <div className="space-y-3">
@@ -829,12 +837,25 @@ function SongRehearsalPanel({
               </div>
             </section>
 
-            {!isLeaderView && myRole && (
+            {myRoles.length > 0 && (
               <section aria-label="My part" className="rounded-2xl border border-border bg-musical-soft p-4 sm:p-5 lg:col-span-3">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-musical">My part · {myRole}</p>
-                <p className="mt-1 text-xl font-semibold leading-snug sm:text-2xl">
-                  {myPartNote?.content.trim() ? myPartNote.content : "Nothing specific for you here. Play it as written."}
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-musical">
+                  My part · {myRoles.join(" + ")}
                 </p>
+                {myPartNotes.length > 0 ? (
+                  <div className="mt-1 space-y-1.5">
+                    {myPartNotes.map(({ role, note }) => (
+                      <p key={role} className="text-xl font-semibold leading-snug sm:text-2xl">
+                        {myRoles.length > 1 && <span className="text-musical">{role}: </span>}
+                        {note?.content}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xl font-semibold leading-snug sm:text-2xl">
+                    Nothing specific for you here. Play it as written.
+                  </p>
+                )}
               </section>
             )}
 
@@ -865,10 +886,12 @@ function SongRehearsalPanel({
                     {next.repeatCount && next.repeatCount > 1 ? ` ×${next.repeatCount}` : ""}
                   </h3>
                   {next.dynamics && <DynamicIndicator dynamics={next.dynamics} className="mt-2" />}
-                  {!isLeaderView && myRole && (
+                  {myRoles.length > 0 && (
                     <p className="mt-2 text-base">
                       <span className="font-bold text-musical">Me: </span>
-                      {nextMyPartNote?.content.trim() ? nextMyPartNote.content : "Nothing specific. Play it as written."}
+                      {nextMyPartNotes.length > 0
+                        ? nextMyPartNotes.map(({ role, note }) => (myRoles.length > 1 ? `${role}: ${note?.content}` : note?.content)).join(" · ")
+                        : "Nothing specific. Play it as written."}
                     </p>
                   )}
                   {next.lyricsChords?.trim() && (
@@ -900,18 +923,17 @@ function SongRehearsalPanel({
                   <h3 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">{nextSong.song.title}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">Next song</p>
                   {(() => {
-                    // Leader sees the whole shared transition; a musician
-                    // sees their own piece of it if one was written for
-                    // their role, else falls back to the shared text — same
-                    // "leader sees everything, follower sees their part"
-                    // split already used for every section direction above.
-                    const myTransitionText = !isLeaderView
-                      ? selectRoleNoteForViewer(
-                          setSong.transitionFrom?.roleNotes ?? [],
-                          myRole ?? "",
-                          viewerTeamMemberId,
-                        )?.content
-                      : undefined;
+                    // A musician (any viewer with a musical part, leader
+                    // included) sees their own piece of the transition if
+                    // one was written for one of their roles, else falls
+                    // back to the shared text.
+                    const myTransitionText = myRoles
+                      .map(
+                        (role) =>
+                          selectRoleNoteForViewer(setSong.transitionFrom?.roleNotes ?? [], role, viewerTeamMemberId)
+                            ?.content,
+                      )
+                      .find((content) => content?.trim());
                     const text = myTransitionText ?? setSong.transitionFrom?.direction;
                     if (!text?.trim()) return null;
                     return (

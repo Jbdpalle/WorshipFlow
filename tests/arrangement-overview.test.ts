@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deriveArrangementOverview, isRestDirection, partTagsForRole } from "@/lib/songs/arrangement-lanes";
+import { deriveArrangementOverview, isRestDirection, partTagsForRole, partTagsForRoles } from "@/lib/songs/arrangement-lanes";
 import { parseStructureText, nextSectionLabel } from "@/lib/songs/section-labels";
 
 const sec = (id: string, dynamics: string | null, notes: Record<string, string>, repeat: number | null = null) => ({
@@ -70,6 +70,19 @@ describe("deriveArrangementOverview", () => {
     const tags = partTagsForRole(sections, "Bass")!;
     expect(tags).toMatchObject({ Intro: null, Verse: "IN", Chorus: null, Bridge: "OUT", "Final Chorus": "IN" });
     expect(partTagsForRole(sections, "Violin")).toBeUndefined();
+  });
+
+  it("gives a musician holding several roles a merged IN/OUT tag — IN if any role enters there, else OUT if any drops", () => {
+    // Single role is a passthrough.
+    expect(partTagsForRoles(sections, ["Bass"])).toEqual(partTagsForRole(sections, "Bass"));
+    // A role with no directions anywhere contributes nothing.
+    expect(partTagsForRoles(sections, ["Violin"])).toBeUndefined();
+    expect(partTagsForRoles(sections, ["Bass", "Violin"])).toEqual(partTagsForRole(sections, "Bass"));
+    // Chorus: Bass is just "play" (null tag) but Drums enters there — the
+    // combined guitarist+drummer should still see IN, not miss their cue.
+    expect(partTagsForRoles(sections, ["Bass", "Drums"])!.Chorus).toBe("IN");
+    // Bridge: both Keys and Bass drop out, neither enters — merged OUT.
+    expect(partTagsForRoles(sections, ["Keys", "Bass"])!.Bridge).toBe("OUT");
   });
 
   it("a song with no directions yields no rows and still lists every section", () => {

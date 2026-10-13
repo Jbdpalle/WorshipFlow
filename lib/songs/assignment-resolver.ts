@@ -17,6 +17,19 @@ export function pickEffectiveRole(
   return overrideRole ?? defaultRoles[0] ?? null;
 }
 
+// Same override-wins rule as pickEffectiveRole, but for a viewer who holds
+// more than one musical role at once (e.g. Acoustic Guitar + Lead Vocal) —
+// returns every role that applies instead of collapsing to one. A per-song
+// override still replaces the whole set, matching the single-role version:
+// a song-specific override is a full substitution, not an addition.
+export function pickEffectiveRoles(
+  overrideRole: string | null | undefined,
+  defaultRoles: string[],
+): string[] {
+  if (overrideRole) return [overrideRole];
+  return Array.from(new Set(defaultRoles.filter(Boolean)));
+}
+
 export type ResolvedSongRole = {
   setSongId: string;
   role: string;
