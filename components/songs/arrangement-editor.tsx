@@ -46,6 +46,7 @@ import { DirectionAudienceBadge } from "@/components/songs/direction-audience-ba
 import { summarizeSectionCoverage } from "@/lib/songs/role-notes";
 import { summarizeDirectionAudience, type UpcomingRosterRow } from "@/lib/songs/direction-audience";
 import { QuickDirectionPicker } from "@/components/songs/quick-direction-picker";
+import { ReuseDirectionsDialog } from "@/components/songs/reuse-directions-dialog";
 import { SectionPersonalNote } from "@/components/songs/note-editors";
 import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
@@ -250,6 +251,8 @@ export function ArrangementEditor({
               }
               router.refresh();
             }}
+            allSections={sections.map((s) => ({ id: s.id, label: s.label }))}
+            onReused={() => router.refresh()}
           />
         ) : (
           <Card className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
@@ -357,6 +360,8 @@ function FocusedSectionEditor({
   onDirectionAdded,
   onCopyFromPrevious,
   hasPreviousSection,
+  allSections,
+  onReused,
 }: {
   songId: string;
   section: Section;
@@ -370,6 +375,8 @@ function FocusedSectionEditor({
   onDirectionAdded: () => void;
   onCopyFromPrevious: () => void;
   hasPreviousSection: boolean;
+  allSections: { id: string; label: string }[];
+  onReused: () => void;
 }) {
   const [label, setLabel] = useState(section.label);
   const [repeatCount, setRepeatCount] = useState(section.repeatCount ?? 1);
@@ -389,6 +396,7 @@ function FocusedSectionEditor({
     setRoleNotes(section.roleNotes);
   }
   const [copyingPrevious, setCopyingPrevious] = useState(false);
+  const [reuseOpen, setReuseOpen] = useState(false);
   const dynamicsIsCustomInitially = Boolean(dynamics) && !(DYNAMICS_LEVELS as readonly string[]).includes(dynamics);
   const [dynamicsIsCustom, setDynamicsIsCustom] = useState(dynamicsIsCustomInitially);
   const [customDynamics, setCustomDynamics] = useState(dynamicsIsCustomInitially ? dynamics : "");
@@ -651,22 +659,29 @@ function FocusedSectionEditor({
           <h2 className="label-caps">
             Role Directions
           </h2>
-          {hasPreviousSection && (
-            <Tooltip content="Copy every direction from the previous section onto this one, then just change what's different">
-              <Button loading={copyingPrevious}
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={copyingPrevious}
-                onClick={async () => {
-                  setCopyingPrevious(true);
-                  await onCopyFromPrevious();
-                  setCopyingPrevious(false);
-                }}
-              >
-                <Copy className="h-3.5 w-3.5" /> {copyingPrevious ? "Copying…" : "Copy from previous section"}
+          {isLeader && (
+            <div className="flex items-center gap-1">
+              {hasPreviousSection && (
+                <Tooltip content="Copy every direction from the previous section onto this one, then just change what's different">
+                  <Button loading={copyingPrevious}
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={copyingPrevious}
+                    onClick={async () => {
+                      setCopyingPrevious(true);
+                      await onCopyFromPrevious();
+                      setCopyingPrevious(false);
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" /> {copyingPrevious ? "Copying…" : "Copy from previous section"}
+                  </Button>
+                </Tooltip>
+              )}
+              <Button type="button" size="sm" variant="ghost" onClick={() => setReuseOpen(true)}>
+                <Copy className="h-3.5 w-3.5" /> Reuse…
               </Button>
-            </Tooltip>
+            </div>
           )}
         </div>
         {roleNotes.map((note) => (
@@ -704,6 +719,18 @@ function FocusedSectionEditor({
       />
 
       {error && <p className="text-sm text-danger">{error}</p>}
+
+      {isLeader && (
+        <ReuseDirectionsDialog
+          open={reuseOpen}
+          onClose={() => setReuseOpen(false)}
+          songId={songId}
+          currentSectionId={section.id}
+          currentSectionLabel={section.label}
+          sections={allSections}
+          onApplied={onReused}
+        />
+      )}
     </Card>
   );
 }
