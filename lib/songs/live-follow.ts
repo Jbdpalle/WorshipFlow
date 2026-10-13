@@ -46,3 +46,18 @@ export function isStalePositionWrite(
   const base = baseUpdatedAt === null ? null : new Date(baseUpdatedAt).getTime();
   return current !== base;
 }
+
+export type ConnectionState = "live" | "catching-up" | "disconnected";
+
+// This device's own view of whether it's still actually receiving updates —
+// distinct from syncStatus (which reflects only this device's own last
+// write). A single missed poll (one slow request) isn't alarming and stays
+// "live"; only once several in a row have failed does this say so, so a
+// screen never silently goes stale without telling the person reading it.
+// `elapsedMs` is time since this device's last successful poll; `pollMs` is
+// the configured poll interval.
+export function computeConnectionState(elapsedMs: number, pollMs: number): ConnectionState {
+  if (elapsedMs <= pollMs * 1.5) return "live";
+  if (elapsedMs <= pollMs * 4) return "catching-up";
+  return "disconnected";
+}
