@@ -50,7 +50,7 @@ import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
 import { useAutoScrollIntoView } from "@/hooks/use-auto-scroll-into-view";
 import { useDirectorShortcuts, loadShortcutMap, type DirectorAction } from "@/hooks/use-director-shortcuts";
 import { ShortcutsPanel } from "@/components/rehearsal/shortcuts-panel";
-import { shouldAutoFollow, type LiveCursor } from "@/lib/songs/live-follow";
+import { shouldAutoFollow, computeConnectionState, type LiveCursor, type ConnectionState } from "@/lib/songs/live-follow";
 import { partTagsForRole } from "@/lib/songs/arrangement-lanes";
 import { QuickNote } from "@/components/rehearsal/quick-note";
 import { NotesReview } from "@/components/rehearsal/notes-review";
@@ -235,6 +235,16 @@ export function RehearsalMode({
   const pendingRef = useRef<{ setSongId: string; sectionId: string | null } | null>(null);
   const versionRef = useRef<string | null | undefined>(undefined);
   const lastSeenRef = useRef<string | null>(null);
+  // Who most recently moved the live position — visibility only, not a
+  // lock (see lib/actions/rehearsal.ts's liveControllerName comment). Lets
+  // everyone see who's currently directing when more than one leader-tier
+  // account might be in Director Mode at once.
+  const [controllerName, setControllerName] = useState<string | null>(null);
+  // This device's own read of whether it's still actually receiving poll
+  // updates — distinct from syncStatus above, which only reflects this
+  // device's own last WRITE. See computeConnectionState's own comment.
+  const [connectionState, setConnectionState] = useState<ConnectionState>("live");
+  const lastPollSuccessAtRef = useRef<number | null>(null);
 
   const adoptPosition = useCallback(
     (position: { setSongId: string | null; sectionId: string | null }, forceFollow: boolean) => {
@@ -288,6 +298,7 @@ export function RehearsalMode({
           versionRef.current = result.current.updatedAt;
           lastSeenRef.current = result.current.updatedAt;
           adoptPosition(result.current, true);
+          setControllerName(result.current.controllerName);
           setSyncStatus("conflict");
           pendingRef.current = null;
           last = { ok: false, error: result.error };
@@ -327,10 +338,27 @@ export function RehearsalMode({
   // it isn't the one issuing commands right now.
   const lastAnnouncementRef = useRef<string | null>(null);
   useEffect(() => {
+    if (lastPollSuccessAtRef.current === null) lastPollSuccessAtRef.current = Date.now();
     async function pollOnce() {
       if (document.visibilityState === "hidden") return;
-      const result = await getLivePosition(setId);
-      if (!result.ok) return;
+      // A dropped connection fails the fetch itself, not just the action's
+      // own { ok: false } result (e.g. offline, DNS failure, timeout) — both
+      // cases must count toward connectionState, or a real network outage
+      // would throw here and silently stop updating the banner at all.
+      let result: Awaited<ReturnType<typeof getLivePosition>>;
+      try {
+        result = await getLivePosition(setId);
+      } catch {
+        result = { ok: false, error: "Network request failed." };
+      }
+      if (!result.ok) {
+        const since = lastPollSuccessAtRef.current ?? Date.now();
+        setConnectionState(computeConnectionState(Date.now() - since, POLL_MS));
+        return;
+      }
+      lastPollSuccessAtRef.current = Date.now();
+      setConnectionState("live");
+      setControllerName(result.data.controllerName);
 
       if (result.data.announcementAt && result.data.announcementAt !== lastAnnouncementRef.current) {
         lastAnnouncementRef.current = result.data.announcementAt;
@@ -387,6 +415,9 @@ export function RehearsalMode({
             {mode === "live" ? "Live" : mode === "practice" ? "Practice" : "Director mode"}
           </p>
           <p className="hidden text-sm font-medium lg:block">Everyone follows your position and cues.</p>
+          {connectionState === "live" && controllerName && (
+            <p className="text-xs font-medium opacity-80">Directed by {controllerName}</p>
+          )}
           <SyncIndicator status={syncStatus} onRetry={retrySync} />
           <ShortcutsPanel map={shortcutMap} onChange={setShortcutMap} />
           {mode && (
@@ -430,6 +461,20 @@ export function RehearsalMode({
           {finishError}
         </p>
       )}
+      {connectionState !== "live" && (
+        <p
+          role="status"
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+            connectionState === "disconnected" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning",
+          )}
+        >
+          <WifiOff className="h-4 w-4 shrink-0" aria-hidden />
+          {connectionState === "disconnected"
+            ? "Disconnected — this screen may be showing an outdated position. Reconnecting…"
+            : "Catching up…"}
+        </p>
+      )}
       {!isLeaderView && (
         <>
           {announcement && (
@@ -461,6 +506,7 @@ export function RehearsalMode({
             <p role="status" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
               {followBanner ?? "Following the leader — no need to tap"}
+              {connectionState === "live" && controllerName && ` · Directed by ${controllerName}`}
             </p>
           )}
         </>

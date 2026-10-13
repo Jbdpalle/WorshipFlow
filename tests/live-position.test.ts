@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { prisma } from "@/lib/db/prisma";
 import { setLivePosition, getLivePosition, announceToTeam } from "@/lib/actions/rehearsal";
-import { shouldAutoFollow, isStalePositionWrite } from "@/lib/songs/live-follow";
+import { shouldAutoFollow, isStalePositionWrite, computeConnectionState } from "@/lib/songs/live-follow";
 import { createTestTeam, loginAs, cleanupTeam } from "./helpers";
 
 describe("Shared live position (server)", () => {
@@ -133,6 +133,26 @@ describe("Shared live position (server)", () => {
     await asMember(leader.church.id);
     expect((await announceToTeam(set.id, "Hold")).ok).toBe(false);
   });
+
+  it("records and surfaces who last moved the position, without locking out other controllers", async () => {
+    const { leader, set, ss1, ss2, s1b, s2a } = await setup("pos-controller-name");
+    await setLivePosition(set.id, ss1.id, s1b.id);
+    const first = await getLivePosition(set.id);
+    expect(first.ok && first.data.controllerName).toBe(leader.user.name);
+
+    // A second leader-tier account on the same team can still move it —
+    // controllerName is visibility, not a claimed lock.
+    const secondLeader = await prisma.user.create({
+      data: { name: "Second Leader", email: `2nd-${Date.now()}@test.invalid`, passwordHash: "x" },
+    });
+    await prisma.membership.create({ data: { userId: secondLeader.id, churchId: leader.church.id, role: "LEADER" } });
+    await loginAs(secondLeader.id);
+    const moved = await setLivePosition(set.id, ss2.id, s2a.id, first.ok ? first.data.updatedAt : undefined);
+    expect(moved.ok).toBe(true);
+
+    const after = await getLivePosition(set.id);
+    expect(after.ok && after.data.controllerName).toBe("Second Leader");
+  });
 });
 
 describe("shouldAutoFollow (client follow rule)", () => {
@@ -153,6 +173,15 @@ describe("shouldAutoFollow (client follow rule)", () => {
   it("follows when no live position was established yet, and always for leader screens", () => {
     expect(shouldAutoFollow(false, { setSongId: "song-2", sectionId: "x" }, null)).toBe(true);
     expect(shouldAutoFollow(true, { setSongId: "song-2", sectionId: "x" }, live)).toBe(true);
+  });
+
+  it("computes connection state from how long since the last successful poll", () => {
+    const pollMs = 3500;
+    expect(computeConnectionState(0, pollMs)).toBe("live");
+    expect(computeConnectionState(pollMs, pollMs)).toBe("live");
+    expect(computeConnectionState(pollMs * 2, pollMs)).toBe("catching-up");
+    expect(computeConnectionState(pollMs * 4, pollMs)).toBe("catching-up");
+    expect(computeConnectionState(pollMs * 5, pollMs)).toBe("disconnected");
   });
 
   it("detects a stale position version", () => {

@@ -483,7 +483,7 @@ export async function setLivePosition(
         id: setId,
         ...(baseUpdatedAt === undefined ? {} : { liveUpdatedAt: baseUpdatedAt === null ? null : new Date(baseUpdatedAt) }),
       },
-      data: { liveSetSongId: setSongId, liveSectionId: sectionId, liveUpdatedAt: now },
+      data: { liveSetSongId: setSongId, liveSectionId: sectionId, liveUpdatedAt: now, liveControllerName: user.name },
     });
     if (claimed.count === 0) {
       const latest = await prisma.worshipSet.findUnique({ where: { id: setId } });
@@ -505,6 +505,7 @@ function toLivePosition(set: {
   liveSetSongId: string | null;
   liveSectionId: string | null;
   liveUpdatedAt: Date | null;
+  liveControllerName: string | null;
   liveAnnouncement: string | null;
   liveAnnouncementAt: Date | null;
 }): LivePosition {
@@ -512,6 +513,7 @@ function toLivePosition(set: {
     setSongId: set.liveSetSongId,
     sectionId: set.liveSectionId,
     updatedAt: set.liveUpdatedAt?.toISOString() ?? null,
+    controllerName: set.liveControllerName,
     announcement: set.liveAnnouncement,
     announcementAt: set.liveAnnouncementAt?.toISOString() ?? null,
   };
@@ -521,6 +523,11 @@ export type LivePosition = {
   setSongId: string | null;
   sectionId: string | null;
   updatedAt: string | null;
+  // Display name of whoever last moved this position — see the
+  // liveControllerName schema comment. Shown to every viewer, not just
+  // followers, so a second leader-tier device knows someone else is
+  // already driving.
+  controllerName: string | null;
   announcement: string | null;
   announcementAt: string | null;
 };
@@ -535,22 +542,14 @@ export async function getLivePosition(setId: string): Promise<ActionResultData<L
         liveSetSongId: true,
         liveSectionId: true,
         liveUpdatedAt: true,
+        liveControllerName: true,
         liveAnnouncement: true,
         liveAnnouncementAt: true,
       },
     });
     if (!set || set.teamId !== team.id) return { ok: false, error: "Not found." };
 
-    return {
-      ok: true,
-      data: {
-        setSongId: set.liveSetSongId,
-        sectionId: set.liveSectionId,
-        updatedAt: set.liveUpdatedAt?.toISOString() ?? null,
-        announcement: set.liveAnnouncement,
-        announcementAt: set.liveAnnouncementAt?.toISOString() ?? null,
-      },
-    };
+    return { ok: true, data: toLivePosition(set) };
   });
 }
 
