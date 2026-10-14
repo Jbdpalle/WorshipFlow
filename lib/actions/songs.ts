@@ -693,30 +693,49 @@ export async function copyRoleNotesAcrossSections(
     }
     if (validTargets.length === 0) return { ok: false, error: "No valid destination section." };
 
-    const sourceNotes = await prisma.songRoleNote.findMany({
+    // Dedupe by role (keep the first) — nothing stops two shared rows for
+    // the same role existing already (Postgres treats each NULL
+    // teamMemberId as distinct, so the unique index doesn't catch this),
+    // and copying both would just plant the same duplicate at every
+    // destination.
+    const allSourceNotes = await prisma.songRoleNote.findMany({
       where: { sectionId: fromSectionId, teamMemberId: null },
       select: { role: true, content: true, cueLabel: true },
     });
-
-    let copied = 0;
-    let skipped = 0;
-    for (const toSectionId of validTargets) {
-      for (const note of sourceNotes) {
-        if (!note.content.trim()) continue;
-        const existing = await prisma.songRoleNote.findFirst({
-          where: { sectionId: toSectionId, role: note.role, teamMemberId: null },
-          select: { id: true },
-        });
-        if (existing) {
-          skipped++;
-          continue;
-        }
-        await prisma.songRoleNote.create({
-          data: { sectionId: toSectionId, role: note.role, content: note.content, cueLabel: note.cueLabel },
-        });
-        copied++;
-      }
+    const seenRoles = new Set<string>();
+    const sourceNotes: typeof allSourceNotes = [];
+    for (const note of allSourceNotes) {
+      if (!note.content.trim() || seenRoles.has(note.role)) continue;
+      seenRoles.add(note.role);
+      sourceNotes.push(note);
     }
+    const roles = sourceNotes.map((n) => n.role);
+
+    // One existing-roles lookup and one batched insert per destination,
+    // not one round trip per (destination, role) pair — and the whole
+    // multi-destination write is one transaction, so a failure partway
+    // through rolls back instead of leaving some destinations written
+    // and silently under-reporting what actually landed.
+    const { copied, skipped } = await prisma.$transaction(async (tx) => {
+      let copied = 0;
+      let skipped = 0;
+      for (const toSectionId of validTargets) {
+        const existing = await tx.songRoleNote.findMany({
+          where: { sectionId: toSectionId, teamMemberId: null, role: { in: roles } },
+          select: { role: true },
+        });
+        const existingRoles = new Set(existing.map((e) => e.role));
+        const toCreate = sourceNotes.filter((n) => !existingRoles.has(n.role));
+        skipped += sourceNotes.length - toCreate.length;
+        if (toCreate.length > 0) {
+          await tx.songRoleNote.createMany({
+            data: toCreate.map((n) => ({ sectionId: toSectionId, role: n.role, content: n.content, cueLabel: n.cueLabel })),
+          });
+          copied += toCreate.length;
+        }
+      }
+      return { copied, skipped };
+    });
 
     revalidatePath(`/songs/${songIdForRevalidate}`);
     revalidatePath("/my-part");
@@ -820,8 +839,22 @@ export async function applyDirectionPatternItems(
   return runAction(async () => {
     const { team, membershipRole } = await requireUser();
     if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
-    if (items.length === 0) return { ok: false, error: "Nothing to apply." };
     if (targetSectionIds.length === 0) return { ok: false, error: "Choose at least one section." };
+
+    // Blank out every item in the preview (e.g. clearing all the textareas
+    // before applying) must be a real validation error, not a silent
+    // "Applied 0, skipped 0" that reads as success with nothing to show for it.
+    // Also dedupe by role (keep the first) — see copyRoleNotesAcrossSections's
+    // comment on why the same role can otherwise appear twice.
+    const seenRoles = new Set<string>();
+    const validItems: DirectionPatternItemInput[] = [];
+    for (const item of items) {
+      if (!item.role.trim() || !item.content.trim() || seenRoles.has(item.role)) continue;
+      seenRoles.add(item.role);
+      validItems.push(item);
+    }
+    if (validItems.length === 0) return { ok: false, error: "Nothing to apply." };
+    const roles = validItems.map((i) => i.role);
 
     const validTargets: string[] = [];
     for (const targetId of targetSectionIds) {
@@ -830,25 +863,29 @@ export async function applyDirectionPatternItems(
     }
     if (validTargets.length === 0) return { ok: false, error: "No valid destination section." };
 
-    let applied = 0;
-    let skipped = 0;
-    for (const targetId of validTargets) {
-      for (const item of items) {
-        if (!item.role.trim() || !item.content.trim()) continue;
-        const existing = await prisma.songRoleNote.findFirst({
-          where: { sectionId: targetId, role: item.role, teamMemberId: null },
-          select: { id: true },
+    // Same batching + atomicity as copyRoleNotesAcrossSections: one
+    // existing-roles lookup and one batched insert per destination, the
+    // whole multi-destination write as a single transaction.
+    const { applied, skipped } = await prisma.$transaction(async (tx) => {
+      let applied = 0;
+      let skipped = 0;
+      for (const targetId of validTargets) {
+        const existing = await tx.songRoleNote.findMany({
+          where: { sectionId: targetId, teamMemberId: null, role: { in: roles } },
+          select: { role: true },
         });
-        if (existing) {
-          skipped++;
-          continue;
+        const existingRoles = new Set(existing.map((e) => e.role));
+        const toCreate = validItems.filter((i) => !existingRoles.has(i.role));
+        skipped += validItems.length - toCreate.length;
+        if (toCreate.length > 0) {
+          await tx.songRoleNote.createMany({
+            data: toCreate.map((i) => ({ sectionId: targetId, role: i.role, content: i.content, cueLabel: i.cueLabel ?? null })),
+          });
+          applied += toCreate.length;
         }
-        await prisma.songRoleNote.create({
-          data: { sectionId: targetId, role: item.role, content: item.content, cueLabel: item.cueLabel ?? null },
-        });
-        applied++;
       }
-    }
+      return { applied, skipped };
+    });
 
     revalidatePath(`/songs/${songIdForRevalidate}`);
     revalidatePath("/my-part");
