@@ -110,6 +110,63 @@ describe("copyRoleNotesAcrossSections (cross-song, multi-destination)", () => {
     const asMember = await copyRoleNotesAcrossSections(sectionsA[0].id, [moreSectionsA[0].id], songA2.id);
     expect(asMember.ok).toBe(false);
   });
+
+  // Postgres treats every NULL as distinct for a unique index, so
+  // SongRoleNote's @@unique([sectionId, role, teamMemberId]) does not
+  // actually stop two shared (teamMemberId: null) rows for the same
+  // section+role from coexisting — a prior version of this action could
+  // plant that same duplicate at every destination it copied to.
+  it("dedupes by role when the source section already has two shared rows for the same role, and the reported count matches the database", async () => {
+    const leader = await createTestTeam("cross-copy-source-dup", "LEADER");
+    cleanup.push({ teamId: leader.team.id, churchId: leader.church.id });
+    const { sections: sourceSections } = await createSongWithSections(leader.team.id, "Dup Source", ["Chorus"]);
+    const { song: destSong, sections: destSections } = await createSongWithSections(leader.team.id, "Dup Dest", [
+      "Verse",
+    ]);
+
+    // Simulate the pre-existing duplicate-row possibility directly.
+    await prisma.songRoleNote.create({ data: { sectionId: sourceSections[0].id, role: "Keys", content: "First copy of Keys" } });
+    await prisma.songRoleNote.create({ data: { sectionId: sourceSections[0].id, role: "Keys", content: "Second copy of Keys" } });
+
+    await loginAs(leader.user.id);
+    const result = await copyRoleNotesAcrossSections(sourceSections[0].id, [destSections[0].id], destSong.id);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual({ copied: 1, skipped: 0 });
+
+    const destNotes = await prisma.songRoleNote.findMany({ where: { sectionId: destSections[0].id } });
+    expect(destNotes).toHaveLength(1);
+    expect(destNotes[0].content).toBe("First copy of Keys");
+    // The reported "copied" count must match what's actually in the database.
+    expect(destNotes).toHaveLength(result.ok ? result.data.copied : -1);
+  });
+
+  it("copies to several destinations atomically — the reported count always matches the database afterward", async () => {
+    const leader = await createTestTeam("cross-copy-atomic", "LEADER");
+    cleanup.push({ teamId: leader.team.id, churchId: leader.church.id });
+    const { sections: sourceSections } = await createSongWithSections(leader.team.id, "Atomic Source", ["Chorus"]);
+    const { song: destSong, sections: destSections } = await createSongWithSections(leader.team.id, "Atomic Dest", [
+      "Verse",
+      "Chorus",
+      "Bridge",
+    ]);
+    await prisma.songRoleNote.create({ data: { sectionId: sourceSections[0].id, role: "Bass", content: "Root notes" } });
+    await prisma.songRoleNote.create({ data: { sectionId: sourceSections[0].id, role: "Drums", content: "Full groove" } });
+
+    await loginAs(leader.user.id);
+    const result = await copyRoleNotesAcrossSections(
+      sourceSections[0].id,
+      destSections.map((s) => s.id),
+      destSong.id,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data).toEqual({ copied: 6, skipped: 0 });
+
+    const allDestNotes = await prisma.songRoleNote.findMany({
+      where: { sectionId: { in: destSections.map((s) => s.id) } },
+    });
+    expect(allDestNotes).toHaveLength(result.data.copied);
+  });
 });
 
 describe("Direction patterns (save, list, apply)", () => {
@@ -195,6 +252,47 @@ describe("Direction patterns (save, list, apply)", () => {
     const reapplied = await applyDirectionPatternItems(editedItems, [targets[0].id], targetSong.id);
     expect(reapplied.ok).toBe(true);
     if (reapplied.ok) expect(reapplied.data).toEqual({ applied: 0, skipped: 1 });
+  });
+
+  it("refuses to apply when every edited item has been blanked out (not a silent no-op success)", async () => {
+    const leader = await createTestTeam("apply-all-blank", "LEADER");
+    cleanup.push({ teamId: leader.team.id, churchId: leader.church.id });
+    const { sections: targets } = await createSongWithSections(leader.team.id, "Blank Target", ["Verse"]);
+
+    await loginAs(leader.user.id);
+    const result = await applyDirectionPatternItems(
+      [{ role: "Keys", content: "   " }, { role: "", content: "has content but no role" }],
+      [targets[0].id],
+      "irrelevant-song-id",
+    );
+    expect(result.ok).toBe(false);
+
+    const notes = await prisma.songRoleNote.findMany({ where: { sectionId: targets[0].id } });
+    expect(notes).toHaveLength(0);
+  });
+
+  it("dedupes in-batch duplicate roles in the applied items, so only one row is created", async () => {
+    const leader = await createTestTeam("apply-dup-items", "LEADER");
+    cleanup.push({ teamId: leader.team.id, churchId: leader.church.id });
+    const { song: targetSong, sections: targets } = await createSongWithSections(leader.team.id, "Dup Items Target", [
+      "Verse",
+    ]);
+
+    await loginAs(leader.user.id);
+    const result = await applyDirectionPatternItems(
+      [
+        { role: "Bass", content: "First Bass line" },
+        { role: "Bass", content: "Second Bass line (should be dropped)" },
+      ],
+      [targets[0].id],
+      targetSong.id,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual({ applied: 1, skipped: 0 });
+
+    const notes = await prisma.songRoleNote.findMany({ where: { sectionId: targets[0].id } });
+    expect(notes).toHaveLength(1);
+    expect(notes[0].content).toBe("First Bass line");
   });
 
   it("a plain member cannot save or apply a pattern; a pattern from another team is invisible", async () => {

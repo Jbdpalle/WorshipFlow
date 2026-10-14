@@ -655,12 +655,12 @@ function FocusedSectionEditor({
 
       {/* Role-specific and group directions */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="label-caps">
             Role Directions
           </h2>
           {isLeader && (
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {hasPreviousSection && (
                 <Tooltip content="Copy every direction from the previous section onto this one, then just change what's different">
                   <Button loading={copyingPrevious}

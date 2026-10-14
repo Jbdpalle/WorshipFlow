@@ -388,7 +388,7 @@ function ApplyPatternPanel({
       <Button
         type="button"
         loading={applying}
-        disabled={applying || items.length === 0 || targets.size === 0}
+        disabled={applying || !items.some((i) => i.content.trim()) || targets.size === 0}
         onClick={async () => {
           setApplying(true);
           setError(null);
