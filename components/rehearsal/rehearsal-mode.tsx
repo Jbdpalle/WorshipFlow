@@ -867,10 +867,14 @@ function SongRehearsalPanel({
               />
             </div>
 
-            {current?.lyricsChords?.trim() && (
+            {current && (
               <section aria-label="Lyrics and chords" className="space-y-1 rounded-xl bg-surface-muted p-4 lg:col-span-3">
                 <h3 className="label-caps">Lyrics &amp; chords</h3>
-                <LyricsChordsView content={current.lyricsChords} size="md" />
+                {current.lyricsChords?.trim() ? (
+                  <LyricsChordsView content={current.lyricsChords} size="md" />
+                ) : (
+                  <p className="text-sm text-muted-foreground">No lyrics or chords saved for this section yet.</p>
+                )}
               </section>
             )}
 
