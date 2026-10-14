@@ -622,3 +622,237 @@ export async function copyRoleNotes(
     return { ok: true, data: { copied, skipped } };
   });
 }
+
+// ── Reusable direction patterns ──
+//
+// copyRoleNotes (above) is same-song, adjacent-section only. These extend
+// the same additive-only-never-overwrite rule across songs and across
+// several destination sections at once, plus a named, saved bundle for
+// directions that come up again and again (e.g. "guitar build into the
+// chorus"). All leader-only, all team-scoped, all additive: a destination
+// section that already has a direction for a given role keeps it untouched
+// — reuse never silently rewrites an existing arrangement.
+
+export async function listTeamSongsForReuse(): Promise<ActionResultData<{ id: string; title: string }[]>> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const songs = await prisma.song.findMany({
+      where: { teamId: team.id },
+      select: { id: true, title: true },
+      orderBy: { title: "asc" },
+    });
+    return { ok: true, data: songs };
+  });
+}
+
+export async function getSongSectionsForReuse(
+  songId: string,
+): Promise<ActionResultData<{ id: string; label: string; roleNotes: { role: string; content: string }[] }[]>> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const lookup = await findOwnedSong(songId, team.id);
+    if (!lookup.ok) return lookup;
+    const sections = await prisma.songSection.findMany({
+      where: { songId },
+      orderBy: { order: "asc" },
+      include: { roleNotes: { select: { role: true, content: true } } },
+    });
+    return {
+      ok: true,
+      data: sections.map((s) => ({
+        id: s.id,
+        label: s.label,
+        roleNotes: s.roleNotes.filter((n) => n.content.trim()),
+      })),
+    };
+  });
+}
+
+// Cross-song, multi-destination sibling of copyRoleNotes. Shared directions
+// only (teamMemberId null) — a PERSON-scoped note is specific to one
+// musician and never makes sense copied onto a different song's section.
+export async function copyRoleNotesAcrossSections(
+  fromSectionId: string,
+  toSectionIds: string[],
+  songIdForRevalidate: string,
+): Promise<ActionResultData<{ copied: number; skipped: number }>> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
+    const fromLookup = await findOwnedSection(fromSectionId, team.id);
+    if (!fromLookup.ok) return fromLookup;
+
+    // Resolve every destination up front: if none of them actually belong
+    // to this team, that's a real error, not a quiet 0-copies "success" —
+    // otherwise a bad/foreign section id would look identical to "nothing
+    // needed copying."
+    const validTargets: string[] = [];
+    for (const toSectionId of toSectionIds) {
+      const toLookup = await findOwnedSection(toSectionId, team.id);
+      if (toLookup.ok) validTargets.push(toSectionId);
+    }
+    if (validTargets.length === 0) return { ok: false, error: "No valid destination section." };
+
+    const sourceNotes = await prisma.songRoleNote.findMany({
+      where: { sectionId: fromSectionId, teamMemberId: null },
+      select: { role: true, content: true, cueLabel: true },
+    });
+
+    let copied = 0;
+    let skipped = 0;
+    for (const toSectionId of validTargets) {
+      for (const note of sourceNotes) {
+        if (!note.content.trim()) continue;
+        const existing = await prisma.songRoleNote.findFirst({
+          where: { sectionId: toSectionId, role: note.role, teamMemberId: null },
+          select: { id: true },
+        });
+        if (existing) {
+          skipped++;
+          continue;
+        }
+        await prisma.songRoleNote.create({
+          data: { sectionId: toSectionId, role: note.role, content: note.content, cueLabel: note.cueLabel },
+        });
+        copied++;
+      }
+    }
+
+    revalidatePath(`/songs/${songIdForRevalidate}`);
+    revalidatePath("/my-part");
+    revalidatePath("/rehearsal");
+    return { ok: true, data: { copied, skipped } };
+  });
+}
+
+export type DirectionPatternItemInput = { role: string; content: string; cueLabel?: string | null };
+
+// Captures a section's current shared directions as a named, reusable
+// pattern — a snapshot at save time, never a live link back to that
+// section, so later edits to the original section (or deleting it) can
+// never change what applying this pattern does.
+export async function saveDirectionPattern(
+  sectionId: string,
+  name: string,
+): Promise<ActionResultData<{ id: string; itemCount: number }>> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
+    if (!name.trim()) return { ok: false, error: "Give the pattern a name." };
+    const lookup = await findOwnedSection(sectionId, team.id);
+    if (!lookup.ok) return lookup;
+
+    const notes = await prisma.songRoleNote.findMany({
+      where: { sectionId, teamMemberId: null },
+      select: { role: true, content: true, cueLabel: true },
+    });
+    const items = notes.filter((n) => n.content.trim());
+    if (items.length === 0) return { ok: false, error: "This section has no directions to save yet." };
+
+    const pattern = await prisma.directionPattern.create({
+      data: { teamId: team.id, name: name.trim(), items: { create: items } },
+    });
+    return { ok: true, data: { id: pattern.id, itemCount: items.length } };
+  });
+}
+
+export async function listDirectionPatterns(): Promise<
+  ActionResultData<{ id: string; name: string; itemCount: number; createdAt: string }[]>
+> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const patterns = await prisma.directionPattern.findMany({
+      where: { teamId: team.id },
+      include: { _count: { select: { items: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+    return {
+      ok: true,
+      data: patterns.map((p) => ({
+        id: p.id,
+        name: p.name,
+        itemCount: p._count.items,
+        createdAt: p.createdAt.toISOString(),
+      })),
+    };
+  });
+}
+
+export async function getDirectionPattern(
+  patternId: string,
+): Promise<ActionResultData<{ id: string; name: string; items: DirectionPatternItemInput[] }>> {
+  return runAction(async () => {
+    const { team } = await requireUser();
+    const pattern = await prisma.directionPattern.findUnique({ where: { id: patternId }, include: { items: true } });
+    if (!pattern || pattern.teamId !== team.id) return { ok: false, error: "Pattern not found." };
+    return {
+      ok: true,
+      data: {
+        id: pattern.id,
+        name: pattern.name,
+        items: pattern.items.map((i) => ({ role: i.role, content: i.content, cueLabel: i.cueLabel })),
+      },
+    };
+  });
+}
+
+export async function deleteDirectionPattern(patternId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
+    const pattern = await prisma.directionPattern.findUnique({ where: { id: patternId } });
+    if (!pattern || pattern.teamId !== team.id) return { ok: false, error: "Pattern not found." };
+    await prisma.directionPattern.delete({ where: { id: patternId } });
+    return { ok: true };
+  });
+}
+
+// Applies a (possibly leader-edited) list of items to one or more target
+// sections — the caller passes the items explicitly (rather than this
+// re-reading the pattern) so an edit made in the preview step before
+// confirming is what actually gets written, not the original saved
+// pattern. Same additive-only rule as every other reuse action here.
+export async function applyDirectionPatternItems(
+  items: DirectionPatternItemInput[],
+  targetSectionIds: string[],
+  songIdForRevalidate: string,
+): Promise<ActionResultData<{ applied: number; skipped: number }>> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
+    if (items.length === 0) return { ok: false, error: "Nothing to apply." };
+    if (targetSectionIds.length === 0) return { ok: false, error: "Choose at least one section." };
+
+    const validTargets: string[] = [];
+    for (const targetId of targetSectionIds) {
+      const lookup = await findOwnedSection(targetId, team.id);
+      if (lookup.ok) validTargets.push(targetId);
+    }
+    if (validTargets.length === 0) return { ok: false, error: "No valid destination section." };
+
+    let applied = 0;
+    let skipped = 0;
+    for (const targetId of validTargets) {
+      for (const item of items) {
+        if (!item.role.trim() || !item.content.trim()) continue;
+        const existing = await prisma.songRoleNote.findFirst({
+          where: { sectionId: targetId, role: item.role, teamMemberId: null },
+          select: { id: true },
+        });
+        if (existing) {
+          skipped++;
+          continue;
+        }
+        await prisma.songRoleNote.create({
+          data: { sectionId: targetId, role: item.role, content: item.content, cueLabel: item.cueLabel ?? null },
+        });
+        applied++;
+      }
+    }
+
+    revalidatePath(`/songs/${songIdForRevalidate}`);
+    revalidatePath("/my-part");
+    revalidatePath("/rehearsal");
+    return { ok: true, data: { applied, skipped } };
+  });
+}

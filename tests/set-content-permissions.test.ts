@@ -16,7 +16,7 @@ import {
   unarchiveSet,
 } from "@/lib/actions/sets";
 import { createTestTeam, loginAs, cleanupTeam } from "./helpers";
-import { pickEffectiveRole } from "@/lib/songs/assignment-resolver";
+import { pickEffectiveRole, pickEffectiveRoles } from "@/lib/songs/assignment-resolver";
 
 // A pre-existing gap: every set-content mutation below had no leader-role
 // check at all, so any MEMBER could edit notes, the exaltation, service
@@ -217,6 +217,42 @@ describe("Set content mutations are Leader-only (pre-existing gap, now fixed)", 
     // either whole-set default — exactly what Director Mode/My Part read.
     const effective = pickEffectiveRole(songOverride?.role, setDefaults.map((r) => r.role));
     expect(effective).toBe("Drums");
+  });
+
+  it("pickEffectiveRoles returns every default role when there's no override, and just the override when there is one", () => {
+    expect(pickEffectiveRoles(undefined, ["Acoustic Guitar", "Worship Leader"])).toEqual([
+      "Acoustic Guitar",
+      "Worship Leader",
+    ]);
+    expect(pickEffectiveRoles(null, ["Acoustic Guitar", "Worship Leader"])).toEqual([
+      "Acoustic Guitar",
+      "Worship Leader",
+    ]);
+    expect(pickEffectiveRoles("Drums", ["Acoustic Guitar", "Worship Leader"])).toEqual(["Drums"]);
+    expect(pickEffectiveRoles(undefined, [])).toEqual([]);
+    expect(pickEffectiveRoles(undefined, ["Bass", "Bass"])).toEqual(["Bass"]);
+  });
+
+  it("a person can hold two independent musical roles on the same set (e.g. Worship Leader + Acoustic Guitar)", async () => {
+    const owner = await createTestTeam("multi-role-assign", "OWNER");
+    cleanup.push({ teamId: owner.team.id, churchId: owner.church.id });
+    await loginAs(owner.user.id);
+
+    const set = await prisma.worshipSet.create({ data: { teamId: owner.team.id, title: "Multi-Role Service" } });
+    const musician = await prisma.teamMember.create({
+      data: { teamId: owner.team.id, name: "Dual Role Musician", role: "Other" },
+    });
+
+    const first = await assignMemberToSet(set.id, musician.id, "Worship Leader");
+    expect(first.ok).toBe(true);
+    const second = await assignMemberToSet(set.id, musician.id, "Acoustic Guitar");
+    expect(second.ok).toBe(true);
+
+    const rows = await prisma.setTeamMember.findMany({ where: { setId: set.id, teamMemberId: musician.id } });
+    expect(rows.map((r) => r.role).sort()).toEqual(["Acoustic Guitar", "Worship Leader"]);
+
+    const effective = pickEffectiveRoles(undefined, rows.map((r) => r.role));
+    expect(effective.sort()).toEqual(["Acoustic Guitar", "Worship Leader"]);
   });
 
   it("archiveSet and unarchiveSet remain open to any team member (deliberate, not a gap)", async () => {

@@ -134,3 +134,22 @@ export function partTagsForRole(
   if (!overview.rows.some((r) => r.role === role)) return undefined;
   return Object.fromEntries(overview.columns.map((c) => [c.id, partStateBadge(c.states[role])]));
 }
+
+// Same, but for a viewer holding several roles at once: a section is tagged
+// IN if any of their roles enters there, else OUT if any drops out there —
+// "something you play starts/stops here" rather than tracking each role's
+// tag separately (the flow ribbon only has room for one badge per section).
+export function partTagsForRoles(
+  sections: SectionInput[],
+  roles: string[],
+): Record<string, string | null> | undefined {
+  const perRole = roles.map((role) => partTagsForRole(sections, role)).filter((t) => t !== undefined);
+  if (perRole.length === 0) return undefined;
+  const sectionIds = new Set(perRole.flatMap((t) => Object.keys(t)));
+  const merged: Record<string, string | null> = {};
+  for (const id of sectionIds) {
+    const states = perRole.map((t) => t[id]);
+    merged[id] = states.includes("IN") ? "IN" : states.includes("OUT") ? "OUT" : null;
+  }
+  return merged;
+}
