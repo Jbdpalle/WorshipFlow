@@ -20,7 +20,7 @@ export const QUICK_DIRECTION_VOCAB: Record<QuickDirectionFamily, string[]> = {
 
 const GUITAR_ROLES: readonly string[] = ["Acoustic Guitar", "Electric Guitar"];
 const KEYS_ROLES: readonly string[] = ["Keys", "Piano", "Synth"];
-const VOCAL_ROLES: readonly string[] = ["Worship Leader", "Lead Vocal", "Backing Vocal", "Rest of the Vocals"];
+const VOCAL_ROLES: readonly string[] = ["Worship Leader", "Lead Vocal", "Backing Vocal", "Soprano", "Alto", "Tenor", "Rest of the Vocals"];
 
 export function familyForRole(role: string): QuickDirectionFamily {
   if (GUITAR_ROLES.includes(role)) return "guitar";

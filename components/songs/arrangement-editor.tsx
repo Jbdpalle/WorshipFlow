@@ -50,12 +50,13 @@ import { ReuseDirectionsDialog } from "@/components/songs/reuse-directions-dialo
 import { SectionPersonalNote } from "@/components/songs/note-editors";
 import { LyricsChordsView } from "@/components/songs/lyrics-chords-view";
 import { SECTION_INTENT_CHIPS } from "@/lib/songs/quick-direction-vocab";
-import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS, DEFAULT_SONG_STRUCTURE } from "@/lib/songs/constants";
+import { ROLES, DYNAMICS_LEVELS, DIRECTION_GROUPS, DEFAULT_SONG_STRUCTURE, isUntouchedDefaultStructure } from "@/lib/songs/constants";
 import { QUICK_SECTION_LABELS, nextSectionLabel, parseStructureText } from "@/lib/songs/section-labels";
 import { cn } from "@/lib/utils/cn";
 import {
   addSection,
   addSections,
+  replaceSongSections,
   deleteSection,
   duplicateSection,
   renameSection,
@@ -146,10 +147,18 @@ export function ArrangementEditor({
 
   const selectedIndex = sections.findIndex((s) => s.id === selectedId);
   const selected = sections[selectedIndex];
+  const isDefaultStructure = isUntouchedDefaultStructure(sections);
 
   return (
     <div className="space-y-5">
       <SongVisionGroup songId={songId} initialVision={initialVisionNote} />
+
+      {isLeader && isDefaultStructure && (
+        <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-muted-foreground">
+          This song starts with a suggested structure (Intro → Verse → Chorus → …) — edit, reorder, or
+          remove sections below, or paste your own structure to replace it entirely.
+        </p>
+      )}
 
       {/* On a phone the arrangement overview below already lists every
           section with its dynamics, so the ribbon would just repeat it. */}
@@ -163,6 +172,7 @@ export function ArrangementEditor({
         <StructureBuilder
           songId={songId}
           existingLabels={sections.map((s) => s.label)}
+          isDefaultStructure={isDefaultStructure}
           onError={setError}
           onAdded={() => router.refresh()}
         />
@@ -741,11 +751,13 @@ function FocusedSectionEditor({
 function StructureBuilder({
   songId,
   existingLabels,
+  isDefaultStructure,
   onError,
   onAdded,
 }: {
   songId: string;
   existingLabels: string[];
+  isDefaultStructure: boolean;
   onError: (message: string | null) => void;
   onAdded: () => void;
 }) {
@@ -758,6 +770,23 @@ function StructureBuilder({
     setBusy(true);
     onError(null);
     const result = await addSections(songId, labels);
+    setBusy(false);
+    if (!result.ok) {
+      onError(result.error);
+      return;
+    }
+    setText("");
+    onAdded();
+  }
+
+  // Only offered while the song still has nothing but the untouched
+  // default skeleton — replaces it outright instead of pasting a second
+  // structure on top of the suggested one (the duplicate-sections trap).
+  async function replace(labels: string[]) {
+    if (busy || labels.length === 0) return;
+    setBusy(true);
+    onError(null);
+    const result = await replaceSongSections(songId, labels);
     setBusy(false);
     if (!result.ok) {
       onError(result.error);
@@ -792,7 +821,7 @@ function StructureBuilder({
           ))}
         </div>
         <form
-          className="flex items-center gap-2"
+          className="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             add(parseStructureText(text));
@@ -805,6 +834,16 @@ function StructureBuilder({
             aria-label="Type a whole structure"
             className="h-11 min-w-0 flex-1 text-sm"
           />
+          {isDefaultStructure && !isEmpty && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy || !text.trim()}
+              onClick={() => replace(parseStructureText(text))}
+            >
+              Replace suggested structure
+            </Button>
+          )}
           <Button type="submit" variant="secondary" disabled={busy || !text.trim()}>
             Add all
           </Button>

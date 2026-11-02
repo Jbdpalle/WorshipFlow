@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { Song, SongSection } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, isLeaderRole } from "@/lib/auth/guard";
-import { DEFAULT_SONG_STRUCTURE, THEME_CATEGORIES, WORSHIP_TYPES } from "@/lib/songs/constants";
+import { DEFAULT_SONG_STRUCTURE, THEME_CATEGORIES, WORSHIP_TYPES, isUntouchedDefaultStructure } from "@/lib/songs/constants";
 import { runAction, type ActionResult, type ActionResultData } from "@/lib/actions/action-result";
 import { trackEvent } from "@/lib/usability/track";
 import { checkCanCreateSong } from "@/lib/plans/limits";
@@ -282,6 +282,42 @@ export async function addSections(songId: string, labels: string[]): Promise<Act
     });
     revalidatePath(`/songs/${songId}`);
     if (count === 0) trackEvent(team.id, "song_arrangement_started", { entityId: songId });
+    return { ok: true };
+  });
+}
+
+// Replaces the song's sections outright instead of appending — only when
+// the song still has nothing but the untouched default skeleton
+// createSong() seeds every new song with (same labels, same order, no
+// lyrics/chords or directions on any of them yet). That guard is
+// re-checked server-side, not just trusted from the client, so this can
+// never discard a leader's actual work: if anything has been edited,
+// renamed, reordered, or given content, the caller must use addSection /
+// addSections / removeSection like normal instead.
+export async function replaceSongSections(songId: string, labels: string[]): Promise<ActionResult> {
+  return runAction(async () => {
+    const { team, membershipRole } = await requireUser();
+    if (!isLeaderRole(membershipRole)) return { ok: false, error: ARRANGEMENT_LEADER_ONLY };
+    const lookup = await findOwnedSong(songId, team.id);
+    if (!lookup.ok) return lookup;
+
+    const clean = labels.map((l) => l.trim().slice(0, 60)).filter(Boolean).slice(0, 40);
+    if (clean.length === 0) return { ok: false, error: "Choose at least one section." };
+
+    const existing = await prisma.songSection.findMany({
+      where: { songId },
+      orderBy: { order: "asc" },
+      include: { roleNotes: { select: { id: true } } },
+    });
+    if (!isUntouchedDefaultStructure(existing)) {
+      return { ok: false, error: "This song's structure has already been edited — add sections instead of replacing them." };
+    }
+
+    await prisma.$transaction([
+      prisma.songSection.deleteMany({ where: { songId } }),
+      prisma.songSection.createMany({ data: clean.map((label, i) => ({ songId, label, order: i })) }),
+    ]);
+    revalidatePath(`/songs/${songId}`);
     return { ok: true };
   });
 }
