@@ -22,6 +22,9 @@ export const ROLES = [
   "Worship Leader",
   "Lead Vocal",
   "Backing Vocal",
+  "Soprano",
+  "Alto",
+  "Tenor",
   "Acoustic Guitar",
   "Electric Guitar",
   "Bass",
@@ -40,7 +43,7 @@ export type Role = (typeof ROLES)[number];
 // grouping only, not a schema change (SongAssignment/TeamMember still store
 // the specific ROLES value).
 export const ROLE_CATEGORIES = [
-  { key: "vocals", label: "Vocals", roles: ["Worship Leader", "Lead Vocal", "Backing Vocal"] },
+  { key: "vocals", label: "Vocals", roles: ["Worship Leader", "Lead Vocal", "Backing Vocal", "Soprano", "Alto", "Tenor"] },
   { key: "guitar", label: "Guitar", roles: ["Acoustic Guitar", "Electric Guitar", "Bass"] },
   { key: "keys", label: "Keys", roles: ["Keys", "Piano", "Synth"] },
   { key: "drums", label: "Drums", roles: ["Drums"] },
@@ -58,7 +61,7 @@ export function categoryForRole(role: string): RoleCategoryKey | null {
 export const DIRECTION_GROUPS = ["Rest of the Band", "Rest of the Vocals"] as const;
 export type DirectionGroup = (typeof DIRECTION_GROUPS)[number];
 
-const VOCAL_ROLES: readonly string[] = ["Worship Leader", "Lead Vocal", "Backing Vocal"];
+const VOCAL_ROLES: readonly string[] = ["Worship Leader", "Lead Vocal", "Backing Vocal", "Soprano", "Alto", "Tenor"];
 
 // Which catch-all applies to a musician with no note of their own for a
 // section — singers fall back to "Rest of the Vocals", everyone else to
@@ -77,6 +80,20 @@ export const DEFAULT_SONG_STRUCTURE = [
   "Final Chorus",
   "Outro",
 ];
+
+// True only while a song's sections are exactly the untouched default
+// skeleton createSong() seeds every new song with — same labels, same
+// order, and nobody has put any real content on any of them yet. Used to
+// show a "this is a suggested starting structure" hint and to gate when
+// pasting a custom structure may safely replace it outright instead of
+// just appending on top (the #1 source of accidental duplicate sections).
+export function isUntouchedDefaultStructure(
+  sections: { label: string; lyricsChords: string | null; roleNotes: unknown[] }[],
+): boolean {
+  if (sections.length !== DEFAULT_SONG_STRUCTURE.length) return false;
+  if (sections.some((s, i) => s.label !== DEFAULT_SONG_STRUCTURE[i])) return false;
+  return sections.every((s) => !s.lyricsChords?.trim() && s.roleNotes.length === 0);
+}
 
 export const ENERGY_LEVELS = ["low", "medium", "high"] as const;
 export type EnergyLevel = (typeof ENERGY_LEVELS)[number];
